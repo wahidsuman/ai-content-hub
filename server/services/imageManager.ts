@@ -343,16 +343,36 @@ export class ImageManager {
     }
   }
 
-  async findCopyrightFreeImage(query: string, category: string): Promise<ImageResult | null> {
-    const images = await this.getCopyrightFreeImages(category, 1);
-    return images.length > 0 ? images[0] : null;
+  async findCopyrightFreeImage(searchTerm: string, category: string): Promise<ImageResult | null> {
+    // Mock implementation - in production, search copyright-free image APIs
+    const categoryKey = category as keyof typeof this.fallbackImages;
+    const imageArray = this.fallbackImages[categoryKey] || this.fallbackImages.default;
+    
+    if (imageArray.length > 0) {
+      const randomIndex = Math.floor(Math.random() * imageArray.length);
+      const baseUrl = imageArray[randomIndex];
+      
+      return {
+        url: await this.optimizeImage(baseUrl),
+        alt: `${category} image for ${searchTerm}`,
+        prompt: searchTerm,
+        width: 800,
+        height: 400,
+        optimized: true
+      };
+    }
+
+    return null;
   }
 
   async generateAIImage(prompt: string, category: string): Promise<ImageResult | null> {
+    // Mock AI image generation - in production, use DALL-E, Midjourney, etc.
     return await this.generateImage({
       prompt,
       category,
-      style: 'professional'
+      style: 'professional',
+      width: 800,
+      height: 400
     });
   }
 }
