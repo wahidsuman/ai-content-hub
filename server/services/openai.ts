@@ -202,19 +202,19 @@ Make the content informative, engaging, and valuable to readers. Include current
   private generateTitle(contentType: string, keywords: string[]): string {
     const titleTemplates = {
       crypto: [
-        `Navigating 2023's Crypto Landscape: Regulations and Innovations`,
-        `Understanding ${keywords[0]} in Today's Crypto Market`,
+        `${keywords[0]}: Market Analysis and Future Predictions`,
+        `Understanding ${keywords[0]} in Today's Crypto Landscape`,
         `${keywords[0]} Guide: Everything You Need to Know`,
         `Breaking Down ${keywords[0]}: Trends and Opportunities`
       ],
       gadgets: [
-        `The Future of Gadgets: ${keywords[0]} in 2024`,
-        `Ultimate ${keywords[0]} Buying Guide for Tech Enthusiasts`,
+        `${keywords[0]} Review: Is It Worth Your Money?`,
+        `The Ultimate ${keywords[0]} Buying Guide for 2024`,
         `${keywords[0]} vs Competition: Detailed Comparison`,
         `Top ${keywords[0]} Features That Matter Most`
       ],
       ai: [
-        `Exploring the Revolution: ${keywords[0]} & Generative AI`,
+        `${keywords[0]}: Transforming Industries and Society`,
         `How ${keywords[0]} Is Changing the Future`,
         `${keywords[0]} Explained: Benefits and Challenges`,
         `The Rise of ${keywords[0]}: What You Need to Know`
@@ -226,7 +226,7 @@ Make the content informative, engaging, and valuable to readers. Include current
         `${keywords[0]}: Eco-Friendly Commuting Solution`
       ],
       'electric-cars': [
-        `The Future of Electric Cars: Charging, Markets, and Innovations`,
+        `${keywords[0]}: Electric Vehicle Revolution`,
         `${keywords[0]} Analysis: EV Market Trends`,
         `${keywords[0]}: Sustainable Transportation Future`,
         `${keywords[0]} Guide: Everything About Electric Cars`
