@@ -8,12 +8,13 @@ const blog = defineCollection({
     date: z.date(),
     tags: z.array(z.string()).optional(),
     source: z.string(),
-    sourceUrl: z.string().optional(),
+    sourceUrl: z.string().url().optional(),
     author: z.string().optional(),
     image: z.string().optional(),
+    featured: z.boolean().optional().default(false),
   }),
 });
 
 export const collections = {
-  'blog': blog,
+  blog,
 };

@@ -1,16 +1,19 @@
 # Tech News Bot
 
-A production-ready system that curates tech/EV/crypto/gadgets news via Telegram and generates a static Astro site.
+A production-ready system that curates tech/EV/crypto/gadgets news via Telegram and generates a static Astro site. **Optimized for 10-15 posts per day with cost-effective AI processing.**
 
 ## Features
 
-- 🤖 Telegram bot for news curation
-- 📰 RSS ingestion and deduplication
-- ✍️ AI-powered article generation
-- 🚀 Static site generation with Astro
-- 💰 Automatic AdSense monetization
-- ⚡ Cloudflare Workers + KV for scalability
-- 🔄 Cron-based batching (10-15 posts/day)
+- 🤖 **Telegram Bot** - Interactive news curation with batch approval
+- 📰 **RSS Ingestion** - 8 feeds with smart deduplication and filtering
+- ✍️ **AI-Powered Content** - GPT-4o-mini optimized for cost efficiency
+- 🚀 **Static Site Generation** - Astro with SEO and schema markup
+- 💰 **Automatic Monetization** - AdSense integration for all posts
+- ⚡ **Cloudflare Infrastructure** - Workers + KV for scalability
+- 🔄 **Smart Batching** - 5-10 items per run, every 2 hours
+- 📊 **Statistics Tracking** - Monitor performance and costs
+- 🛡️ **Content Filtering** - Spam detection and quality control
+- 🎨 **Modern Design** - Mobile-first, fast-loading, beautiful UI
 
 ## Architecture
 
@@ -65,9 +68,29 @@ CLOUDFLARE_KV_NAMESPACE_ID=your_kv_namespace_id
 
 ## Cost Optimization
 
-- Uses gpt-4o-mini for cost efficiency
-- Batches 3-5 briefs per cron run
-- Estimated cost: ~$5/month for 10-15 posts/day
+- **AI Model**: gpt-4o-mini with gpt-3.5-turbo fallback
+- **Batching**: 5-10 items per cron run, every 2 hours
+- **Parallel Processing**: 3 articles at a time for efficiency
+- **Estimated Cost**: ~$5/month for 10-15 posts/day
+- **Infrastructure**: Cloudflare free tier (100k requests/day)
+
+## Performance Features
+
+- **Smart Deduplication**: Prevents duplicate content
+- **Content Filtering**: Removes spam and low-quality content
+- **Rate Limiting**: Optimized API calls to prevent throttling
+- **Statistics Tracking**: Monitor batches, briefs, and published articles
+- **Error Handling**: Graceful fallbacks and retry mechanisms
+
+## Design Features
+
+- **Mobile-First Design**: Responsive layout optimized for all devices
+- **Modern UI**: Gradient backgrounds, smooth animations, and hover effects
+- **Fast Loading**: Compressed assets, optimized builds, and lazy loading
+- **Beautiful Typography**: Inter font with excellent readability
+- **Touch-Friendly**: Mobile navigation with collapsible menu
+- **Accessibility**: Proper contrast ratios and keyboard navigation
+- **Performance Optimized**: Minimal JavaScript and efficient CSS
 
 ## Development
 
