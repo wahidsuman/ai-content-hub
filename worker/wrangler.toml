@@ -1,4 +1,4 @@
-name = "your-unique-worker-name"
+name = "agaminews-bot"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
 
@@ -7,8 +7,8 @@ crons = ["0 */2 * * *"]  # Every 2 hours
 
 [[kv_namespaces]]
 binding = "NEWS_KV"
-id = ""
-preview_id = ""
+id = "29dbf4efad134243a2f716fbadccbb10"
+preview_id = "29dbf4efad134243a2f716fbadccbb10"
 
 [vars]
 ENVIRONMENT = "production"
