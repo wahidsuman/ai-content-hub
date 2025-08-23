@@ -37,7 +37,7 @@ fi
 print_success "Cloudflare login verified"
 
 # Create KV namespace
-print_status "Creating KV namespace for agaminews-bot..."
+print_status "Creating KV namespace for your-unique-worker-name..."
 wrangler kv:namespace create "NEWS_KV"
 
 # Create preview KV namespace
@@ -62,7 +62,7 @@ sed -i.bak "s/preview_id = \"your-preview-kv-namespace-id\"/preview_id = \"$KV_P
 print_success "wrangler.toml updated with KV namespace IDs"
 
 # Deploy the worker
-print_status "Deploying agaminews-bot worker..."
+print_status "Deploying your-unique-worker-name worker..."
 cd worker
 wrangler deploy
 
@@ -71,7 +71,7 @@ if [ $? -eq 0 ]; then
     
     # Get worker URL
     WORKER_URL=$(wrangler whoami | grep "Account" | awk '{print $2}' | sed 's/.*@//')
-    FULL_WORKER_URL="https://agaminews-bot.$WORKER_URL.workers.dev"
+    FULL_WORKER_URL="https://your-unique-worker-name.$WORKER_URL.workers.dev"
     
     print_success "Worker URL: $FULL_WORKER_URL"
     echo ""

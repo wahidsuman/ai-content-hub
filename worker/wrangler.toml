@@ -1,4 +1,4 @@
-name = "agaminews-bot"
+name = "your-unique-worker-name"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
 
