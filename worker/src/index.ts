@@ -43,28 +43,33 @@ export default {
         return;
       }
       
-      // Step 2: Generate briefs for new items (limit to 5-10 items)
+      // Step 2: Generate briefs for new items (limit to 5-10 items for batching)
       const itemsToProcess = newNews.slice(0, 10);
       const briefs = await generateBatchBriefs(itemsToProcess, env.OPENAI_API_KEY);
       console.log(`Generated ${briefs.length} briefs`);
       
-      // Step 3: Store batch in KV
+      // Step 3: Store batch in KV with enhanced metadata
       const batchId = `batch_${Date.now()}`;
       const batch = {
         batchId,
         briefs,
         createdAt: new Date().toISOString(),
-        status: 'pending'
+        status: 'pending',
+        totalItems: newNews.length,
+        processedItems: itemsToProcess.length
       };
       await env.NEWS_KV.put('current_batch', JSON.stringify(batch));
       
-      // Step 4: Send briefs to Telegram
+      // Step 4: Send enhanced briefs menu to Telegram
       const sent = await sendBriefsMenu(briefs, env.TELEGRAM_CHAT_ID, env.TELEGRAM_BOT_TOKEN);
       
       if (sent) {
         console.log('Successfully sent briefs to Telegram');
         // Mark news items as processed
         await markNewsAsProcessed(env.NEWS_KV, itemsToProcess.map(item => item.id));
+        
+        // Store batch statistics
+        await updateBatchStatistics(env.NEWS_KV, briefs.length);
       } else {
         console.error('Failed to send briefs to Telegram');
       }
@@ -94,16 +99,27 @@ export async function processApprovedBriefs(
   
   const articles: string[] = [];
   
-  // Generate full articles for all approved briefs
-  for (const brief of briefs) {
-    try {
-      const article = await generateFullArticle(brief, env.OPENAI_API_KEY);
-      articles.push(article);
-      console.log(`Generated article for: ${brief.suggestedTitle}`);
-    } catch (error) {
-      console.error(`Error generating article for ${brief.suggestedTitle}:`, error);
-      // Add empty article as placeholder
-      articles.push('');
+  // Generate full articles for all approved briefs in parallel batches
+  const batchSize = 3; // Process 3 articles at a time to optimize OpenAI usage
+  for (let i = 0; i < briefs.length; i += batchSize) {
+    const batch = briefs.slice(i, i + batchSize);
+    const batchPromises = batch.map(async (brief) => {
+      try {
+        const article = await generateFullArticle(brief, env.OPENAI_API_KEY);
+        console.log(`Generated article for: ${brief.suggestedTitle}`);
+        return article;
+      } catch (error) {
+        console.error(`Error generating article for ${brief.suggestedTitle}:`, error);
+        return '';
+      }
+    });
+    
+    const batchResults = await Promise.all(batchPromises);
+    articles.push(...batchResults);
+    
+    // Small delay between batches to avoid rate limits
+    if (i + batchSize < briefs.length) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
   }
   
@@ -116,7 +132,7 @@ export async function processApprovedBriefs(
     return 0;
   }
   
-  // Commit articles to GitHub
+  // Commit articles to GitHub in parallel
   const successCount = await commitMultipleArticles(
     validBriefs,
     validArticles,
@@ -127,10 +143,39 @@ export async function processApprovedBriefs(
   // Update site configuration (RSS, sitemap)
   if (successCount > 0) {
     await updateSiteConfig(validBriefs, env.GITHUB_TOKEN, env.GITHUB_REPO);
+    
+    // Update daily statistics
+    await updateDailyStatistics(env.NEWS_KV, successCount);
   }
   
   console.log(`Successfully processed ${successCount} articles`);
   return successCount;
+}
+
+// Helper functions for statistics
+async function updateBatchStatistics(kv: KVNamespace, briefCount: number): Promise<void> {
+  const today = new Date().toISOString().split('T')[0];
+  const key = `stats_batch_${today}`;
+  
+  const existing = await kv.get(key);
+  const stats = existing ? JSON.parse(existing) : { date: today, batches: 0, totalBriefs: 0 };
+  
+  stats.batches += 1;
+  stats.totalBriefs += briefCount;
+  
+  await kv.put(key, JSON.stringify(stats), { expirationTtl: 86400 * 7 }); // 7 days
+}
+
+async function updateDailyStatistics(kv: KVNamespace, publishedCount: number): Promise<void> {
+  const today = new Date().toISOString().split('T')[0];
+  const key = `stats_daily_${today}`;
+  
+  const existing = await kv.get(key);
+  const stats = existing ? JSON.parse(existing) : { date: today, published: 0, totalBriefs: 0 };
+  
+  stats.published += publishedCount;
+  
+  await kv.put(key, JSON.stringify(stats), { expirationTtl: 86400 * 30 }); // 30 days
 }
 
 // Export for testing
