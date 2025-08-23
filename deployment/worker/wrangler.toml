@@ -1,0 +1,21 @@
+name = "agaminews-bot"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[triggers]
+crons = ["0 */2 * * *"]  # Every 2 hours
+
+[[kv_namespaces]]
+binding = "NEWS_KV"
+id = "29dbf4efad134243a2f716fbadccbb10"
+preview_id = "29dbf4efad134243a2f716fbadccbb10"
+
+[vars]
+ENVIRONMENT = "production"
+
+# These will be set via wrangler secret
+# TELEGRAM_BOT_TOKEN
+# TELEGRAM_CHAT_ID
+# OPENAI_API_KEY
+# GITHUB_TOKEN
+# GITHUB_REPO
