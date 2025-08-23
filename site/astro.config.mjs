@@ -1,30 +1,17 @@
 import { defineConfig } from 'astro/config';
-import cloudflare from '@astrojs/cloudflare';
 import tailwind from '@astrojs/tailwind';
 import sitemap from '@astrojs/sitemap';
-import rss from '@astrojs/rss';
 
+// GitHub Pages deployment config
 export default defineConfig({
-  site: 'https://agaminews.in',
+  site: 'https://wahidsuman.github.io',
+  base: '/ai-content-hub',
   integrations: [
     tailwind(),
-    sitemap({
-      changefreq: 'daily',
-      priority: 0.7,
-      lastmod: new Date(),
-    }),
+    sitemap()
   ],
-  output: 'server',
-  adapter: cloudflare({
-    platformProxy: {
-      enabled: true
-    }
-  }),
-  markdown: {
-    shikiConfig: {
-      theme: 'github-dark',
-      wrap: true
-    }
-  },
-
+  output: 'static', // Changed to static for GitHub Pages
+  build: {
+    assets: 'astro'
+  }
 });
