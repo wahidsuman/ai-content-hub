@@ -11,7 +11,7 @@ export async function GET() {
   <channel>
     <title>Tech News Blog</title>
     <description>Latest tech, EV, crypto, and gadget news curated by AI</description>
-    <link>${Astro.site}</link>
+    <link>https://agaminews.in</link>
     <atom:link href="${Astro.url}" rel="self" type="application/rss+xml" />
     <language>en-US</language>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
@@ -19,8 +19,8 @@ export async function GET() {
     <item>
       <title>${escapeXml(post.data.title)}</title>
       <description>${escapeXml(post.data.description)}</description>
-      <link>${Astro.site}/blog/${post.slug}</link>
-      <guid>${Astro.site}/blog/${post.slug}</guid>
+      <link>https://agaminews.in/blog/${post.slug}</link>
+      <guid>https://agaminews.in/blog/${post.slug}</guid>
       <pubDate>${new Date(post.data.date).toUTCString()}</pubDate>
       <category>${post.data.tags?.join(', ') || ''}</category>
     </item>`).join('')}

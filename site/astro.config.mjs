@@ -6,7 +6,7 @@ import rss from '@astrojs/rss';
 import compress from 'astro-compress';
 
 export default defineConfig({
-  site: 'https://yourdomain.com',
+  site: 'https://agaminews.in',
   integrations: [
     tailwind(),
     sitemap({
