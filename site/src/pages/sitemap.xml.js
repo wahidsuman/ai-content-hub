@@ -7,20 +7,20 @@ export async function GET() {
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>${Astro.site}</loc>
+    <loc>https://agaminews.in</loc>
     <lastmod>${new Date().toISOString()}</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>${Astro.site}/blog</loc>
+    <loc>https://agaminews.in/blog</loc>
     <lastmod>${new Date().toISOString()}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   ${sortedPosts.map(post => `
   <url>
-    <loc>${Astro.site}/blog/${post.slug}</loc>
+    <loc>https://agaminews.in/blog/${post.slug}</loc>
     <lastmod>${new Date(post.data.date).toISOString()}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>

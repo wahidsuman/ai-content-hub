@@ -181,7 +181,7 @@ function generateBaseRSS(): string {
   <channel>
     <title>Tech News Blog</title>
     <description>Latest tech, EV, crypto, and gadget news</description>
-    <link>https://yourdomain.com</link>
+    <link>https://agaminews.in</link>
     <language>en-US</language>
   </channel>
 </rss>`;
@@ -189,7 +189,7 @@ function generateBaseRSS(): string {
 
 function generateRSSItem(brief: NewsBrief): string {
   const pubDate = new Date().toUTCString();
-  const link = `https://yourdomain.com/blog/${generateFileName(brief).replace('.md', '')}`;
+  const link = `https://agaminews.in/blog/${generateFileName(brief).replace('.md', '')}`;
   
   return `
     <item>
@@ -246,7 +246,7 @@ async function updateSitemap(
   
   // Add new URLs to sitemap
   for (const brief of briefs) {
-    const url = `https://yourdomain.com/blog/${generateFileName(brief).replace('.md', '')}`;
+    const url = `https://agaminews.in/blog/${generateFileName(brief).replace('.md', '')}`;
     const sitemapUrl = generateSitemapUrl(url);
     sitemapContent = insertSitemapUrl(sitemapContent, sitemapUrl);
   }
@@ -265,7 +265,7 @@ function generateBaseSitemap(): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://yourdomain.com</loc>
+    <loc>https://agaminews.in</loc>
     <lastmod>${new Date().toISOString()}</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
