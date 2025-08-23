@@ -178,5 +178,3 @@ async function updateDailyStatistics(kv: KVNamespace, publishedCount: number): P
   await kv.put(key, JSON.stringify(stats), { expirationTtl: 86400 * 30 }); // 30 days
 }
 
-// Export for testing
-export { processApprovedBriefs };

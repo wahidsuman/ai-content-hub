@@ -1,0 +1,1 @@
+(adsbygoogle=window.adsbygoogle||[]).push({});const n=document.getElementById("mobile-menu-button"),e=document.getElementById("mobile-menu");n?.addEventListener("click",()=>{e?.classList.toggle("hidden")});document.addEventListener("click",t=>{!n?.contains(t.target)&&!e?.contains(t.target)&&e?.classList.add("hidden")});
