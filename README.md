@@ -13,6 +13,7 @@ A production-ready system that curates tech/EV/crypto/gadgets news via Telegram 
 - 🔄 **Smart Batching** - 5-10 items per run, every 2 hours
 - 📊 **Statistics Tracking** - Monitor performance and costs
 - 🛡️ **Content Filtering** - Spam detection and quality control
+- 🎨 **Modern Design** - Mobile-first, fast-loading, beautiful UI
 
 ## Architecture
 
@@ -80,6 +81,16 @@ CLOUDFLARE_KV_NAMESPACE_ID=your_kv_namespace_id
 - **Rate Limiting**: Optimized API calls to prevent throttling
 - **Statistics Tracking**: Monitor batches, briefs, and published articles
 - **Error Handling**: Graceful fallbacks and retry mechanisms
+
+## Design Features
+
+- **Mobile-First Design**: Responsive layout optimized for all devices
+- **Modern UI**: Gradient backgrounds, smooth animations, and hover effects
+- **Fast Loading**: Compressed assets, optimized builds, and lazy loading
+- **Beautiful Typography**: Inter font with excellent readability
+- **Touch-Friendly**: Mobile navigation with collapsible menu
+- **Accessibility**: Proper contrast ratios and keyboard navigation
+- **Performance Optimized**: Minimal JavaScript and efficient CSS
 
 ## Development
 
