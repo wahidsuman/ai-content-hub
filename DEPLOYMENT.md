@@ -92,6 +92,13 @@ curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
    - Build command: `npm run build:site`
    - Build output directory: `site/dist`
    - Root directory: `site`
+3. The site features modern, mobile-first design with:
+   - **Responsive Design**: Optimized for all screen sizes
+   - **Fast Loading**: Compressed assets and optimized builds
+   - **Modern UI**: Gradient backgrounds, smooth animations, and hover effects
+   - **Mobile Navigation**: Collapsible menu with touch-friendly interactions
+   - **Typography**: Beautiful Inter font with excellent readability
+   - **Performance**: Lazy loading, optimized images, and minimal JavaScript
 
 ### Option B: GitHub Pages
 1. Enable GitHub Pages in your repository settings

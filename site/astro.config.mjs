@@ -3,6 +3,7 @@ import cloudflare from '@astrojs/cloudflare';
 import tailwind from '@astrojs/tailwind';
 import sitemap from '@astrojs/sitemap';
 import rss from '@astrojs/rss';
+import compress from 'astro-compress';
 
 export default defineConfig({
   site: 'https://yourdomain.com',
@@ -12,6 +13,17 @@ export default defineConfig({
       changefreq: 'daily',
       priority: 0.7,
       lastmod: new Date(),
+    }),
+    compress({
+      CSS: true,
+      HTML: {
+        removeAttributeQuotes: false,
+        removeOptionalTags: false,
+      },
+      Image: false,
+      JavaScript: true,
+      SVG: true,
+      Logger: 1,
     }),
   ],
   output: 'static',
@@ -25,5 +37,24 @@ export default defineConfig({
       theme: 'github-dark',
       wrap: true
     }
-  }
+  },
+  build: {
+    inlineStylesheets: 'auto',
+  },
+  vite: {
+    build: {
+      cssMinify: true,
+      minify: 'terser',
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor': ['astro'],
+          },
+        },
+      },
+    },
+    ssr: {
+      noExternal: ['@astrojs/cloudflare'],
+    },
+  },
 });

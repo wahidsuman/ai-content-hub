@@ -20,55 +20,133 @@ const featuredPost = sortedPosts[0];
 
 <Layout title="Tech News - Latest Tech, EV, Crypto & Gadget News">
   <!-- Hero Section -->
-  <section class="bg-gradient-to-r from-primary-600 to-primary-700 text-white py-16 -mt-8">
-    <div class="max-w-4xl mx-auto text-center">
-      <h1 class="text-4xl md:text-6xl font-bold mb-6">
-        Tech News
-      </h1>
-      <p class="text-xl md:text-2xl mb-8 text-primary-100">
-        Latest tech, EV, crypto, and gadget news curated by AI
-      </p>
-      <div class="flex flex-wrap justify-center gap-4">
-        <span class="bg-white/20 px-4 py-2 rounded-full text-sm">💻 Tech</span>
-        <span class="bg-white/20 px-4 py-2 rounded-full text-sm">🚗 EVs</span>
-        <span class="bg-white/20 px-4 py-2 rounded-full text-sm">₿ Crypto</span>
-        <span class="bg-white/20 px-4 py-2 rounded-full text-sm">📱 Gadgets</span>
+  <section class="relative bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800 text-white overflow-hidden">
+    <!-- Background Pattern -->
+    <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.05"%3E%3Ccircle cx="30" cy="30" r="2"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-20"></div>
+    
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32">
+      <div class="text-center">
+        <!-- Logo and Title -->
+        <div class="flex justify-center mb-8">
+          <div class="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6">
+            <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+        </div>
+        
+        <h1 class="text-4xl sm:text-5xl lg:text-7xl font-bold mb-6 bg-gradient-to-r from-white to-primary-100 bg-clip-text text-transparent leading-tight">
+          Tech News
+        </h1>
+        
+        <p class="text-lg sm:text-xl lg:text-2xl mb-8 text-primary-100 max-w-3xl mx-auto leading-relaxed">
+          Latest tech, EV, crypto, and gadget news curated by AI. Stay ahead with cutting-edge insights delivered daily.
+        </p>
+        
+        <!-- Category Pills -->
+        <div class="flex flex-wrap justify-center gap-3 mb-12">
+          <span class="bg-white/10 backdrop-blur-sm border border-white/20 px-4 py-2 rounded-full text-sm font-medium hover:bg-white/20 transition-all duration-200 cursor-pointer">
+            💻 Tech
+          </span>
+          <span class="bg-white/10 backdrop-blur-sm border border-white/20 px-4 py-2 rounded-full text-sm font-medium hover:bg-white/20 transition-all duration-200 cursor-pointer">
+            🚗 EVs
+          </span>
+          <span class="bg-white/10 backdrop-blur-sm border border-white/20 px-4 py-2 rounded-full text-sm font-medium hover:bg-white/20 transition-all duration-200 cursor-pointer">
+            ₿ Crypto
+          </span>
+          <span class="bg-white/10 backdrop-blur-sm border border-white/20 px-4 py-2 rounded-full text-sm font-medium hover:bg-white/20 transition-all duration-200 cursor-pointer">
+            📱 Gadgets
+          </span>
+        </div>
+        
+        <!-- Stats -->
+        <div class="flex flex-wrap justify-center gap-8 text-sm text-primary-200">
+          <div class="flex items-center space-x-2">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>AI Curated</span>
+          </div>
+          <div class="flex items-center space-x-2">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
+            </svg>
+            <span>Daily Updates</span>
+          </div>
+          <div class="flex items-center space-x-2">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+            </svg>
+            <span>Instant Alerts</span>
+          </div>
+        </div>
       </div>
     </div>
   </section>
 
   <!-- Featured Post -->
   {featuredPost && (
-    <section class="py-12">
-      <div class="max-w-4xl mx-auto">
-        <h2 class="text-2xl font-bold mb-8 text-gray-900">Featured Article</h2>
-        <article class="bg-white rounded-lg shadow-lg overflow-hidden">
-          <div class="p-8">
-            <div class="flex items-center gap-4 mb-4">
-              <span class="text-sm text-gray-500">{new Date(featuredPost.data.date).toLocaleDateString()}</span>
-              <span class="text-sm text-primary-600 font-medium">{featuredPost.data.source}</span>
+    <section class="py-16 lg:py-24">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+          <h2 class="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">Featured Article</h2>
+          <p class="text-lg text-gray-600 max-w-2xl mx-auto">Our latest and most important tech news story, handpicked by AI</p>
+        </div>
+        
+        <article class="bg-white rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+          <div class="lg:flex">
+            <!-- Featured Image Placeholder -->
+            <div class="lg:w-1/3 bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center p-8">
+              <div class="text-center text-white">
+                <svg class="w-16 h-16 mx-auto mb-4 opacity-80" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                </svg>
+                <p class="text-sm opacity-90">Featured Story</p>
+              </div>
             </div>
-            <h3 class="text-2xl font-bold mb-4 text-gray-900">
-              <a href={`/blog/${featuredPost.slug}`} class="hover:text-primary-600 transition-colors">
-                {featuredPost.data.title}
-              </a>
-            </h3>
-            <p class="text-gray-600 mb-6 leading-relaxed">
-              {featuredPost.data.description}
-            </p>
-            <div class="flex flex-wrap gap-2 mb-6">
-              {featuredPost.data.tags?.map((tag: string) => (
-                <a href={`/tags/${tag}`} class="bg-primary-100 text-primary-800 px-3 py-1 rounded-full text-sm hover:bg-primary-200 transition-colors">
-                  {tag}
+            
+            <div class="lg:w-2/3 p-8 lg:p-12">
+              <div class="flex items-center gap-4 mb-6">
+                <span class="text-sm text-gray-500 flex items-center">
+                  <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
+                  </svg>
+                  {new Date(featuredPost.data.date).toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
+                </span>
+                <span class="text-sm text-primary-600 font-medium bg-primary-50 px-3 py-1 rounded-full">
+                  {featuredPost.data.source}
+                </span>
+              </div>
+              
+              <h3 class="text-2xl lg:text-3xl font-bold mb-4 text-gray-900 leading-tight">
+                <a href={`/blog/${featuredPost.slug}`} class="hover:text-primary-600 transition-colors duration-200">
+                  {featuredPost.data.title}
                 </a>
-              ))}
+              </h3>
+              
+              <p class="text-gray-600 mb-6 leading-relaxed text-lg">
+                {featuredPost.data.description}
+              </p>
+              
+              <div class="flex flex-wrap gap-2 mb-8">
+                {featuredPost.data.tags?.map((tag: string) => (
+                  <a href={`/tags/${tag}`} class="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm hover:bg-primary-100 hover:text-primary-700 transition-all duration-200">
+                    {tag}
+                  </a>
+                ))}
+              </div>
+              
+              <a href={`/blog/${featuredPost.slug}`} class="inline-flex items-center text-primary-600 hover:text-primary-700 font-semibold group">
+                Read full article
+                <svg class="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+              </a>
             </div>
-            <a href={`/blog/${featuredPost.slug}`} class="inline-flex items-center text-primary-600 hover:text-primary-700 font-medium">
-              Read more
-              <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-              </svg>
-            </a>
           </div>
         </article>
       </div>
@@ -76,35 +154,58 @@ const featuredPost = sortedPosts[0];
   )}
 
   <!-- Latest Posts -->
-  <section class="py-12">
-    <div class="max-w-6xl mx-auto">
-      <h2 class="text-2xl font-bold mb-8 text-gray-900">Latest Articles</h2>
+  <section class="py-16 lg:py-24 bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">Latest Articles</h2>
+        <p class="text-lg text-gray-600 max-w-2xl mx-auto">Stay updated with the latest tech news, insights, and developments</p>
+      </div>
       
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {currentPosts.map((post) => (
-          <article class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-            <div class="p-6">
-              <div class="flex items-center gap-4 mb-3">
-                <span class="text-sm text-gray-500">{new Date(post.data.date).toLocaleDateString()}</span>
-                <span class="text-sm text-primary-600 font-medium">{post.data.source}</span>
+          <article class="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 group">
+            <!-- Card Header with Gradient -->
+            <div class="h-2 bg-gradient-to-r from-primary-500 to-primary-600"></div>
+            
+            <div class="p-6 lg:p-8">
+              <div class="flex items-center justify-between mb-4">
+                <span class="text-sm text-gray-500 flex items-center">
+                  <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
+                  </svg>
+                  {new Date(post.data.date).toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric' 
+                  })}
+                </span>
+                <span class="text-sm text-primary-600 font-medium bg-primary-50 px-3 py-1 rounded-full">
+                  {post.data.source}
+                </span>
               </div>
-              <h3 class="text-lg font-semibold mb-3 text-gray-900 line-clamp-2">
-                <a href={`/blog/${post.slug}`} class="hover:text-primary-600 transition-colors">
+              
+              <h3 class="text-xl font-bold mb-3 text-gray-900 line-clamp-2 leading-tight group-hover:text-primary-600 transition-colors duration-200">
+                <a href={`/blog/${post.slug}`}>
                   {post.data.title}
                 </a>
               </h3>
-              <p class="text-gray-600 mb-4 text-sm line-clamp-3">
+              
+              <p class="text-gray-600 mb-6 text-sm line-clamp-3 leading-relaxed">
                 {post.data.description}
               </p>
-              <div class="flex flex-wrap gap-2 mb-4">
+              
+              <div class="flex flex-wrap gap-2 mb-6">
                 {post.data.tags?.slice(0, 2).map((tag: string) => (
-                  <a href={`/tags/${tag}`} class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs hover:bg-gray-200 transition-colors">
+                  <a href={`/tags/${tag}`} class="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs hover:bg-primary-100 hover:text-primary-700 transition-all duration-200">
                     {tag}
                   </a>
                 ))}
               </div>
-              <a href={`/blog/${post.slug}`} class="text-primary-600 hover:text-primary-700 text-sm font-medium">
-                Read more →
+              
+              <a href={`/blog/${post.slug}`} class="inline-flex items-center text-primary-600 hover:text-primary-700 font-semibold text-sm group">
+                Read article
+                <svg class="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
               </a>
             </div>
           </article>
@@ -113,21 +214,24 @@ const featuredPost = sortedPosts[0];
 
       <!-- Pagination -->
       {totalPages > 1 && (
-        <div class="flex justify-center mt-12">
-          <nav class="flex items-center space-x-2">
+        <div class="flex justify-center mt-16">
+          <nav class="flex items-center space-x-2 bg-white rounded-2xl shadow-lg p-2">
             {currentPage > 1 && (
-              <a href={`/?page=${currentPage - 1}`} class="px-4 py-2 text-gray-500 hover:text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
-                Previous
+              <a href={`/?page=${currentPage - 1}`} class="px-4 py-2 text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-xl transition-all duration-200 flex items-center space-x-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+                <span>Previous</span>
               </a>
             )}
             
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
               <a 
                 href={`/?page=${page}`} 
-                class={`px-4 py-2 border rounded-md transition-colors ${
+                class={`px-4 py-2 rounded-xl transition-all duration-200 font-medium ${
                   page === currentPage 
-                    ? 'bg-primary-600 text-white border-primary-600' 
-                    : 'text-gray-700 border-gray-300 hover:bg-gray-50'
+                    ? 'bg-primary-600 text-white shadow-md' 
+                    : 'text-gray-600 hover:text-primary-600 hover:bg-primary-50'
                 }`}
               >
                 {page}
@@ -135,8 +239,11 @@ const featuredPost = sortedPosts[0];
             ))}
             
             {currentPage < totalPages && (
-              <a href={`/?page=${currentPage + 1}`} class="px-4 py-2 text-gray-500 hover:text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
-                Next
+              <a href={`/?page=${currentPage + 1}`} class="px-4 py-2 text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-xl transition-all duration-200 flex items-center space-x-1">
+                <span>Next</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
               </a>
             )}
           </nav>
@@ -146,29 +253,44 @@ const featuredPost = sortedPosts[0];
   </section>
 
   <!-- Categories Section -->
-  <section class="py-12 bg-gray-100">
-    <div class="max-w-6xl mx-auto">
-      <h2 class="text-2xl font-bold mb-8 text-gray-900 text-center">Browse by Category</h2>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-        <a href="/tags/tech" class="bg-white p-6 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow">
-          <div class="text-4xl mb-4">💻</div>
-          <h3 class="font-semibold text-gray-900 mb-2">Tech</h3>
-          <p class="text-sm text-gray-600">Latest technology news</p>
+  <section class="py-16 lg:py-24">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">Browse by Category</h2>
+        <p class="text-lg text-gray-600 max-w-2xl mx-auto">Explore tech news by your interests and stay focused on what matters to you</p>
+      </div>
+      
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <a href="/tags/tech" class="group bg-white p-8 rounded-2xl shadow-lg text-center hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100">
+          <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+            <span class="text-2xl">💻</span>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors duration-200">Tech</h3>
+          <p class="text-gray-600 leading-relaxed">Latest technology news, innovations, and industry developments</p>
         </a>
-        <a href="/tags/ev" class="bg-white p-6 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow">
-          <div class="text-4xl mb-4">🚗</div>
-          <h3 class="font-semibold text-gray-900 mb-2">Electric Vehicles</h3>
-          <p class="text-sm text-gray-600">EV industry updates</p>
+        
+        <a href="/tags/ev" class="group bg-white p-8 rounded-2xl shadow-lg text-center hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100">
+          <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+            <span class="text-2xl">🚗</span>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 mb-3 group-hover:text-green-600 transition-colors duration-200">Electric Vehicles</h3>
+          <p class="text-gray-600 leading-relaxed">EV industry updates, new models, and sustainable transportation</p>
         </a>
-        <a href="/tags/crypto" class="bg-white p-6 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow">
-          <div class="text-4xl mb-4">₿</div>
-          <h3 class="font-semibold text-gray-900 mb-2">Cryptocurrency</h3>
-          <p class="text-sm text-gray-600">Crypto market news</p>
+        
+        <a href="/tags/crypto" class="group bg-white p-8 rounded-2xl shadow-lg text-center hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100">
+          <div class="w-16 h-16 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+            <span class="text-2xl">₿</span>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 mb-3 group-hover:text-yellow-600 transition-colors duration-200">Cryptocurrency</h3>
+          <p class="text-gray-600 leading-relaxed">Crypto market news, blockchain developments, and digital finance</p>
         </a>
-        <a href="/tags/gadgets" class="bg-white p-6 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow">
-          <div class="text-4xl mb-4">📱</div>
-          <h3 class="font-semibold text-gray-900 mb-2">Gadgets</h3>
-          <p class="text-sm text-gray-600">Latest gadget releases</p>
+        
+        <a href="/tags/gadgets" class="group bg-white p-8 rounded-2xl shadow-lg text-center hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100">
+          <div class="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+            <span class="text-2xl">📱</span>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 mb-3 group-hover:text-purple-600 transition-colors duration-200">Gadgets</h3>
+          <p class="text-gray-600 leading-relaxed">Latest gadget releases, reviews, and consumer electronics news</p>
         </a>
       </div>
     </div>
@@ -187,5 +309,44 @@ const featuredPost = sortedPosts[0];
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+  
+  /* Smooth scrolling for better UX */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Custom scrollbar for webkit browsers */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #f1f5f9;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+  
+  /* Loading animation for better perceived performance */
+  .animate-fade-in {
+    animation: fadeIn 0.6s ease-out;
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 </style>
