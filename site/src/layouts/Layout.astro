@@ -1,0 +1,148 @@
+---
+export interface Props {
+  title: string;
+  description?: string;
+  image?: string;
+  tags?: string[];
+  date?: string;
+  author?: string;
+}
+
+const { 
+  title, 
+  description = "Latest tech, EV, crypto, and gadget news curated by AI",
+  image = "/og-image.jpg",
+  tags = [],
+  date,
+  author = "Tech News Bot"
+} = Astro.props;
+
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+const formattedDate = date ? new Date(date).toISOString() : new Date().toISOString();
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content={description} />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href={canonicalURL} />
+    
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonicalURL} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={new URL(image, Astro.url)} />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content={canonicalURL} />
+    <meta property="twitter:title" content={title} />
+    <meta property="twitter:description" content={description} />
+    <meta property="twitter:image" content={new URL(image, Astro.url)} />
+    
+    <!-- Article Schema -->
+    {date && (
+      <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "Article",
+          "headline": title,
+          "description": description,
+          "image": new URL(image, Astro.url),
+          "author": {
+            "@type": "Person",
+            "name": author
+          },
+          "publisher": {
+            "@type": "Organization",
+            "name": "Tech News Blog",
+            "logo": {
+              "@type": "ImageObject",
+              "url": new URL("/logo.png", Astro.url)
+            }
+          },
+          "datePublished": formattedDate,
+          "dateModified": formattedDate,
+          "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": canonicalURL
+          }
+        }
+      </script>
+    )}
+    
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_PUBLISHER_ID" crossorigin="anonymous"></script>
+    
+    <title>{title}</title>
+  </head>
+  <body class="bg-gray-50 text-gray-900">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center py-6">
+          <div class="flex items-center">
+            <a href="/" class="text-2xl font-bold text-primary-600">
+              Tech News
+            </a>
+          </div>
+          <nav class="hidden md:flex space-x-8">
+            <a href="/" class="text-gray-700 hover:text-primary-600 transition-colors">Home</a>
+            <a href="/blog" class="text-gray-700 hover:text-primary-600 transition-colors">Blog</a>
+            <a href="/rss.xml" class="text-gray-700 hover:text-primary-600 transition-colors">RSS</a>
+          </nav>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <slot />
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div>
+            <h3 class="text-lg font-semibold mb-4">Tech News</h3>
+            <p class="text-gray-400">
+              Latest tech, EV, crypto, and gadget news curated by AI and published automatically.
+            </p>
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold mb-4">Categories</h3>
+            <ul class="space-y-2 text-gray-400">
+              <li><a href="/tags/tech" class="hover:text-white transition-colors">Tech</a></li>
+              <li><a href="/tags/ev" class="hover:text-white transition-colors">Electric Vehicles</a></li>
+              <li><a href="/tags/crypto" class="hover:text-white transition-colors">Cryptocurrency</a></li>
+              <li><a href="/tags/gadgets" class="hover:text-white transition-colors">Gadgets</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold mb-4">Connect</h3>
+            <ul class="space-y-2 text-gray-400">
+              <li><a href="/rss.xml" class="hover:text-white transition-colors">RSS Feed</a></li>
+              <li><a href="/sitemap.xml" class="hover:text-white transition-colors">Sitemap</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+          <p>&copy; 2024 Tech News Blog. Powered by AI and Cloudflare.</p>
+        </div>
+      </div>
+    </footer>
+
+    <!-- AdSense Auto Ads -->
+    <script>
+      (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
+  </body>
+</html>
