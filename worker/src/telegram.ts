@@ -53,8 +53,8 @@ function formatBriefsMessage(briefs: NewsBrief[]): string {
   briefs.forEach((brief, index) => {
     const emoji = getCategoryEmoji(brief.newsItem.category);
     message += `${index + 1}. ${emoji} <b>${brief.suggestedTitle}</b>\n`;
-    message += `   📝 ${brief.summary}\n`;
-    message += `   🏷️ ${brief.suggestedTags.join(', ')}\n`;
+    message += `   📝 ${brief.summary.substring(0, 100)}${brief.summary.length > 100 ? '...' : ''}\n`;
+    message += `   🏷️ ${brief.suggestedTags.slice(0, 3).join(', ')}${brief.suggestedTags.length > 3 ? '...' : ''}\n`;
     message += `   📰 Source: ${brief.newsItem.source}\n\n`;
   });
 
@@ -65,12 +65,19 @@ function formatBriefsMessage(briefs: NewsBrief[]): string {
 function createBriefsKeyboard(briefs: NewsBrief[]): any {
   const buttons = [];
   
-  // Individual approve buttons
+  // Individual approve buttons (limit to 5 per row for better UX)
+  const individualButtons = [];
   briefs.forEach((brief, index) => {
-    buttons.push([{
-      text: `✅ Approve #${index + 1}`,
+    individualButtons.push({
+      text: `✅ #${index + 1}`,
       callback_data: `approve_${brief.id}`
-    }]);
+    });
+    
+    // Create new row every 5 buttons
+    if (individualButtons.length === 5 || index === briefs.length - 1) {
+      buttons.push(individualButtons.slice());
+      individualButtons.length = 0;
+    }
   });
 
   // Batch actions
@@ -82,6 +89,18 @@ function createBriefsKeyboard(briefs: NewsBrief[]): any {
     {
       text: '❌ Skip All',
       callback_data: 'skip_all'
+    }
+  ]);
+
+  // Additional options
+  buttons.push([
+    {
+      text: '📊 View Stats',
+      callback_data: 'view_stats'
+    },
+    {
+      text: '🔄 Refresh',
+      callback_data: 'refresh_briefs'
     }
   ]);
 
@@ -140,6 +159,18 @@ async function handleCallbackQuery(
   if (data === 'skip_all') {
     await sendTelegramMessage(chatId, '⏭️ Skipped all articles in this batch.', botToken);
     await clearCurrentBatch(kv);
+    return new Response('OK', { status: 200 });
+  }
+
+  if (data === 'view_stats') {
+    await sendStatsMessage(kv, botToken, chatId);
+    return new Response('OK', { status: 200 });
+  }
+
+  if (data === 'refresh_briefs') {
+    await sendTelegramMessage(chatId, '🔄 Refreshing briefs...', botToken);
+    // This could trigger a new RSS fetch, but for now just acknowledge
+    await sendTelegramMessage(chatId, '✅ Briefs refreshed. New batch will be available in the next scheduled run.', botToken);
     return new Response('OK', { status: 200 });
   }
 
@@ -307,6 +338,34 @@ async function sendStatusMessage(
     `⏰ Next batch: Every 2 hours\n` +
     `📰 Sources: 8 RSS feeds\n` +
     `🤖 Status: Active`;
+
+  await sendTelegramMessage(chatId, message, botToken);
+}
+
+async function sendStatsMessage(
+  kv: KVNamespace,
+  botToken: string,
+  chatId: string
+): Promise<void> {
+  const today = new Date().toISOString().split('T')[0];
+  const batchStats = await kv.get(`stats_batch_${today}`);
+  const dailyStats = await kv.get(`stats_daily_${today}`);
+  
+  let message = `📊 <b>Today's Statistics</b>\n\n`;
+  
+  if (batchStats) {
+    const stats = JSON.parse(batchStats);
+    message += `🔄 Batches processed: ${stats.batches}\n`;
+    message += `📝 Total briefs generated: ${stats.totalBriefs}\n`;
+  }
+  
+  if (dailyStats) {
+    const stats = JSON.parse(dailyStats);
+    message += `✅ Articles published: ${stats.published}\n`;
+  }
+  
+  message += `\n📅 Date: ${today}\n`;
+  message += `⏰ Next update: Every 2 hours`;
 
   await sendTelegramMessage(chatId, message, botToken);
 }

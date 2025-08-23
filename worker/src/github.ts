@@ -55,20 +55,33 @@ export async function commitMultipleArticles(
 ): Promise<number> {
   let successCount = 0;
 
-  for (let i = 0; i < briefs.length; i++) {
-    try {
-      const success = await commitArticleToGitHub(
-        briefs[i],
-        articles[i],
-        githubToken,
-        repoName
-      );
-      if (success) successCount++;
-      
-      // Small delay between commits to avoid rate limits
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    } catch (error) {
-      console.error(`Error committing article ${i}:`, error);
+  // Process commits in parallel batches to optimize for 10-15 posts/day
+  const batchSize = 3; // Process 3 commits at a time
+  for (let i = 0; i < briefs.length; i += batchSize) {
+    const batch = briefs.slice(i, i + batchSize);
+    const batchArticles = articles.slice(i, i + batchSize);
+    
+    const batchPromises = batch.map(async (brief, index) => {
+      try {
+        const success = await commitArticleToGitHub(
+          brief,
+          batchArticles[index],
+          githubToken,
+          repoName
+        );
+        return success ? 1 : 0;
+      } catch (error) {
+        console.error(`Error committing article ${i + index}:`, error);
+        return 0;
+      }
+    });
+    
+    const batchResults = await Promise.all(batchPromises);
+    successCount += batchResults.reduce((sum, result) => sum + result, 0);
+    
+    // Optimized delay between batches
+    if (i + batchSize < briefs.length) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
   }
 
@@ -168,7 +181,7 @@ function generateBaseRSS(): string {
   <channel>
     <title>Tech News Blog</title>
     <description>Latest tech, EV, crypto, and gadget news</description>
-    <link>https://yourdomain.com</link>
+    <link>https://agaminews.in</link>
     <language>en-US</language>
   </channel>
 </rss>`;
@@ -176,7 +189,7 @@ function generateBaseRSS(): string {
 
 function generateRSSItem(brief: NewsBrief): string {
   const pubDate = new Date().toUTCString();
-  const link = `https://yourdomain.com/blog/${generateFileName(brief).replace('.md', '')}`;
+  const link = `https://agaminews.in/blog/${generateFileName(brief).replace('.md', '')}`;
   
   return `
     <item>
@@ -233,7 +246,7 @@ async function updateSitemap(
   
   // Add new URLs to sitemap
   for (const brief of briefs) {
-    const url = `https://yourdomain.com/blog/${generateFileName(brief).replace('.md', '')}`;
+    const url = `https://agaminews.in/blog/${generateFileName(brief).replace('.md', '')}`;
     const sitemapUrl = generateSitemapUrl(url);
     sitemapContent = insertSitemapUrl(sitemapContent, sitemapUrl);
   }
@@ -252,7 +265,7 @@ function generateBaseSitemap(): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://yourdomain.com</loc>
+    <loc>https://agaminews.in</loc>
     <lastmod>${new Date().toISOString()}</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>

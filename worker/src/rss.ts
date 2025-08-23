@@ -147,7 +147,37 @@ export async function getNewNewsItems(kv: KVNamespace): Promise<NewsItem[]> {
   const allNews = await fetchAllFeeds();
   const processedIds = await getProcessedNewsIds(kv);
   
-  return allNews.filter(news => !processedIds.has(news.id));
+  // Filter out processed items and apply additional filtering
+  const newNews = allNews.filter(news => !processedIds.has(news.id));
+  
+  // Apply content filtering for better quality
+  const filteredNews = newNews.filter(news => {
+    // Filter out very short titles or descriptions
+    if (news.title.length < 10 || news.description.length < 50) {
+      return false;
+    }
+    
+    // Filter out common spam patterns
+    const spamPatterns = ['click here', 'read more', 'learn more', 'find out'];
+    const titleLower = news.title.toLowerCase();
+    const descLower = news.description.toLowerCase();
+    
+    if (spamPatterns.some(pattern => titleLower.includes(pattern) || descLower.includes(pattern))) {
+      return false;
+    }
+    
+    return true;
+  });
+  
+  // Sort by recency and limit to prevent overwhelming
+  const sortedNews = filteredNews.sort((a, b) => {
+    const dateA = new Date(a.publishedAt).getTime();
+    const dateB = new Date(b.publishedAt).getTime();
+    return dateB - dateA;
+  });
+  
+  // Limit to 15 items max per batch for 10-15 posts/day target
+  return sortedNews.slice(0, 15);
 }
 
 async function getProcessedNewsIds(kv: KVNamespace): Promise<Set<string>> {
