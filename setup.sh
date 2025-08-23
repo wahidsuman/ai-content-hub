@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🚀 Setting up Tech News Bot Project..."
+echo "🚀 Setting up Tech News Bot (Enhanced for 10-15 posts/day)..."
 
 # Check if Node.js is installed
 if ! command -v node &> /dev/null; then
@@ -16,6 +16,12 @@ if [ "$NODE_VERSION" -lt 18 ]; then
 fi
 
 echo "✅ Node.js version: $(node -v)"
+
+# Check if wrangler is installed
+if ! command -v wrangler &> /dev/null; then
+    echo "📦 Installing Wrangler CLI..."
+    npm install -g wrangler
+fi
 
 # Install root dependencies
 echo "📦 Installing root dependencies..."
@@ -56,6 +62,12 @@ fi
 echo ""
 echo "✅ Setup complete!"
 echo ""
+echo "🎯 System Optimized for:"
+echo "   • 10-15 posts per day"
+echo "   • Cost-effective AI processing (~$5/month)"
+echo "   • Smart batching and parallel processing"
+echo "   • Automatic monetization with AdSense"
+echo ""
 echo "📋 Next steps:"
 echo "1. Update .env file with your API keys and configuration"
 echo "2. Update worker/wrangler.toml with your Cloudflare KV namespace ID"
@@ -66,4 +78,5 @@ echo ""
 echo "🚀 To start development:"
 echo "  npm run dev"
 echo ""
-echo "📚 For deployment instructions, see DEPLOYMENT.md"
+echo "💰 Estimated monthly cost: $5-15 (OpenAI + domain)"
+echo "📚 For detailed instructions, see DEPLOYMENT.md"

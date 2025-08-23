@@ -1,6 +1,7 @@
 import { NewsItem, NewsBrief } from './types';
 
-const OPENAI_MODEL = 'gpt-4o-mini';
+const OPENAI_MODEL = 'gpt-4o-mini'; // Cost-optimized model
+const OPENAI_MODEL_FALLBACK = 'gpt-3.5-turbo'; // Fallback for cost savings
 
 export async function generateNewsBrief(newsItem: NewsItem, openaiApiKey: string): Promise<NewsBrief> {
   const prompt = `You are a tech news curator. Create a brief summary of this news item for a tech blog.
@@ -88,7 +89,9 @@ sourceUrl: "${newsBrief.newsItem.link}"
   return await callOpenAI(prompt, openaiApiKey);
 }
 
-async function callOpenAI(prompt: string, apiKey: string): Promise<string> {
+async function callOpenAI(prompt: string, apiKey: string, useFallback = false): Promise<string> {
+  const model = useFallback ? OPENAI_MODEL_FALLBACK : OPENAI_MODEL;
+  
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -97,7 +100,7 @@ async function callOpenAI(prompt: string, apiKey: string): Promise<string> {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: OPENAI_MODEL,
+        model: model,
         messages: [
           {
             role: 'system',
@@ -114,6 +117,11 @@ async function callOpenAI(prompt: string, apiKey: string): Promise<string> {
     });
 
     if (!response.ok) {
+      // Try fallback model if main model fails
+      if (!useFallback && response.status >= 500) {
+        console.log('Main model failed, trying fallback...');
+        return await callOpenAI(prompt, apiKey, true);
+      }
       throw new Error(`OpenAI API error: ${response.status}`);
     }
 
@@ -121,6 +129,13 @@ async function callOpenAI(prompt: string, apiKey: string): Promise<string> {
     return data.choices[0].message.content;
   } catch (error) {
     console.error('OpenAI API call failed:', error);
+    
+    // Try fallback model on any error
+    if (!useFallback) {
+      console.log('Trying fallback model...');
+      return await callOpenAI(prompt, apiKey, true);
+    }
+    
     throw error;
   }
 }
@@ -128,8 +143,8 @@ async function callOpenAI(prompt: string, apiKey: string): Promise<string> {
 export async function generateBatchBriefs(newsItems: NewsItem[], openaiApiKey: string): Promise<NewsBrief[]> {
   const briefs: NewsBrief[] = [];
   
-  // Process items in parallel with rate limiting
-  const batchSize = 3; // Process 3 at a time to avoid rate limits
+  // Process items in parallel with optimized rate limiting for 10-15 posts/day
+  const batchSize = 5; // Process 5 at a time for better throughput
   for (let i = 0; i < newsItems.length; i += batchSize) {
     const batch = newsItems.slice(i, i + batchSize);
     const batchPromises = batch.map(item => generateNewsBrief(item, openaiApiKey));
@@ -138,12 +153,13 @@ export async function generateBatchBriefs(newsItems: NewsItem[], openaiApiKey: s
       const batchResults = await Promise.all(batchPromises);
       briefs.push(...batchResults);
       
-      // Small delay between batches
+      // Optimized delay between batches (reduced for higher throughput)
       if (i + batchSize < newsItems.length) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
     } catch (error) {
       console.error(`Error processing batch ${i}-${i + batchSize}:`, error);
+      // Continue with next batch even if current fails
     }
   }
   
