@@ -4,6 +4,7 @@
 
 import { AIWebsiteManager } from './ai-manager.js';
 import { handleManagerCommands } from './telegram-commands.js';
+import { getPrivacyPolicy, getTermsOfService, getAboutPage, getContactPage, generateSitemap, getRobotsTxt } from './pages.js';
 
 export default {
   // Main request handler
@@ -18,6 +19,41 @@ export default {
     // Handle API endpoints
     if (url.pathname === '/api/content') {
       return handleAPI(request, env);
+    }
+    
+    // Handle essential pages
+    if (url.pathname === '/privacy-policy' || url.pathname === '/privacy') {
+      return servePage(env, 'Privacy Policy', getPrivacyPolicy());
+    }
+    if (url.pathname === '/terms' || url.pathname === '/terms-of-service') {
+      return servePage(env, 'Terms of Service', getTermsOfService());
+    }
+    if (url.pathname === '/about') {
+      return servePage(env, 'About Us', getAboutPage());
+    }
+    if (url.pathname === '/contact') {
+      return servePage(env, 'Contact Us', getContactPage());
+    }
+    
+    // Handle sitemap
+    if (url.pathname === '/sitemap.xml') {
+      const articles = await env.NEWS_KV.get('articles', 'json') || [];
+      return new Response(generateSitemap(articles), {
+        headers: {
+          'Content-Type': 'application/xml',
+          'Cache-Control': 'public, max-age=3600'
+        }
+      });
+    }
+    
+    // Handle robots.txt
+    if (url.pathname === '/robots.txt') {
+      return new Response(getRobotsTxt(), {
+        headers: {
+          'Content-Type': 'text/plain',
+          'Cache-Control': 'public, max-age=86400'
+        }
+      });
     }
     
     // Handle article pages
@@ -651,6 +687,95 @@ async function serveArticle(env, articleId) {
   }
 }
 
+// Serve essential pages with consistent styling
+async function servePage(env, title, content) {
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title} - Agami News</title>
+<style>
+  :root{
+    --bg:#0b1020;--text:#e8ecf2;--muted:#a8b1c7;--card:#121835;
+    --g2:linear-gradient(135deg,#06b6d4, #6366f1);
+    --radius:18px;--shadow:0 12px 30px rgba(0,0,0,.25);
+  }
+  *{box-sizing:border-box} 
+  body{margin:0;background:radial-gradient(1200px 600px at 10% -10%,#1a234a,transparent),var(--bg);color:var(--text);font:16px/1.6 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+  a{color:#7dd3fc;text-decoration:none}
+  a:hover{text-decoration:underline}
+  .container{max-width:800px;margin:auto;padding:20px}
+  
+  /* Header */
+  .header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;margin-bottom:30px;border-radius:999px;background:linear-gradient(90deg,#111936aa,#0c122d88);backdrop-filter:blur(8px);border:1px solid #ffffff18}
+  .brand{font-weight:800;font-size:20px;letter-spacing:.2px}
+  .nav-links{display:flex;gap:20px}
+  .nav-link{font-size:14px;color:#a8b1c7;transition:color .2s}
+  .nav-link:hover{color:#fff}
+  
+  /* Content */
+  .content{background:var(--card);border-radius:var(--radius);padding:30px;box-shadow:var(--shadow);margin-bottom:30px}
+  h1{font-size:32px;margin:0 0 20px;color:#fff}
+  h2{font-size:24px;margin:30px 0 15px;color:#e8ecf2}
+  p{margin:15px 0;line-height:1.8}
+  ul{margin:15px 0;padding-left:30px}
+  li{margin:8px 0}
+  
+  /* Footer */
+  .footer{padding:30px 20px;text-align:center;border-top:1px solid #ffffff12}
+  .footer-links{display:flex;justify-content:center;gap:20px;margin-bottom:15px}
+  .footer-links a{color:#a8b1c7;font-size:14px}
+  
+  @media(max-width:768px){
+    .nav-links{display:none}
+    .content{padding:20px}
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <a href="/" class="brand">🌈 Agami News</a>
+      <div class="nav-links">
+        <a href="/about" class="nav-link">About</a>
+        <a href="/contact" class="nav-link">Contact</a>
+        <a href="/privacy-policy" class="nav-link">Privacy</a>
+        <a href="/terms" class="nav-link">Terms</a>
+      </div>
+    </div>
+    
+    <!-- Content -->
+    <div class="content">
+      ${content}
+    </div>
+    
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-links">
+        <a href="/">Home</a>
+        <a href="/about">About</a>
+        <a href="/contact">Contact</a>
+        <a href="/privacy-policy">Privacy Policy</a>
+        <a href="/terms">Terms of Service</a>
+      </div>
+      <p style="color:#a8b1c7;font-size:14px;margin:0">
+        © 2025 Agami News • Technology & Innovation News
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
+  
+  return new Response(html, {
+    headers: {
+      'Content-Type': 'text/html;charset=UTF-8',
+      'Cache-Control': 'public, max-age=86400'
+    }
+  });
+}
+
 // Serve the website
 async function serveWebsite(env) {
   try {
@@ -905,7 +1030,7 @@ async function serveWebsite(env) {
 
     <footer class="footer">
       © 2025 Agami News • Technology & Innovation News<br>
-      <small style="opacity:0.7">All Rights Reserved • Privacy Policy • Terms of Service</small>
+      <small style="opacity:0.7">All Rights Reserved • <a href="/privacy-policy" style="color:#9ca3af">Privacy Policy</a> • <a href="/terms" style="color:#9ca3af">Terms of Service</a> • <a href="/about" style="color:#9ca3af">About</a> • <a href="/contact" style="color:#9ca3af">Contact</a></small>
     </footer>
   </div>
 </body>
