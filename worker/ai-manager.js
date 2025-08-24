@@ -162,54 +162,34 @@ class AIWebsiteManager {
     try {
       // Try Unsplash first (FREE - 50 requests/hour)
       const unsplashRes = await fetch(
-        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&client_id=YOUR_UNSPLASH_ACCESS_KEY`
+        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&client_id=_wlcAEizuL--F29w5U-jF4bitnOgh3XJGRWJ50h0K6Y`
       );
       
       if (unsplashRes.ok) {
         const data = await unsplashRes.json();
-        if (data.results.length > 0) {
+        if (data.results && data.results.length > 0) {
           return {
             url: data.results[0].urls.regular,
             credit: `Photo by ${data.results[0].user.name} on Unsplash`,
-            alt: data.results[0].alt_description
+            alt: data.results[0].alt_description || query
           };
         }
       }
       
-      // Fallback to Pexels (FREE - 200 requests/hour)
-      const pexelsRes = await fetch(
-        `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1`,
-        {
-          headers: {
-            'Authorization': 'YOUR_PEXELS_API_KEY'
-          }
-        }
-      );
-      
-      if (pexelsRes.ok) {
-        const data = await pexelsRes.json();
-        if (data.photos.length > 0) {
-          return {
-            url: data.photos[0].src.large,
-            credit: `Photo by ${data.photos[0].photographer} on Pexels`,
-            alt: data.photos[0].alt
-          };
-        }
-      }
-      
-      // If no image found, generate with AI (costs money, use sparingly)
-      // return await this.generateImage(query);
-      
-      // Or use placeholder
+      // Fallback to placeholder if no image found
       return {
-        url: `https://via.placeholder.com/800x400/667eea/ffffff?text=${encodeURIComponent(query)}`,
-        credit: 'Placeholder Image',
+        url: `https://via.placeholder.com/800x400/667eea/ffffff?text=${encodeURIComponent(query.substring(0, 20))}`,
+        credit: 'Stock Image',
         alt: query
       };
       
     } catch (e) {
       console.log('Image fetch error:', e);
-      return null;
+      return {
+        url: `https://via.placeholder.com/800x400/667eea/ffffff?text=News`,
+        credit: 'Stock Image',
+        alt: 'News Image'
+      };
     }
   }
 
