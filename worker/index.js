@@ -266,7 +266,7 @@ async function getAnalytics(env) {
   `;
 }
 
-// Serve the main website
+// Serve the main website with beautiful colorful design
 async function serveWebsite(env) {
   try {
     // Track page view
@@ -274,244 +274,222 @@ async function serveWebsite(env) {
     analytics.views = (analytics.views || 0) + 1;
     await env.NEWS_KV.put('analytics', JSON.stringify(analytics));
     
-    // Get content and design
+    // Get content and settings
     const articles = await env.NEWS_KV.get('articles', 'json') || [];
-    const design = await env.NEWS_KV.get('design', 'json') || {};
     const seo = await env.NEWS_KV.get('seo', 'json') || {};
     
-    // Generate article HTML
-    let articlesHTML = '';
-    if (articles.length === 0) {
-      articlesHTML = `
-        <div class="article">
-          <h2>Welcome to Your AI-Managed Website!</h2>
-          <p>Content will appear here once you start generating it through Telegram.</p>
-          <p>Send a message to your bot to get started!</p>
-        </div>
-      `;
-    } else {
-      articles.slice(0, 10).forEach(article => {
-        articlesHTML += `
-          <div class="article">
-            ${article.content}
-            <div class="meta">Generated: ${new Date(article.created).toLocaleString()}</div>
-          </div>
+    // Generate dynamic news articles
+    let newsArticles = '';
+    const colors = ['gold', 'blue', 'green', 'red'];
+    const categories = ['AI', 'Finance', 'Crypto', 'Startups'];
+    
+    if (articles.length > 0) {
+      articles.slice(0, 4).forEach((article, index) => {
+        const color = colors[index % colors.length];
+        const category = categories[index % categories.length];
+        const timeAgo = getTimeAgo(article.created);
+        
+        // Extract title from content if possible
+        let title = 'Latest Update';
+        let description = article.content.substring(0, 100) + '...';
+        
+        const titleMatch = article.content.match(/<h[1-3][^>]*>(.*?)<\/h[1-3]>/i);
+        if (titleMatch) {
+          title = titleMatch[1].replace(/<[^>]*>/g, '');
+        }
+        
+        const descMatch = article.content.match(/<p[^>]*>(.*?)<\/p>/i);
+        if (descMatch) {
+          description = descMatch[1].replace(/<[^>]*>/g, '').substring(0, 80) + '...';
+        }
+        
+        newsArticles += `
+          <article class="news ${color}">
+            <div class="cardPad">
+              <span class="badge">${category}</span>
+              <h3 class="title">${title}</h3>
+              <p class="muted">${description}</p>
+              <div class="meta">3 min read • ${timeAgo}</div>
+            </div>
+            <div class="img"></div>
+          </article>
         `;
       });
+    } else {
+      // Default articles when no content
+      newsArticles = `
+        <article class="news gold">
+          <div class="cardPad">
+            <span class="badge">Finance</span>
+            <h3 class="title">Tech giants invest in AI startups</h3>
+            <p class="muted">Over $1B invested in AI tools in 2025.</p>
+            <div class="meta">5 min read • Today</div>
+          </div>
+          <div class="img"></div>
+        </article>
+
+        <article class="news blue">
+          <div class="cardPad">
+            <span class="badge">AI</span>
+            <h3 class="title">Robots enter the workforce</h3>
+            <p class="muted">Automation rises across logistics and healthcare.</p>
+            <div class="meta">3 min read • Today</div>
+          </div>
+          <div class="img"></div>
+        </article>
+
+        <article class="news green">
+          <div class="cardPad">
+            <span class="badge">Crypto</span>
+            <h3 class="title">Ethereum 3.0 update lands</h3>
+            <p class="muted">Massive improvements in speed and scalability.</p>
+            <div class="meta">4 min read • Yesterday</div>
+          </div>
+          <div class="img"></div>
+        </article>
+      `;
     }
     
-    // Build the HTML
-    const html = `
-<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${seo.title || 'AI-Managed Tech News'}</title>
-  <meta name="description" content="${seo.description || 'AI-powered tech news website managed through Telegram'}">
-  <meta name="keywords" content="${seo.keywords || 'tech, news, AI, innovation'}">
-  
-  <style>
-    :root {
-      --primary: ${design.primaryColor || '#667eea'};
-      --secondary: ${design.secondaryColor || '#764ba2'};
-      --bg: ${design.bgColor || '#0f0f23'};
-      --text: ${design.textColor || '#ffffff'};
-      --card: ${design.cardColor || 'rgba(255,255,255,0.1)'};
-    }
-    
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
-    body {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-      min-height: 100vh;
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-      line-height: 1.6;
-    }
-    
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    
-    header {
-      text-align: center;
-      padding: 40px 0;
-      background: rgba(0,0,0,0.2);
-      backdrop-filter: blur(10px);
-      border-radius: 20px;
-      margin-bottom: 40px;
-    }
-    
-    h1 {
-      font-size: 3.5em;
-      background: linear-gradient(45deg, #fff, #f0f0f0);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 10px;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-    }
-    
-    .tagline {
-      font-size: 1.2em;
-      opacity: 0.9;
-    }
-    
-    .status {
-      display: inline-block;
-      background: rgba(0,255,0,0.2);
-      color: #0f0;
-      padding: 5px 15px;
-      border-radius: 20px;
-      margin-top: 10px;
-      font-size: 0.9em;
-      border: 1px solid rgba(0,255,0,0.3);
-    }
-    
-    .content {
-      display: grid;
-      gap: 30px;
-    }
-    
-    .article {
-      background: var(--card);
-      padding: 30px;
-      border-radius: 20px;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.1);
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-    
-    .article:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-    }
-    
-    .article h2 {
-      color: #fff;
-      margin-bottom: 15px;
-      font-size: 1.8em;
-    }
-    
-    .article h3 {
-      color: #f0f0f0;
-      margin: 20px 0 10px;
-      font-size: 1.4em;
-    }
-    
-    .article p {
-      margin-bottom: 15px;
-      opacity: 0.95;
-      line-height: 1.8;
-    }
-    
-    .article ul, .article ol {
-      margin: 15px 0 15px 30px;
-    }
-    
-    .article li {
-      margin-bottom: 8px;
-    }
-    
-    .article code {
-      background: rgba(0,0,0,0.3);
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-family: 'Courier New', monospace;
-    }
-    
-    .article pre {
-      background: rgba(0,0,0,0.3);
-      padding: 15px;
-      border-radius: 10px;
-      overflow-x: auto;
-      margin: 15px 0;
-    }
-    
-    .meta {
-      margin-top: 20px;
-      padding-top: 15px;
-      border-top: 1px solid rgba(255,255,255,0.1);
-      font-size: 0.9em;
-      opacity: 0.7;
-      text-align: right;
-    }
-    
-    footer {
-      text-align: center;
-      padding: 40px 0;
-      margin-top: 60px;
-      border-top: 1px solid rgba(255,255,255,0.1);
-      opacity: 0.7;
-    }
-    
-    .ai-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-      color: white;
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-weight: bold;
-      margin-top: 10px;
-    }
-    
-    @media (max-width: 768px) {
-      h1 {
-        font-size: 2em;
-      }
-      
-      .article {
-        padding: 20px;
-      }
-      
-      .container {
-        padding: 10px;
-      }
-    }
-    
-    /* Animation */
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
-    
-    .status {
-      animation: pulse 2s infinite;
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${seo.title || 'Agami News - AI Powered Tech News'}</title>
+<meta name="description" content="${seo.description || 'Stay updated with the latest in AI, tech, and innovation. Powered by artificial intelligence.'}">
+<style>
+  :root{
+    --bg:#0b1020;--text:#e8ecf2;--muted:#a8b1c7;--card:#121835;
+    --g1:linear-gradient(135deg,#7c3aed, #ef4444, #f59e0b);
+    --g2:linear-gradient(135deg,#06b6d4, #6366f1);
+    --g3:linear-gradient(135deg,#22c55e, #06b6d4);
+    --g4:linear-gradient(135deg,#f43f5e, #f97316);
+    --radius:18px;--shadow:0 12px 30px rgba(0,0,0,.25);
+  }
+  *{box-sizing:border-box} body{margin:0;background:radial-gradient(1200px 600px at 10% -10%,#1a234a,transparent),var(--bg);color:var(--text);font:16px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+  a{color:#7dd3fc;text-decoration:none}
+  .wrap{max-width:1024px;margin:auto;padding:18px}
+  .header{display:flex;align-items:center;justify-content:center;padding:14px 16px;margin:6px auto 12px;border-radius:999px;background:linear-gradient(90deg,#111936aa,#0c122d88);backdrop-filter:blur(8px);border:1px solid #ffffff18}
+  .brand{font-weight:800;font-size:18px;letter-spacing:.2px}
+  .grid{display:grid;gap:16px}
+  .hero{display:grid;gap:14px;grid-template-columns:1fr;align-items:center}
+  .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:#ffffff14;border:1px solid #ffffff1f;color:#dbeafe;font-size:12px}
+  .h1{font-size:clamp(28px,6vw,48px);line-height:1.1;margin:6px 0 4px;font-weight:900}
+  .lead{color:var(--muted);max-width:60ch}
+  .btn{display:inline-block;padding:12px 16px;border-radius:12px;font-weight:700}
+  .btn-primary{background:var(--g2);color:#031022;box-shadow:var(--shadow)}
+  .card{background:var(--card);border:1px solid #ffffff14;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+  .cardPad{padding:16px}
+  .badge{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#05203b;background:#ffffffd9;padding:4px 8px;border-radius:999px}
+  .title{font-weight:800;margin:10px 0 6px}
+  .muted{color:var(--muted)}
+  .catGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  .cat{padding:14px;border-radius:14px;color:#0b1020;font-weight:800;text-align:center}
+  .cat.ai{background:#bae6fd}
+  .cat.crypto{background:#bbf7d0}
+  .cat.startups{background:#fbcfe8}
+  .cat.finance{background:#fde68a}
+  .list{display:grid;gap:14px}
+  .news{display:grid;grid-template-columns:1fr 120px;gap:12px;align-items:center;border-radius:16px;background:#0e1530;border:1px solid #ffffff12;overflow:hidden}
+  .news .img{height:84px;background:var(--g1)}
+  .news.gold .img{background:linear-gradient(135deg,#b45309,#fde68a)}
+  .news.blue .img{background:var(--g2)}
+  .news.green .img{background:var(--g3)}
+  .news.red .img{background:var(--g4)}
+  .news .meta{font-size:12px;color:#9fb0c8}
+  .newsletter{background:var(--g2);border-radius:20px;color:#031022}
+  .newsletter .cardPad{padding:20px}
+  .field{display:flex;gap:8px;margin-top:10px}
+  input[type=email]{flex:1;padding:12px 14px;border-radius:12px;border:none;outline:none;background:#fffffff2}
+  .footer{margin-top:28px;padding:22px;border-top:1px solid #ffffff12;color:#b9c3db;font-size:14px;text-align:center}
+  .ai-powered{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:4px 10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:999px;font-size:11px;font-weight:700;color:#fff}
+  /* hovers */
+  .card:hover,.news:hover{transform:translateY(-2px);transition:transform .15s ease}
+  @media(min-width:860px){
+    .hero{grid-template-columns:1.2fr .8fr}
+    .grid.cols-3{grid-template-columns:repeat(3,1fr)}
+    .grid.cols-2{grid-template-columns:repeat(2,1fr)}
+  }
+</style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>🤖 ${seo.title || 'AI Tech News'}</h1>
-      <p class="tagline">${seo.description || 'Managed by AI • Updated Automatically'}</p>
-      <span class="status">● LIVE - AI Managed</span>
-      <div class="ai-badge">
-        <span>🧠</span>
-        <span>Powered by OpenAI</span>
+  <div class="wrap">
+    <div class="header"><div class="brand">🌈 ${seo.title || 'Agami News'}</div></div>
+
+    <!-- HERO -->
+    <section class="hero">
+      <div>
+        <span class="pill">Daily Briefing • AI & Tech</span>
+        <h1 class="h1">AI-Powered News Platform</h1>
+        <p class="lead">Get the latest tech news, AI breakthroughs, and innovation updates. All content managed and updated by artificial intelligence.</p>
+        <p style="margin-top:10px">
+          <a class="btn btn-primary" href="#latest">Read Latest</a>
+        </p>
+        <span class="ai-powered">🤖 Managed by AI</span>
       </div>
-    </header>
-    
-    <main class="content">
-      ${articlesHTML}
-    </main>
-    
-    <footer>
-      <p>© 2025 AI-Managed Website • Controlled via Telegram</p>
-      <p>Last Updated: ${await env.NEWS_KV.get('last_updated') || 'Just now'}</p>
+
+      <div class="card" style="background:var(--g1)">
+        <div class="cardPad">
+          <span class="badge">Featured</span>
+          <h3 class="title" style="color:#051324">AI-Generated Content</h3>
+          <p class="muted" style="color:#05203b">Fresh updates every 2 hours. ${articles.length} articles and counting.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- CATEGORIES -->
+    <section style="margin-top:18px">
+      <div class="catGrid">
+        <a class="cat ai" href="#ai">AI</a>
+        <a class="cat crypto" href="#crypto">Crypto</a>
+        <a class="cat startups" href="#startups">Startups</a>
+        <a class="cat finance" href="#finance">Finance</a>
+      </div>
+    </section>
+
+    <!-- LATEST LIST -->
+    <section id="latest" style="margin-top:18px" class="list">
+      ${newsArticles}
+    </section>
+
+    <!-- NEWSLETTER -->
+    <section style="margin-top:18px" class="newsletter card">
+      <div class="cardPad">
+        <h3 class="title" style="margin:0">Stay in the loop</h3>
+        <p>Join our AI-powered news updates. Content refreshes automatically!</p>
+        <form class="field" onsubmit="event.preventDefault(); alert('Thanks for subscribing! Updates coming soon.')">
+          <input type="email" placeholder="Enter your email" required>
+          <button class="btn" style="background:#0b1020;color:#eaf2ff;border-radius:12px;border:none;padding:12px 16px;cursor:pointer">Subscribe</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- MORE CARDS -->
+    <section style="margin-top:18px" class="grid cols-3">
+      <div class="card"><div class="cardPad">
+        <span class="badge">Stats</span>
+        <h4 class="title">Page Views</h4>
+        <p class="muted">${analytics.views || 0} visitors tracked</p>
+      </div></div>
+      <div class="card"><div class="cardPad">
+        <span class="badge">Content</span>
+        <h4 class="title">Articles Generated</h4>
+        <p class="muted">${articles.length} articles published</p>
+      </div></div>
+      <div class="card"><div class="cardPad">
+        <span class="badge">Updates</span>
+        <h4 class="title">Last Updated</h4>
+        <p class="muted">${await env.NEWS_KV.get('last_updated') ? new Date(await env.NEWS_KV.get('last_updated')).toLocaleString() : 'Just now'}</p>
+      </div></div>
+    </section>
+
+    <footer class="footer">
+      © 2025 Agami News • AI-Powered Tech News • Managed via Telegram<br>
+      <small style="opacity:0.7">Content updates every 2 hours automatically</small>
     </footer>
   </div>
 </body>
-</html>
-    `;
+</html>`;
     
     return new Response(html, {
       headers: {
@@ -523,6 +501,19 @@ async function serveWebsite(env) {
     console.error('Website serve error:', error);
     return new Response('Website temporarily unavailable', { status: 500 });
   }
+}
+
+// Helper function to get time ago
+function getTimeAgo(dateString) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const seconds = Math.floor((now - date) / 1000);
+  
+  if (seconds < 60) return 'Just now';
+  if (seconds < 3600) return Math.floor(seconds / 60) + ' min ago';
+  if (seconds < 86400) return Math.floor(seconds / 3600) + ' hours ago';
+  if (seconds < 604800) return Math.floor(seconds / 86400) + ' days ago';
+  return date.toLocaleDateString();
 }
 
 // Handle API requests
