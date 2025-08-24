@@ -370,10 +370,14 @@ async function serveWebsite(env) {
   *{box-sizing:border-box} body{margin:0;background:radial-gradient(1200px 600px at 10% -10%,#1a234a,transparent),var(--bg);color:var(--text);font:16px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
   a{color:#7dd3fc;text-decoration:none}
   .wrap{max-width:1024px;margin:auto;padding:18px}
-  .header{display:flex;align-items:center;justify-content:center;padding:14px 16px;margin:6px auto 12px;border-radius:999px;background:linear-gradient(90deg,#111936aa,#0c122d88);backdrop-filter:blur(8px);border:1px solid #ffffff18}
-  .brand{font-weight:800;font-size:18px;letter-spacing:.2px}
+  .navbar{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;margin:0 0 20px;background:linear-gradient(90deg,#111936ee,#0c122dee);backdrop-filter:blur(12px);border:1px solid #ffffff18;border-radius:16px}
+  .brand{font-weight:800;font-size:20px;letter-spacing:.3px;display:flex;align-items:center;gap:8px}
+  .nav-links{display:flex;gap:24px;align-items:center}
+  .nav-link{color:var(--muted);font-size:14px;font-weight:600;transition:color 0.2s}
+  .nav-link:hover{color:var(--text)}
+  .ai-status{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:999px;font-size:12px;font-weight:700;color:#22c55e}
   .grid{display:grid;gap:16px}
-  .hero{display:grid;gap:14px;grid-template-columns:1fr;align-items:center}
+  .hero{display:grid;gap:14px;grid-template-columns:1fr;align-items:center;margin-top:30px}
   .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:#ffffff14;border:1px solid #ffffff1f;color:#dbeafe;font-size:12px}
   .h1{font-size:clamp(28px,6vw,48px);line-height:1.1;margin:6px 0 4px;font-weight:900}
   .lead{color:var(--muted);max-width:60ch}
@@ -406,6 +410,11 @@ async function serveWebsite(env) {
   .ai-powered{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:4px 10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:999px;font-size:11px;font-weight:700;color:#fff}
   /* hovers */
   .card:hover,.news:hover{transform:translateY(-2px);transition:transform .15s ease}
+  @media(max-width:768px){
+    .nav-links{display:none}
+    .navbar{padding:14px 18px}
+    .brand{font-size:18px}
+  }
   @media(min-width:860px){
     .hero{grid-template-columns:1.2fr .8fr}
     .grid.cols-3{grid-template-columns:repeat(3,1fr)}
@@ -415,7 +424,19 @@ async function serveWebsite(env) {
 </head>
 <body>
   <div class="wrap">
-    <div class="header"><div class="brand">🌈 ${seo.title || 'Agami News'}</div></div>
+    <!-- Updated Navbar with logo on left -->
+    <nav class="navbar">
+      <div class="brand">
+        🌈 ${seo.title || 'Agami News'}
+      </div>
+      <div class="nav-links">
+        <a href="#latest" class="nav-link">Latest</a>
+        <a href="#ai" class="nav-link">AI</a>
+        <a href="#crypto" class="nav-link">Crypto</a>
+        <a href="#startups" class="nav-link">Startups</a>
+        <div class="ai-status">● AI Active</div>
+      </div>
+    </nav>
 
     <!-- HERO -->
     <section class="hero">
