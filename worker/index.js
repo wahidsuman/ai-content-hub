@@ -20,6 +20,12 @@ export default {
       return handleAPI(request, env);
     }
     
+    // Handle article pages
+    if (url.pathname.startsWith('/article/')) {
+      const articleId = url.pathname.replace('/article/', '');
+      return serveArticle(env, articleId);
+    }
+    
     // Serve the main website
     return serveWebsite(env);
   },
@@ -307,6 +313,158 @@ async function getAnalytics(env) {
   `;
 }
 
+// Serve individual article page
+async function serveArticle(env, articleId) {
+  try {
+    const articles = await env.NEWS_KV.get('articles', 'json') || [];
+    const articleIndex = parseInt(articleId);
+    const article = articles[articleIndex];
+    
+    if (!article) {
+      return new Response('Article not found', { status: 404 });
+    }
+    
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${article.title} - Agami News</title>
+<meta name="description" content="${article.seo?.metaDescription || article.description || ''}">
+<style>
+  :root{
+    --bg:#0b1020;--text:#e8ecf2;--muted:#a8b1c7;--card:#121835;
+    --g1:linear-gradient(135deg,#7c3aed, #ef4444, #f59e0b);
+    --g2:linear-gradient(135deg,#06b6d4, #6366f1);
+    --radius:18px;--shadow:0 12px 30px rgba(0,0,0,.25);
+  }
+  *{box-sizing:border-box} 
+  body{margin:0;background:radial-gradient(1200px 600px at 10% -10%,#1a234a,transparent),var(--bg);color:var(--text);font:16px/1.6 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+  a{color:#7dd3fc;text-decoration:none}
+  .container{max-width:800px;margin:auto;padding:20px}
+  
+  /* Header */
+  .header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;margin-bottom:30px;border-radius:999px;background:linear-gradient(90deg,#111936aa,#0c122d88);backdrop-filter:blur(8px);border:1px solid #ffffff18}
+  .brand{font-weight:800;font-size:20px;letter-spacing:.2px}
+  .back-btn{padding:8px 16px;background:#ffffff14;border-radius:8px;font-size:14px;transition:background .2s}
+  .back-btn:hover{background:#ffffff24}
+  
+  /* Article */
+  .article{background:var(--card);border-radius:var(--radius);padding:30px;box-shadow:var(--shadow)}
+  .article-meta{display:flex;gap:20px;margin-bottom:20px;font-size:14px;color:var(--muted)}
+  .badge{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#05203b;background:#ffffffd9;padding:4px 8px;border-radius:999px}
+  h1{font-size:clamp(24px,5vw,36px);line-height:1.2;margin:20px 0;font-weight:900}
+  
+  /* Article content */
+  .article-content{font-size:18px;line-height:1.8;color:#d1d5db}
+  .article-content h2{color:var(--text);margin:30px 0 15px;font-size:24px}
+  .article-content h3{color:var(--text);margin:25px 0 10px;font-size:20px}
+  .article-content p{margin:15px 0}
+  .article-content ul,ol{margin:15px 0;padding-left:30px}
+  .article-content li{margin:8px 0}
+  .article-content blockquote{border-left:4px solid var(--g2);padding-left:20px;margin:20px 0;font-style:italic;color:var(--muted)}
+  
+  /* Images */
+  .article-image{margin:25px 0}
+  .article-image img{width:100%;border-radius:12px;box-shadow:var(--shadow)}
+  .image-credit{font-size:12px;color:#666;margin-top:8px;text-align:right}
+  .image-credit a{color:#666;text-decoration:underline}
+  
+  /* Share section */
+  .share-section{margin-top:40px;padding-top:30px;border-top:1px solid #ffffff12}
+  .share-title{font-size:16px;margin-bottom:15px;color:var(--muted)}
+  .share-buttons{display:flex;gap:10px;flex-wrap:wrap}
+  .share-btn{padding:10px 20px;background:#ffffff14;border-radius:8px;font-size:14px;transition:all .2s}
+  .share-btn:hover{background:#ffffff24;transform:translateY(-2px)}
+  
+  /* Related articles */
+  .related{margin-top:40px;padding:20px;background:#0e1530;border-radius:var(--radius)}
+  .related h3{margin:0 0 20px;font-size:18px}
+  .related-item{display:block;padding:12px;margin:8px 0;background:#ffffff08;border-radius:8px;transition:background .2s}
+  .related-item:hover{background:#ffffff14}
+  
+  /* Footer */
+  .footer{margin-top:40px;padding:20px;text-align:center;color:var(--muted);font-size:14px}
+  
+  @media(max-width:768px){
+    .container{padding:15px}
+    .article{padding:20px}
+    .article-content{font-size:16px}
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="brand">🌈 Agami News</div>
+      <a href="/" class="back-btn">← Back to Home</a>
+    </div>
+    
+    <!-- Article -->
+    <article class="article">
+      <div class="article-meta">
+        <span class="badge">${article.category || 'Tech'}</span>
+        <span>${article.readTime || '5 min read'}</span>
+        <span>${new Date(article.date || Date.now()).toLocaleDateString()}</span>
+      </div>
+      
+      <h1>${article.title}</h1>
+      
+      <div class="article-content">
+        ${article.content || `
+          <p>${article.description || article.summary || 'Full article content will appear here.'}</p>
+        `}
+      </div>
+      
+      <!-- Share Section -->
+      <div class="share-section">
+        <div class="share-title">Share this article:</div>
+        <div class="share-buttons">
+          <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${encodeURIComponent('https://agaminews.in/article/' + articleIndex)}" 
+             target="_blank" class="share-btn">𝕏 Twitter</a>
+          <a href="https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent('https://agaminews.in/article/' + articleIndex)}" 
+             target="_blank" class="share-btn">LinkedIn</a>
+          <a href="https://wa.me/?text=${encodeURIComponent(article.title + ' https://agaminews.in/article/' + articleIndex)}" 
+             target="_blank" class="share-btn">WhatsApp</a>
+          <a href="https://t.me/share/url?url=${encodeURIComponent('https://agaminews.in/article/' + articleIndex)}&text=${encodeURIComponent(article.title)}" 
+             target="_blank" class="share-btn">Telegram</a>
+        </div>
+      </div>
+      
+      <!-- Related Articles -->
+      <div class="related">
+        <h3>More Articles</h3>
+        ${articles.slice(0, 3).map((item, idx) => 
+          idx !== articleIndex ? `
+            <a href="/article/${idx}" class="related-item">
+              <strong>${item.title}</strong><br>
+              <small style="color:#9ca3af">${item.category || 'Tech'} • ${item.readTime || '3 min'}</small>
+            </a>
+          ` : ''
+        ).join('')}
+      </div>
+    </article>
+    
+    <div class="footer">
+      © 2025 Agami News • Technology & Innovation News
+    </div>
+  </div>
+</body>
+</html>`;
+    
+    return new Response(html, {
+      headers: {
+        'Content-Type': 'text/html;charset=UTF-8',
+        'Cache-Control': 'public, max-age=300'
+      }
+    });
+  } catch (error) {
+    console.error('Article serve error:', error);
+    return new Response('Article temporarily unavailable', { status: 500 });
+  }
+}
+
 // Serve the website
 async function serveWebsite(env) {
   try {
@@ -320,7 +478,7 @@ async function serveWebsite(env) {
     analytics.views = (analytics.views || 0) + 1;
     await env.NEWS_KV.put('analytics', JSON.stringify(analytics));
     
-    // Generate news articles HTML
+    // Generate news articles HTML with clickable links
     const newsColors = ['gold', 'blue', 'green', 'red'];
     const newsArticles = articles.slice(0, 10).map((article, index) => {
       // Check if article has image with attribution
@@ -338,44 +496,52 @@ async function serveWebsite(env) {
       }
       
       return `
-        <article class="news ${newsColors[index % 4]}">
-          <div class="cardPad">
-            <span class="badge">${article.category || 'Tech'}</span>
-            <h3 class="title">${article.title}</h3>
-            <p class="muted">${article.description || article.summary || ''}</p>
-            <div class="meta">${article.readTime || '3 min read'} • ${getTimeAgo(article.date || new Date().toISOString())}</div>
-          </div>
-          ${imageHtml}
-        </article>
+        <a href="/article/${index}" class="news-link" style="text-decoration:none;color:inherit;">
+          <article class="news ${newsColors[index % 4]}">
+            <div class="cardPad">
+              <span class="badge">${article.category || 'Tech'}</span>
+              <h3 class="title">${article.title}</h3>
+              <p class="muted">${article.description || article.summary || ''}</p>
+              <div class="meta">${article.readTime || '3 min read'} • ${getTimeAgo(article.date || new Date().toISOString())}</div>
+            </div>
+            ${imageHtml}
+          </article>
+        </a>
       `;
     }).join('') || `
-      <article class="news gold">
-        <div class="cardPad">
-          <span class="badge">Finance</span>
-          <h3 class="title">Tech Giants Invest in Emerging Markets</h3>
-          <p class="muted">Major technology companies announce billion-dollar investments in developing economies.</p>
-          <div class="meta">5 min read • Today</div>
-        </div>
-        <div class="img"></div>
-      </article>
-      <article class="news blue">
-        <div class="cardPad">
-          <span class="badge">Technology</span>
-          <h3 class="title">Breakthrough in Quantum Computing</h3>
-          <p class="muted">Scientists achieve new milestone in quantum processor development.</p>
-          <div class="meta">3 min read • Today</div>
-        </div>
-        <div class="img"></div>
-      </article>
-      <article class="news green">
-        <div class="cardPad">
-          <span class="badge">Crypto</span>
-          <h3 class="title">Ethereum Network Upgrade Success</h3>
-          <p class="muted">Latest network improvements bring faster transactions and lower fees.</p>
-          <div class="meta">4 min read • Yesterday</div>
-        </div>
-        <div class="img"></div>
-      </article>
+      <a href="#" class="news-link" style="text-decoration:none;color:inherit;">
+        <article class="news gold">
+          <div class="cardPad">
+            <span class="badge">Finance</span>
+            <h3 class="title">Tech Giants Invest in Emerging Markets</h3>
+            <p class="muted">Major technology companies announce billion-dollar investments in developing economies.</p>
+            <div class="meta">5 min read • Today</div>
+          </div>
+          <div class="img"></div>
+        </article>
+      </a>
+      <a href="#" class="news-link" style="text-decoration:none;color:inherit;">
+        <article class="news blue">
+          <div class="cardPad">
+            <span class="badge">Technology</span>
+            <h3 class="title">Breakthrough in Quantum Computing</h3>
+            <p class="muted">Scientists achieve new milestone in quantum processor development.</p>
+            <div class="meta">3 min read • Today</div>
+          </div>
+          <div class="img"></div>
+        </article>
+      </a>
+      <a href="#" class="news-link" style="text-decoration:none;color:inherit;">
+        <article class="news green">
+          <div class="cardPad">
+            <span class="badge">Crypto</span>
+            <h3 class="title">Ethereum Network Upgrade Success</h3>
+            <p class="muted">Latest network improvements bring faster transactions and lower fees.</p>
+            <div class="meta">4 min read • Yesterday</div>
+          </div>
+          <div class="img"></div>
+        </article>
+      </a>
     `;
     
     // Build the HTML page - NO AI REFERENCES
@@ -440,8 +606,10 @@ async function serveWebsite(env) {
   .field{display:flex;gap:8px;margin-top:10px}
   input[type=email]{flex:1;padding:12px 14px;border-radius:12px;border:none;outline:none;background:#fffffff2}
   .footer{margin-top:28px;padding:22px;border-top:1px solid #ffffff12;color:#b9c3db;font-size:14px;text-align:center}
-  /* hovers */
-  .card:hover,.news:hover{transform:translateY(-2px);transition:transform .15s ease}
+  /* hovers and click effects */
+  .news-link{display:block;cursor:pointer}
+  .news-link:hover .news{transform:translateY(-3px);box-shadow:0 16px 40px rgba(0,0,0,.3)}
+  .card:hover{transform:translateY(-2px);transition:transform .15s ease}
   @media(max-width:768px){
     .nav-links{display:none}
     .navbar{padding:14px 18px}
