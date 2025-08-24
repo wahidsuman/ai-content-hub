@@ -70,6 +70,43 @@ async function handleTelegram(request, env) {
   try {
     const update = await request.json();
     
+    // Handle callback queries (button presses)
+    if (update.callback_query) {
+      const callbackQuery = update.callback_query;
+      const chatId = callbackQuery.message.chat.id;
+      const data = callbackQuery.data;
+      
+      // Security check
+      if (chatId.toString() !== env.YOUR_TELEGRAM_ID) {
+        return new Response('Unauthorized', { status: 403 });
+      }
+      
+      // Answer callback to remove loading state
+      await answerCallback(env, callbackQuery.id);
+      
+      // Handle different callbacks
+      if (data === 'main_menu') {
+        await sendMainMenu(env, chatId);
+      } else if (data === 'get_news') {
+        await handleManagerCommands(env, chatId, '/news');
+      } else if (data === 'show_performance') {
+        await handleManagerCommands(env, chatId, '/performance');
+      } else if (data === 'show_budget') {
+        await handleManagerCommands(env, chatId, '/budget');
+      } else if (data === 'get_suggestions') {
+        await handleManagerCommands(env, chatId, '/suggestions');
+      } else if (data === 'show_schedule') {
+        await handleManagerCommands(env, chatId, '/schedule');
+      } else if (data === 'refresh_news') {
+        await handleManagerCommands(env, chatId, '/news');
+      } else if (data.startsWith('approve_')) {
+        await handleApprovalCallback(env, chatId, data);
+      }
+      
+      return new Response('OK');
+    }
+    
+    // Handle regular messages
     if (update.message) {
       const chatId = update.message.chat.id;
       const text = update.message.text;
@@ -91,8 +128,8 @@ async function handleTelegram(request, env) {
       // Handle basic commands
       if (text === '/start') {
         await sendWelcomeMessage(env, chatId, firstName);
-      } else if (text === '/help') {
-        await sendHelpMessage(env, chatId);
+      } else if (text === '/help' || text === '/menu') {
+        await sendMainMenu(env, chatId);
       } else if (text === '/status') {
         await sendStatusMessage(env, chatId);
       } else {
@@ -106,6 +143,155 @@ async function handleTelegram(request, env) {
     console.error('Telegram handler error:', error);
     return new Response('Error', { status: 500 });
   }
+}
+
+// Handle approval callbacks
+async function handleApprovalCallback(env, chatId, data) {
+  const manager = new AIWebsiteManager(env);
+  
+  if (data === 'approve_all') {
+    // Approve all 15 articles
+    const numbers = Array.from({length: 15}, (_, i) => i);
+    await approveSelectedArticles(manager, env, chatId, numbers);
+  } else {
+    // Approve single article
+    const articleNum = parseInt(data.replace('approve_', '')) - 1;
+    await approveSelectedArticles(manager, env, chatId, [articleNum]);
+  }
+}
+
+// Approve selected articles
+async function approveSelectedArticles(manager, env, chatId, indices) {
+  const pendingNews = JSON.parse(await env.NEWS_KV.get('pending_news') || '[]');
+  
+  await sendMessage(env, chatId, `📝 Creating ${indices.length} article(s)...`);
+  
+  for (const index of indices) {
+    if (pendingNews[index]) {
+      const article = await manager.createArticle(pendingNews[index], true);
+      
+      // Store article
+      const articles = await env.NEWS_KV.get('articles', 'json') || [];
+      articles.unshift(article);
+      await env.NEWS_KV.put('articles', JSON.stringify(articles));
+      
+      await sendMessage(env, chatId, `✅ Published: ${article.title}`);
+    }
+  }
+  
+  // Send success with buttons
+  const keyboard = {
+    inline_keyboard: [
+      [
+        { text: "🌐 View Website", url: "https://agaminews.in" },
+        { text: "📰 Get More News", callback_data: "get_news" }
+      ],
+      [
+        { text: "🏠 Main Menu", callback_data: "main_menu" }
+      ]
+    ]
+  };
+  
+  await sendMessageWithKeyboard(env, chatId, `🎉 Articles published successfully!`, keyboard);
+}
+
+// Send main menu
+async function sendMainMenu(env, chatId) {
+  const message = `
+🏠 *Main Menu - AI Website Manager*
+
+Welcome to your website control center!
+Choose an action below:
+
+📰 *Content* - Fetch and publish news
+📊 *Analytics* - View performance stats
+💰 *Budget* - Monitor AI usage costs
+💡 *Optimize* - Get improvement suggestions
+
+Your website: [agaminews.in](https://agaminews.in)
+  `;
+  
+  const keyboard = {
+    inline_keyboard: [
+      [
+        { text: "📰 Get Latest News", callback_data: "get_news" },
+        { text: "📊 Performance Stats", callback_data: "show_performance" }
+      ],
+      [
+        { text: "💰 Budget Status", callback_data: "show_budget" },
+        { text: "💡 AI Suggestions", callback_data: "get_suggestions" }
+      ],
+      [
+        { text: "📅 Daily Schedule", callback_data: "show_schedule" },
+        { text: "🌐 Visit Website", url: "https://agaminews.in" }
+      ]
+    ]
+  };
+  
+  await sendMessageWithKeyboard(env, chatId, message, keyboard);
+}
+
+// Answer callback query
+async function answerCallback(env, callbackId, text = null) {
+  await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      callback_query_id: callbackId,
+      text: text
+    })
+  });
+}
+
+// Welcome message with buttons
+async function sendWelcomeMessage(env, chatId, firstName) {
+  const message = `
+🎉 *Welcome ${firstName}!*
+
+I'm your AI Website Manager for agaminews.in
+
+I can help you:
+• 📰 Fetch and publish news articles
+• 📊 Track website performance
+• 💰 Monitor costs (under $10/month)
+• 💡 Optimize for better results
+
+*Quick Start:* Press "Get News" to begin!
+  `;
+  
+  const keyboard = {
+    inline_keyboard: [
+      [
+        { text: "📰 Get News", callback_data: "get_news" },
+        { text: "📊 Performance", callback_data: "show_performance" }
+      ],
+      [
+        { text: "💰 Budget", callback_data: "show_budget" },
+        { text: "💡 Suggestions", callback_data: "get_suggestions" }
+      ],
+      [
+        { text: "📅 Schedule", callback_data: "show_schedule" },
+        { text: "🌐 Visit Site", url: "https://agaminews.in" }
+      ]
+    ]
+  };
+  
+  await sendMessageWithKeyboard(env, chatId, message, keyboard);
+}
+
+// Helper function to send message with keyboard
+async function sendMessageWithKeyboard(env, chatId, text, keyboard) {
+  await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text: text,
+      parse_mode: 'Markdown',
+      reply_markup: keyboard,
+      disable_web_page_preview: true
+    })
+  });
 }
 
 // Process natural language commands
