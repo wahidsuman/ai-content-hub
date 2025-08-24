@@ -2,10 +2,10 @@ name = "ai-website-manager"
 main = "index.js"
 compatibility_date = "2024-01-01"
 
-# KV Namespace binding - will be set via command line
-# [[kv_namespaces]]
-# binding = "NEWS_KV"
-# id = "YOUR_KV_ID"
+# KV Namespace binding
+[[kv_namespaces]]
+binding = "NEWS_KV"
+id = "REPLACE_WITH_YOUR_KV_ID"  # Replace this with your actual KV namespace ID from Cloudflare
 
 # Cron trigger for automatic updates
 [triggers]
