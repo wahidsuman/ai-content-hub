@@ -1,7 +1,7 @@
 // AI Website Manager - Complete Cloudflare Worker
 // This manages your entire website through AI and Telegram
-// Last updated: August 24, 2025 - Beautiful colorful design
-// Restoring full website functionality
+// Last updated: December 2024 - Full functionality with natural language
+// Supports both commands and natural conversation
 
 import { AIWebsiteManager } from './ai-manager.js';
 import { handleManagerCommands } from './telegram-commands.js';
@@ -170,8 +170,8 @@ async function handleTelegram(request, env) {
       } else if (text === '/status') {
         await sendStatusMessage(env, chatId);
       } else {
-        // Process as natural language command
-        await processNaturalCommand(env, chatId, text);
+              // Process as natural language command with full AI capabilities
+      await processNaturalCommand(env, chatId, text, firstName);
       }
     }
     
@@ -331,33 +331,94 @@ async function sendMessageWithKeyboard(env, chatId, text, keyboard) {
   });
 }
 
-// Process natural language commands
-async function processNaturalCommand(env, chatId, command) {
+// Process natural language commands with full AI capabilities
+async function processNaturalCommand(env, chatId, command, firstName) {
   try {
     await sendChatAction(env, chatId, 'typing');
     
     const manager = new AIWebsiteManager(env);
     
-    // Interpret the command
-    if (command.toLowerCase().includes('fetch') || command.toLowerCase().includes('get news')) {
+    // Check for action keywords first
+    const lowerCommand = command.toLowerCase();
+    
+    // Quick command routing
+    if (lowerCommand.includes('fetch') || lowerCommand.includes('get news') || lowerCommand.includes('show news')) {
       await handleManagerCommands(env, chatId, '/news');
-    } else if (command.toLowerCase().includes('publish') || command.toLowerCase().includes('post')) {
-      await sendMessage(env, chatId, "Please use /approve command with article numbers to publish. Example: /approve 1,3,5");
-    } else if (command.toLowerCase().includes('stats') || command.toLowerCase().includes('performance')) {
-      await handleManagerCommands(env, chatId, '/performance');
-    } else if (command.toLowerCase().includes('budget') || command.toLowerCase().includes('cost')) {
-      await handleManagerCommands(env, chatId, '/budget');
-    } else {
-      // General AI response
-      const response = await manager.callOpenAI(
-        `As a website manager, respond to: ${command}. Be helpful and concise.`,
-        'gpt-3.5-turbo',
-        200
-      );
-      await sendMessage(env, chatId, response || "I'll help you with that. Try /help for available commands.");
+      return;
+    } 
+    
+    if (lowerCommand.includes('publish') || lowerCommand.includes('post') || lowerCommand.includes('approve')) {
+      if (lowerCommand.match(/\d+/)) {
+        // Has numbers, try to approve
+        const numbers = command.match(/\d+/g).join(',');
+        await handleManagerCommands(env, chatId, `/approve ${numbers}`);
+      } else {
+        await sendMessage(env, chatId, "Which articles should I publish? Say something like 'approve 1, 3, 5' or use the buttons after /news");
+      }
+      return;
     }
+    
+    if (lowerCommand.includes('stats') || lowerCommand.includes('performance') || lowerCommand.includes('how many')) {
+      await handleManagerCommands(env, chatId, '/performance');
+      return;
+    }
+    
+    if (lowerCommand.includes('budget') || lowerCommand.includes('cost') || lowerCommand.includes('money')) {
+      await handleManagerCommands(env, chatId, '/budget');
+      return;
+    }
+    
+    // Natural language AI conversation
+    const systemPrompt = `You are an AI Website Manager for agaminews.in. You help ${firstName} manage their tech news website.
+    
+Your capabilities:
+    - Fetch and summarize news from various sources
+    - Create and publish articles with SEO optimization
+    - Manage website content and design
+    - Track performance and analytics
+    - Monitor budget (staying under $10/month)
+    - Suggest improvements
+    
+Current context:
+    - Website: agaminews.in
+    - Focus: Tech news, crypto, EVs, gadgets
+    - Budget limit: $10/month
+    - Using: OpenAI API, Telegram, Cloudflare
+    
+Be conversational, helpful, and proactive. If asked about specific actions, guide them to use commands or offer to do it.
+    Keep responses concise but friendly.`;
+    
+    const response = await manager.callOpenAI(
+      systemPrompt + "\n\nUser says: " + command + "\n\nRespond naturally and helpfully:",
+      'gpt-3.5-turbo',
+      300
+    );
+    
+    // Add quick action buttons based on context
+    let keyboard = null;
+    if (lowerCommand.includes('help') || lowerCommand.includes('what can')) {
+      keyboard = {
+        inline_keyboard: [
+          [
+            { text: "📰 Get News", callback_data: "get_news" },
+            { text: "📊 Performance", callback_data: "show_performance" }
+          ],
+          [
+            { text: "💰 Budget", callback_data: "show_budget" },
+            { text: "💡 Suggestions", callback_data: "get_suggestions" }
+          ]
+        ]
+      };
+    }
+    
+    if (keyboard) {
+      await sendMessageWithKeyboard(env, chatId, response || "I'm here to help! What would you like to do?", keyboard);
+    } else {
+      await sendMessage(env, chatId, response || "I'm here to help! You can chat naturally with me or use /help for commands.");
+    }
+    
   } catch (error) {
-    await sendMessage(env, chatId, `❌ Error: ${error.message}`);
+    await sendMessage(env, chatId, `❌ Sorry, I encountered an error. Try using the menu commands:\n/news - Get news\n/help - See all commands\n\nError: ${error.message}`);
   }
 }
 
