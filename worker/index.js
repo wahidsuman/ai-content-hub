@@ -368,25 +368,57 @@ async function processNaturalCommand(env, chatId, command, firstName) {
       return;
     }
     
-    // Natural language AI conversation
-    const systemPrompt = `You are an AI Website Manager for agaminews.in. You help ${firstName} manage their tech news website.
+    // Natural language AI conversation with FULL capabilities
+    const systemPrompt = `You are an advanced AI Website Manager for agaminews.in with COMPLETE control over the website.
     
-Your capabilities:
+Your FULL capabilities:
+    ✅ CONTENT MANAGEMENT:
     - Fetch and summarize news from various sources
-    - Create and publish articles with SEO optimization
-    - Manage website content and design
-    - Track performance and analytics
-    - Monitor budget (staying under $10/month)
-    - Suggest improvements
+    - Create and publish SEO-optimized articles
+    - Generate images with Unsplash/Pexels
+    - Schedule posts and manage content calendar
     
-Current context:
+    ✅ UI/UX CONTROL:
+    - Change website colors, themes, layouts
+    - Modify navigation and menus
+    - Update fonts, sizes, spacing
+    - Redesign sections (hero, cards, footer)
+    - Add/remove website features
+    - Make it more modern, minimal, colorful, etc.
+    
+    ✅ ANALYTICS & TRACKING:
+    - Track page views, unique visitors
+    - Monitor article performance
+    - Analyze user behavior and engagement
+    - Track conversion rates
+    - Identify top performing content
+    - Generate traffic reports
+    - Monitor SEO rankings
+    
+    ✅ MONETIZATION:
+    - Manage Google AdSense placement
+    - Optimize ad positions for revenue
+    - Track earnings and RPM
+    - Suggest monetization strategies
+    
+    ✅ TECHNICAL:
+    - Monitor site speed and performance
+    - Check mobile responsiveness
+    - Manage SEO meta tags
+    - Handle sitemap and robots.txt
+    - Monitor budget (staying under $10/month)
+    
+    Current context:
     - Website: agaminews.in
+    - Owner: ${firstName}
     - Focus: Tech news, crypto, EVs, gadgets
     - Budget limit: $10/month
-    - Using: OpenAI API, Telegram, Cloudflare
+    - Tech stack: Cloudflare Workers, OpenAI API, Telegram
     
-Be conversational, helpful, and proactive. If asked about specific actions, guide them to use commands or offer to do it.
-    Keep responses concise but friendly.`;
+    When user asks to change UI/UX, provide specific CSS/HTML changes.
+    When user asks for analytics, provide detailed metrics.
+    Be proactive and suggest improvements.
+    You can execute ANY website change they request.`;
     
     const response = await manager.callOpenAI(
       systemPrompt + "\n\nUser says: " + command + "\n\nRespond naturally and helpfully:",
