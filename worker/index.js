@@ -1,6 +1,7 @@
 // AI Website Manager - Complete Cloudflare Worker
 // This manages your entire website through AI and Telegram
 // Last updated: August 24, 2025 - Beautiful colorful design
+// Restoring full website functionality
 
 import { AIWebsiteManager } from './ai-manager.js';
 import { handleManagerCommands } from './telegram-commands.js';
