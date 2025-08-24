@@ -2,6 +2,9 @@
 // This manages your entire website through AI and Telegram
 // Last updated: August 24, 2025 - Beautiful colorful design
 
+import { AIWebsiteManager } from './ai-manager.js';
+import { handleManagerCommands } from './telegram-commands.js';
+
 export default {
   // Main request handler
   async fetch(request, env, ctx) {
@@ -21,21 +24,37 @@ export default {
     return serveWebsite(env);
   },
   
-  // Scheduled handler for automatic updates
+  // Scheduled handler for checking news
   async scheduled(event, env, ctx) {
+    const manager = new AIWebsiteManager(env);
     const chatId = env.YOUR_TELEGRAM_ID;
     
     try {
-      // Auto-generate content every 2 hours
-      await sendMessage(env, chatId, "🔄 Running scheduled content generation...");
+      // Check for important breaking news
+      const news = await manager.fetchDailyNews();
       
-      const content = await generateContent(env, 
-        "Generate 3 trending tech news articles with catchy titles about AI, startups, or innovation. Format as HTML."
-      );
+      // Filter for important news (you can customize this logic)
+      const importantNews = news.filter(item => {
+        // Check for keywords that indicate breaking/important news
+        const keywords = ['breaking', 'urgent', 'major', 'billion', 'hack', 'crash', 'surge'];
+        return keywords.some(keyword => 
+          item.title.toLowerCase().includes(keyword) ||
+          (item.description && item.description.toLowerCase().includes(keyword))
+        );
+      });
       
-      await sendMessage(env, chatId, "✅ Content updated successfully!");
+      if (importantNews.length > 0) {
+        await sendMessage(env, chatId, `🚨 *Breaking News Alert!*\n\n${importantNews.length} important stories detected. Type /news to review.`);
+      }
+      
+      // Reset daily usage at midnight
+      const now = new Date();
+      if (now.getHours() === 0) {
+        await env.NEWS_KV.put('usage_today', '0');
+      }
+      
     } catch (error) {
-      await sendMessage(env, chatId, `❌ Scheduled update failed: ${error.message}`);
+      console.error('Scheduled task error:', error);
     }
   }
 };
@@ -55,18 +74,24 @@ async function handleTelegram(request, env) {
         return new Response('Unauthorized', { status: 403 });
       }
       
-      // Handle commands
+      // Handle AI Manager commands
+      if (text.startsWith('/news') || text.startsWith('/approve') || 
+          text.startsWith('/performance') || text.startsWith('/budget') ||
+          text.startsWith('/suggestions') || text.startsWith('/schedule')) {
+        await handleManagerCommands(env, chatId, text);
+        return new Response('OK');
+      }
+      
+      // Handle basic commands
       if (text === '/start') {
         await sendWelcomeMessage(env, chatId, firstName);
       } else if (text === '/help') {
         await sendHelpMessage(env, chatId);
       } else if (text === '/status') {
         await sendStatusMessage(env, chatId);
-      } else if (text === '/analytics') {
-        await sendAnalytics(env, chatId);
       } else {
-        // Process as AI command
-        await processAICommand(env, chatId, text);
+        // Process as natural language command
+        await processNaturalCommand(env, chatId, text);
       }
     }
     
@@ -77,107 +102,122 @@ async function handleTelegram(request, env) {
   }
 }
 
-// Process AI commands
-async function processAICommand(env, chatId, command) {
+// Process natural language commands
+async function processNaturalCommand(env, chatId, command) {
   try {
-    // Show typing indicator
     await sendChatAction(env, chatId, 'typing');
     
-    // Send command to OpenAI
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'gpt-4-turbo-preview',
-        messages: [
-          {
-            role: 'system',
-            content: `You are an AI website manager. You can:
-1. Generate content (articles, news, blogs)
-2. Change website design (colors, layout, themes)
-3. Update SEO settings
-4. Manage content schedule
-5. Analyze performance
-
-Respond with JSON containing:
-{
-  "action": "generate_content|update_design|update_seo|schedule|analyze",
-  "parameters": { relevant parameters },
-  "message": "What you're doing"
-}`
-          },
-          { role: 'user', content: command }
-        ],
-        max_tokens: 1000,
-        temperature: 0.7
-      })
-    });
+    const manager = new AIWebsiteManager(env);
     
-    const data = await response.json();
-    
-    if (!data.choices || !data.choices[0]) {
-      throw new Error('Invalid OpenAI response');
+    // Interpret the command
+    if (command.toLowerCase().includes('fetch') || command.toLowerCase().includes('get news')) {
+      await handleManagerCommands(env, chatId, '/news');
+    } else if (command.toLowerCase().includes('publish') || command.toLowerCase().includes('post')) {
+      await sendMessage(env, chatId, "Please use /approve command with article numbers to publish. Example: /approve 1,3,5");
+    } else if (command.toLowerCase().includes('stats') || command.toLowerCase().includes('performance')) {
+      await handleManagerCommands(env, chatId, '/performance');
+    } else if (command.toLowerCase().includes('budget') || command.toLowerCase().includes('cost')) {
+      await handleManagerCommands(env, chatId, '/budget');
+    } else {
+      // General AI response
+      const response = await manager.callOpenAI(
+        `As a website manager, respond to: ${command}. Be helpful and concise.`,
+        'gpt-3.5-turbo',
+        200
+      );
+      await sendMessage(env, chatId, response || "I'll help you with that. Try /help for available commands.");
     }
-    
-    const aiResponse = data.choices[0].message.content;
-    
-    // Parse AI response
-    let action;
-    try {
-      action = JSON.parse(aiResponse);
-    } catch (e) {
-      // If not JSON, treat as direct content
-      action = {
-        action: 'generate_content',
-        parameters: { content: aiResponse },
-        message: 'Generated content based on your request'
-      };
-    }
-    
-    // Execute the action
-    await executeAction(env, chatId, action);
-    
   } catch (error) {
     await sendMessage(env, chatId, `❌ Error: ${error.message}`);
   }
 }
 
-// Execute AI-decided actions
-async function executeAction(env, chatId, action) {
-  await sendMessage(env, chatId, `🤖 ${action.message}`);
+// Welcome message
+async function sendWelcomeMessage(env, chatId, firstName) {
+  const message = `
+🎉 *Welcome ${firstName}!*
+
+I'm your AI Website Manager for agaminews.in
+
+*Quick Start Commands:*
+• /news - Get 10-15 daily news summaries
+• /approve 1,3,5 - Approve & publish articles
+• /performance - View website stats
+• /budget - Check AI usage & costs
+• /suggestions - Get improvement ideas
+• /schedule - View daily routine
+
+*How it works:*
+1️⃣ I fetch news from free sources (Crypto, EVs, Tech)
+2️⃣ Send you summaries for review
+3️⃣ You approve what to publish
+4️⃣ I create SEO articles with images
+5️⃣ Stay under $10/month budget
+
+Type /news to start! 🚀
+  `;
   
-  switch (action.action) {
-    case 'generate_content':
-      const content = await generateContent(env, action.parameters.prompt || action.parameters.content);
-      await sendMessage(env, chatId, "✅ Content generated and published!");
-      break;
-      
-    case 'update_design':
-      await updateDesign(env, action.parameters);
-      await sendMessage(env, chatId, "🎨 Design updated!");
-      break;
-      
-    case 'update_seo':
-      await updateSEO(env, action.parameters);
-      await sendMessage(env, chatId, "📈 SEO settings updated!");
-      break;
-      
-    case 'schedule':
-      await scheduleContent(env, action.parameters);
-      await sendMessage(env, chatId, "📅 Content scheduled!");
-      break;
-      
-    case 'analyze':
-      const analytics = await getAnalytics(env);
-      await sendMessage(env, chatId, `📊 Analytics:\n${analytics}`);
-      break;
-      
-    default:
-      await sendMessage(env, chatId, "🤔 I'm not sure how to do that yet.");
-  }
+  await sendMessage(env, chatId, message);
+}
+
+// Help message
+async function sendHelpMessage(env, chatId) {
+  const message = `
+📚 *AI Manager Commands*
+
+*Content Management:*
+/news - Fetch latest news summaries
+/approve [numbers] - Approve articles (e.g., /approve 1,3,5)
+
+*Analytics & Optimization:*
+/performance - Website statistics
+/suggestions - AI recommendations
+/budget - Usage & cost tracking
+
+*System:*
+/schedule - Daily routine
+/status - System status
+/help - This message
+
+*Natural Language:*
+Just type normally! Examples:
+• "Get crypto news"
+• "Show me stats"
+• "What's my budget?"
+
+Budget: $${(await env.NEWS_KV.get('usage_today') || 0)} used today
+  `;
+  
+  await sendMessage(env, chatId, message);
+}
+
+// Status message
+async function sendStatusMessage(env, chatId) {
+  const manager = new AIWebsiteManager(env);
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  const analytics = await env.NEWS_KV.get('analytics', 'json') || {};
+  const usage = await env.NEWS_KV.get('usage_today') || 0;
+  
+  const message = `
+🟢 *System Status*
+
+*Website:* agaminews.in ✅
+*Articles Published:* ${articles.length}
+*Total Views:* ${analytics.views || 0}
+*Today's AI Usage:* $${parseFloat(usage).toFixed(3)} / $0.33
+
+*Services:*
+• Cloudflare Worker: ✅ Active
+• OpenAI API: ✅ Connected
+• Telegram Bot: ✅ Running
+• Unsplash Images: ✅ Configured
+• KV Storage: ✅ Connected
+
+*Next Actions:*
+Type /news to fetch today's summaries
+  `;
+  
+  await sendMessage(env, chatId, message);
 }
 
 // Generate content using GPT-3.5
@@ -560,101 +600,4 @@ async function sendChatAction(env, chatId, action) {
   } catch (error) {
     console.error('Send chat action error:', error);
   }
-}
-
-async function sendWelcomeMessage(env, chatId, firstName) {
-  const message = `
-🎉 *Welcome ${firstName}!*
-
-I'm your AI Website Manager powered by OpenAI GPT-4!
-
-*What I can do:*
-• 📝 Generate content on any topic
-• 🎨 Change website design and colors
-• 📈 Update SEO settings
-• 📊 Show analytics
-• 📅 Schedule content
-
-*Just tell me what you want in natural language!*
-
-*Examples:*
-• "Generate 5 articles about AI trends"
-• "Change website to dark theme with blue colors"
-• "Show me website analytics"
-• "Update SEO title to 'Tech Innovation Hub'"
-
-*Commands:*
-/help - Show all commands
-/status - Check system status
-/analytics - View website stats
-
-Ready to manage your website! What would you like me to do?
-  `;
-  
-  await sendMessage(env, chatId, message);
-}
-
-async function sendHelpMessage(env, chatId) {
-  const message = `
-📚 *AI Website Manager Help*
-
-*Natural Language Commands:*
-Just type what you want and I'll understand!
-
-*Quick Commands:*
-• /start - Welcome message
-• /help - This help menu
-• /status - System status
-• /analytics - Website statistics
-
-*Examples of what to say:*
-• "Write an article about quantum computing"
-• "Generate 3 news stories about startups"
-• "Make the website purple and gold"
-• "Change the title to 'Future Tech News'"
-• "Show me how many visitors we had"
-
-*Tips:*
-• Be specific for better results
-• I can generate any type of content
-• All changes are instant
-• Website updates automatically
-
-Need help? Just ask!
-  `;
-  
-  await sendMessage(env, chatId, message);
-}
-
-async function sendStatusMessage(env, chatId) {
-  const lastUpdated = await env.NEWS_KV.get('last_updated');
-  const articles = await env.NEWS_KV.get('articles', 'json') || [];
-  const analytics = await env.NEWS_KV.get('analytics', 'json') || {};
-  
-  const message = `
-🟢 *System Status: ONLINE*
-
-*Website Stats:*
-• Articles: ${articles.length}
-• Page Views: ${analytics.views || 0}
-• Content Generated: ${analytics.generated || 0} times
-• Last Update: ${lastUpdated ? new Date(lastUpdated).toLocaleString() : 'Never'}
-
-*Services:*
-✅ OpenAI API: Connected
-✅ Telegram Bot: Active
-✅ KV Storage: Working
-✅ Auto-Updates: Enabled
-
-*Next scheduled update:* Every 2 hours
-
-Everything is working perfectly! 🚀
-  `;
-  
-  await sendMessage(env, chatId, message);
-}
-
-async function sendAnalytics(env, chatId) {
-  const analytics = await getAnalytics(env);
-  await sendMessage(env, chatId, analytics);
 }
