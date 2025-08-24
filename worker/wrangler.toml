@@ -5,7 +5,7 @@ compatibility_date = "2024-01-01"
 # KV Namespace binding
 [[kv_namespaces]]
 binding = "NEWS_KV"
-id = "REPLACE_WITH_YOUR_KV_ID"  # Replace this with your actual KV namespace ID from Cloudflare
+id = "acf08b0c797e41eeac717297ac9d7f7d"
 
 # Cron trigger for automatic updates
 [triggers]
