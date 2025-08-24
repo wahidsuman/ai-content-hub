@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Bot Setup Helper</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .step {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+        .step h2 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: transform 0.3s ease;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        .result {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .link:hover {
+            text-decoration: underline;
+        }
+        .code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Telegram Bot Setup Helper</h1>
+        
+        <div class="step">
+            <h2>Step 1: Enter Your Bot Token</h2>
+            <p>Get this from @BotFather in Telegram</p>
+            <input type="text" id="botToken" placeholder="Enter your bot token (e.g., 1234567890:ABCdefGHIjklMNOpqrsTUVwxyz)">
+            <button onclick="testToken()">Test Token</button>
+            <div id="tokenResult"></div>
+        </div>
+        
+        <div class="step">
+            <h2>Step 2: Set Webhook</h2>
+            <p>This connects your bot to your website</p>
+            <button onclick="setWebhook()">Set Webhook to agaminews.in</button>
+            <div id="webhookResult"></div>
+        </div>
+        
+        <div class="step">
+            <h2>Step 3: Check Webhook Status</h2>
+            <p>Verify the connection is working</p>
+            <button onclick="checkWebhook()">Check Webhook Status</button>
+            <div id="statusResult"></div>
+        </div>
+        
+        <div class="step">
+            <h2>Step 4: Send Test Message</h2>
+            <p>Send a test message to check if bot responds</p>
+            <input type="text" id="chatId" placeholder="Enter your Telegram chat ID (optional)">
+            <button onclick="sendTestMessage()">Send Test Message</button>
+            <div id="messageResult"></div>
+        </div>
+        
+        <div class="step">
+            <h2>📋 Quick Setup Instructions</h2>
+            <ol style="line-height: 1.8; margin-left: 20px;">
+                <li>Get bot token from <a href="https://t.me/BotFather" class="link" target="_blank">@BotFather</a></li>
+                <li>Paste token above and click "Test Token"</li>
+                <li>Click "Set Webhook" to connect bot to website</li>
+                <li>Message your bot on Telegram with <span class="code">/start</span></li>
+                <li>Add token to Cloudflare Workers environment variables</li>
+            </ol>
+        </div>
+        
+        <div class="step" style="background: #fff3cd; border-left-color: #ffc107;">
+            <h2>⚠️ Important: Add Token to Cloudflare</h2>
+            <p>After testing, you must add the token to Cloudflare:</p>
+            <ol style="line-height: 1.8; margin-left: 20px;">
+                <li>Go to <a href="https://dash.cloudflare.com" class="link" target="_blank">Cloudflare Dashboard</a></li>
+                <li>Workers & Pages → agami-news → Settings → Variables</li>
+                <li>Add variable: <span class="code">TELEGRAM_BOT_TOKEN</span> = your token</li>
+                <li>Save and deploy</li>
+            </ol>
+        </div>
+    </div>
+    
+    <script>
+        async function testToken() {
+            const token = document.getElementById('botToken').value.trim();
+            if (!token) {
+                alert('Please enter a bot token');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('tokenResult');
+            resultDiv.innerHTML = 'Testing token...';
+            
+            try {
+                const response = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+                const data = await response.json();
+                
+                if (data.ok) {
+                    resultDiv.innerHTML = `<div class="success">✅ Token is valid!<br>Bot name: @${data.result.username}<br>Bot ID: ${data.result.id}</div>`;
+                    localStorage.setItem('botToken', token);
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ Invalid token: ${data.description}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function setWebhook() {
+            const token = document.getElementById('botToken').value.trim() || localStorage.getItem('botToken');
+            if (!token) {
+                alert('Please enter and test your bot token first');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('webhookResult');
+            resultDiv.innerHTML = 'Setting webhook...';
+            
+            try {
+                const response = await fetch(`https://api.telegram.org/bot${token}/setWebhook?url=https://agaminews.in/telegram`);
+                const data = await response.json();
+                
+                if (data.ok) {
+                    resultDiv.innerHTML = `<div class="success">✅ Webhook set successfully!<br>Your bot is now connected to agaminews.in</div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ Failed to set webhook: ${data.description}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function checkWebhook() {
+            const token = document.getElementById('botToken').value.trim() || localStorage.getItem('botToken');
+            if (!token) {
+                alert('Please enter and test your bot token first');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('statusResult');
+            resultDiv.innerHTML = 'Checking webhook status...';
+            
+            try {
+                const response = await fetch(`https://api.telegram.org/bot${token}/getWebhookInfo`);
+                const data = await response.json();
+                
+                if (data.ok) {
+                    const info = data.result;
+                    let status = `<strong>Webhook Status:</strong>\n`;
+                    status += `URL: ${info.url || 'Not set'}\n`;
+                    status += `Pending updates: ${info.pending_update_count || 0}\n`;
+                    if (info.last_error_message) {
+                        status += `Last error: ${info.last_error_message}\n`;
+                    }
+                    
+                    if (info.url === 'https://agaminews.in/telegram') {
+                        resultDiv.innerHTML = `<div class="success">✅ Webhook is properly configured!\n\n${status}</div>`;
+                    } else {
+                        resultDiv.innerHTML = `<div class="error">⚠️ Webhook not set to agaminews.in\n\n${status}</div>`;
+                    }
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ Failed to check webhook: ${data.description}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function sendTestMessage() {
+            const token = document.getElementById('botToken').value.trim() || localStorage.getItem('botToken');
+            const chatId = document.getElementById('chatId').value.trim();
+            
+            if (!token) {
+                alert('Please enter and test your bot token first');
+                return;
+            }
+            
+            if (!chatId) {
+                alert('To send a test message, you need to:\n1. Message your bot on Telegram\n2. Get your chat ID from the bot\n3. Enter it here');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('messageResult');
+            resultDiv.innerHTML = 'Sending test message...';
+            
+            try {
+                const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: chatId,
+                        text: '✅ Test message from AgamiNews setup!\n\nYour bot is working correctly.',
+                        parse_mode: 'HTML'
+                    })
+                });
+                const data = await response.json();
+                
+                if (data.ok) {
+                    resultDiv.innerHTML = `<div class="success">✅ Test message sent successfully!</div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ Failed to send message: ${data.description}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        // Load saved token if exists
+        window.onload = function() {
+            const savedToken = localStorage.getItem('botToken');
+            if (savedToken) {
+                document.getElementById('botToken').value = savedToken;
+            }
+        }
+    </script>
+</body>
+</html>
