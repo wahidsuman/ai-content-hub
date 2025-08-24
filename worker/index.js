@@ -322,17 +322,33 @@ async function serveWebsite(env) {
     
     // Generate news articles HTML
     const newsColors = ['gold', 'blue', 'green', 'red'];
-    const newsArticles = articles.slice(0, 10).map((article, index) => `
-      <article class="news ${newsColors[index % 4]}">
-        <div class="cardPad">
-          <span class="badge">${article.category || 'Tech'}</span>
-          <h3 class="title">${article.title}</h3>
-          <p class="muted">${article.description || article.summary || ''}</p>
-          <div class="meta">${article.readTime || '3 min read'} • ${getTimeAgo(article.date || new Date().toISOString())}</div>
-        </div>
-        <div class="img"></div>
-      </article>
-    `).join('') || `
+    const newsArticles = articles.slice(0, 10).map((article, index) => {
+      // Check if article has image with attribution
+      let imageHtml = `<div class="img" style="background:var(--g${(index % 4) + 1})"></div>`;
+      
+      if (article.image && article.image.url && article.image.source === 'unsplash') {
+        imageHtml = `
+          <div class="img" style="background-image:url('${article.image.url}');background-size:cover;background-position:center;position:relative;">
+            <div style="position:absolute;bottom:2px;right:4px;font-size:9px;background:rgba(0,0,0,0.7);color:#fff;padding:2px 4px;border-radius:4px;">
+              <a href="${article.image.photographerUrl}" target="_blank" style="color:#fff;text-decoration:none;">${article.image.photographer}</a> / 
+              <a href="https://unsplash.com?utm_source=agaminews&utm_medium=referral" target="_blank" style="color:#fff;text-decoration:none;">Unsplash</a>
+            </div>
+          </div>
+        `;
+      }
+      
+      return `
+        <article class="news ${newsColors[index % 4]}">
+          <div class="cardPad">
+            <span class="badge">${article.category || 'Tech'}</span>
+            <h3 class="title">${article.title}</h3>
+            <p class="muted">${article.description || article.summary || ''}</p>
+            <div class="meta">${article.readTime || '3 min read'} • ${getTimeAgo(article.date || new Date().toISOString())}</div>
+          </div>
+          ${imageHtml}
+        </article>
+      `;
+    }).join('') || `
       <article class="news gold">
         <div class="cardPad">
           <span class="badge">Finance</span>

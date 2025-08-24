@@ -142,12 +142,39 @@ class AIWebsiteManager {
     
     const article = await this.callOpenAI(prompt, 'gpt-3.5-turbo', 1500);
     
-    // Get free image
+    // Get free image with attribution
     const image = await this.getFreeImage(newsItem.title);
+    
+    // Add proper image HTML with attribution
+    let imageHtml = '';
+    if (image && image.url) {
+      if (image.photographerUrl) {
+        // Unsplash image with proper attribution
+        imageHtml = `
+          <div class="article-image">
+            <img src="${image.url}" alt="${image.alt}" style="width:100%;border-radius:12px;">
+            <p class="image-credit" style="font-size:12px;color:#666;margin-top:8px;text-align:right;">
+              Photo by <a href="${image.photographerUrl}" target="_blank" rel="noopener" style="color:#666;text-decoration:underline;">${image.photographer}</a> 
+              on <a href="https://unsplash.com?utm_source=agaminews&utm_medium=referral" target="_blank" rel="noopener" style="color:#666;text-decoration:underline;">Unsplash</a>
+            </p>
+          </div>
+        `;
+      } else {
+        // Placeholder or other image
+        imageHtml = `
+          <div class="article-image">
+            <img src="${image.url}" alt="${image.alt}" style="width:100%;border-radius:12px;">
+          </div>
+        `;
+      }
+    }
+    
+    // Combine article with image
+    const fullArticle = imageHtml + article;
     
     return {
       title: newsItem.title,
-      content: article,
+      content: fullArticle,
       image: image,
       category: newsItem.category,
       seo: {
@@ -157,7 +184,7 @@ class AIWebsiteManager {
     };
   }
 
-  // Get copyright-free images
+  // Get copyright-free images with attribution data
   async getFreeImage(query) {
     try {
       // Try Unsplash first (FREE - 50 requests/hour)
@@ -168,10 +195,13 @@ class AIWebsiteManager {
       if (unsplashRes.ok) {
         const data = await unsplashRes.json();
         if (data.results && data.results.length > 0) {
+          const photo = data.results[0];
           return {
-            url: data.results[0].urls.regular,
-            credit: `Photo by ${data.results[0].user.name} on Unsplash`,
-            alt: data.results[0].alt_description || query
+            url: photo.urls.regular,
+            photographer: photo.user.name,
+            photographerUrl: `https://unsplash.com/@${photo.user.username}?utm_source=agaminews&utm_medium=referral`,
+            alt: photo.alt_description || query,
+            source: 'unsplash'
           };
         }
       }
@@ -179,16 +209,20 @@ class AIWebsiteManager {
       // Fallback to placeholder if no image found
       return {
         url: `https://via.placeholder.com/800x400/667eea/ffffff?text=${encodeURIComponent(query.substring(0, 20))}`,
-        credit: 'Stock Image',
-        alt: query
+        photographer: null,
+        photographerUrl: null,
+        alt: query,
+        source: 'placeholder'
       };
       
     } catch (e) {
       console.log('Image fetch error:', e);
       return {
         url: `https://via.placeholder.com/800x400/667eea/ffffff?text=News`,
-        credit: 'Stock Image',
-        alt: 'News Image'
+        photographer: null,
+        photographerUrl: null,
+        alt: 'News Image',
+        source: 'placeholder'
       };
     }
   }
