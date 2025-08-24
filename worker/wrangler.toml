@@ -2,13 +2,7 @@ name = "ai-website-manager"
 main = "index.js"
 compatibility_date = "2024-01-01"
 
-# Your custom domain
-routes = [
-  { pattern = "agaminews.in/*", custom_domain = true },
-  { pattern = "www.agaminews.in/*", custom_domain = true }
-]
-
-# KV Namespace binding - will be set via GitHub secrets
+# KV Namespace binding - will be set via command line
 # [[kv_namespaces]]
 # binding = "NEWS_KV"
 # id = "YOUR_KV_ID"
