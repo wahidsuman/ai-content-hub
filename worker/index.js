@@ -267,97 +267,72 @@ async function getAnalytics(env) {
   `;
 }
 
-// Serve the main website with beautiful colorful design
+// Serve the website
 async function serveWebsite(env) {
   try {
+    // Get stored content
+    const content = await env.NEWS_KV.get('website_content', 'json') || {};
+    const articles = await env.NEWS_KV.get('articles', 'json') || [];
+    const analytics = await env.NEWS_KV.get('analytics', 'json') || { views: 0 };
+    const seo = await env.NEWS_KV.get('seo_settings', 'json') || {};
+    
     // Track page view
-    const analytics = await env.NEWS_KV.get('analytics', 'json') || {};
     analytics.views = (analytics.views || 0) + 1;
     await env.NEWS_KV.put('analytics', JSON.stringify(analytics));
     
-    // Get content and settings
-    const articles = await env.NEWS_KV.get('articles', 'json') || [];
-    const seo = await env.NEWS_KV.get('seo', 'json') || {};
+    // Generate news articles HTML
+    const newsColors = ['gold', 'blue', 'green', 'red'];
+    const newsArticles = articles.slice(0, 10).map((article, index) => `
+      <article class="news ${newsColors[index % 4]}">
+        <div class="cardPad">
+          <span class="badge">${article.category || 'Tech'}</span>
+          <h3 class="title">${article.title}</h3>
+          <p class="muted">${article.description || article.summary || ''}</p>
+          <div class="meta">${article.readTime || '3 min read'} • ${getTimeAgo(article.date || new Date().toISOString())}</div>
+        </div>
+        <div class="img"></div>
+      </article>
+    `).join('') || `
+      <article class="news gold">
+        <div class="cardPad">
+          <span class="badge">Finance</span>
+          <h3 class="title">Tech Giants Invest in Emerging Markets</h3>
+          <p class="muted">Major technology companies announce billion-dollar investments in developing economies.</p>
+          <div class="meta">5 min read • Today</div>
+        </div>
+        <div class="img"></div>
+      </article>
+      <article class="news blue">
+        <div class="cardPad">
+          <span class="badge">Technology</span>
+          <h3 class="title">Breakthrough in Quantum Computing</h3>
+          <p class="muted">Scientists achieve new milestone in quantum processor development.</p>
+          <div class="meta">3 min read • Today</div>
+        </div>
+        <div class="img"></div>
+      </article>
+      <article class="news green">
+        <div class="cardPad">
+          <span class="badge">Crypto</span>
+          <h3 class="title">Ethereum Network Upgrade Success</h3>
+          <p class="muted">Latest network improvements bring faster transactions and lower fees.</p>
+          <div class="meta">4 min read • Yesterday</div>
+        </div>
+        <div class="img"></div>
+      </article>
+    `;
     
-    // Generate dynamic news articles
-    let newsArticles = '';
-    const colors = ['gold', 'blue', 'green', 'red'];
-    const categories = ['AI', 'Finance', 'Crypto', 'Startups'];
-    
-    if (articles.length > 0) {
-      articles.slice(0, 4).forEach((article, index) => {
-        const color = colors[index % colors.length];
-        const category = categories[index % categories.length];
-        const timeAgo = getTimeAgo(article.created);
-        
-        // Extract title from content if possible
-        let title = 'Latest Update';
-        let description = article.content.substring(0, 100) + '...';
-        
-        const titleMatch = article.content.match(/<h[1-3][^>]*>(.*?)<\/h[1-3]>/i);
-        if (titleMatch) {
-          title = titleMatch[1].replace(/<[^>]*>/g, '');
-        }
-        
-        const descMatch = article.content.match(/<p[^>]*>(.*?)<\/p>/i);
-        if (descMatch) {
-          description = descMatch[1].replace(/<[^>]*>/g, '').substring(0, 80) + '...';
-        }
-        
-        newsArticles += `
-          <article class="news ${color}">
-            <div class="cardPad">
-              <span class="badge">${category}</span>
-              <h3 class="title">${title}</h3>
-              <p class="muted">${description}</p>
-              <div class="meta">3 min read • ${timeAgo}</div>
-            </div>
-            <div class="img"></div>
-          </article>
-        `;
-      });
-    } else {
-      // Default articles when no content
-      newsArticles = `
-        <article class="news gold">
-          <div class="cardPad">
-            <span class="badge">Finance</span>
-            <h3 class="title">Tech giants invest in AI startups</h3>
-            <p class="muted">Over $1B invested in AI tools in 2025.</p>
-            <div class="meta">5 min read • Today</div>
-          </div>
-          <div class="img"></div>
-        </article>
-
-        <article class="news blue">
-          <div class="cardPad">
-            <span class="badge">AI</span>
-            <h3 class="title">Robots enter the workforce</h3>
-            <p class="muted">Automation rises across logistics and healthcare.</p>
-            <div class="meta">3 min read • Today</div>
-          </div>
-          <div class="img"></div>
-        </article>
-
-        <article class="news green">
-          <div class="cardPad">
-            <span class="badge">Crypto</span>
-            <h3 class="title">Ethereum 3.0 update lands</h3>
-            <p class="muted">Massive improvements in speed and scalability.</p>
-            <div class="meta">4 min read • Yesterday</div>
-          </div>
-          <div class="img"></div>
-        </article>
-      `;
-    }
-    
+    // Build the HTML page - NO AI REFERENCES
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${seo.title || 'Agami News - AI Powered Tech News'}</title>
-<meta name="description" content="${seo.description || 'Stay updated with the latest in AI, tech, and innovation. Powered by artificial intelligence.'}">
+<title>${seo.title || 'Agami News - Tech & Innovation Updates'}</title>
+<meta name="description" content="${seo.description || 'Latest technology news, cryptocurrency updates, and innovation insights.'}">
+<meta property="og:title" content="${seo.title || 'Agami News'}">
+<meta property="og:description" content="${seo.description || 'Your source for tech news and updates'}">
+<meta property="og:image" content="${seo.image || 'https://agaminews.in/og-image.jpg'}">
 <style>
   :root{
     --bg:#0b1020;--text:#e8ecf2;--muted:#a8b1c7;--card:#121835;
@@ -370,14 +345,16 @@ async function serveWebsite(env) {
   *{box-sizing:border-box} body{margin:0;background:radial-gradient(1200px 600px at 10% -10%,#1a234a,transparent),var(--bg);color:var(--text);font:16px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
   a{color:#7dd3fc;text-decoration:none}
   .wrap{max-width:1024px;margin:auto;padding:18px}
-  .navbar{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;margin:0 0 20px;background:linear-gradient(90deg,#111936ee,#0c122dee);backdrop-filter:blur(12px);border:1px solid #ffffff18;border-radius:16px}
-  .brand{font-weight:800;font-size:20px;letter-spacing:.3px;display:flex;align-items:center;gap:8px}
-  .nav-links{display:flex;gap:24px;align-items:center}
-  .nav-link{color:var(--muted);font-size:14px;font-weight:600;transition:color 0.2s}
-  .nav-link:hover{color:var(--text)}
-  .ai-status{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:999px;font-size:12px;font-weight:700;color:#22c55e}
+  
+  /* Updated Navbar */
+  .navbar{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;margin:6px auto 12px;border-radius:999px;background:linear-gradient(90deg,#111936aa,#0c122d88);backdrop-filter:blur(8px);border:1px solid #ffffff18}
+  .brand{font-weight:800;font-size:20px;letter-spacing:.2px}
+  .nav-links{display:flex;align-items:center;gap:24px}
+  .nav-link{color:#dbeafe;font-size:14px;font-weight:600;transition:color .2s}
+  .nav-link:hover{color:#fff}
+  
   .grid{display:grid;gap:16px}
-  .hero{display:grid;gap:14px;grid-template-columns:1fr;align-items:center;margin-top:30px}
+  .hero{display:grid;gap:14px;grid-template-columns:1fr;align-items:center}
   .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:#ffffff14;border:1px solid #ffffff1f;color:#dbeafe;font-size:12px}
   .h1{font-size:clamp(28px,6vw,48px);line-height:1.1;margin:6px 0 4px;font-weight:900}
   .lead{color:var(--muted);max-width:60ch}
@@ -407,7 +384,6 @@ async function serveWebsite(env) {
   .field{display:flex;gap:8px;margin-top:10px}
   input[type=email]{flex:1;padding:12px 14px;border-radius:12px;border:none;outline:none;background:#fffffff2}
   .footer{margin-top:28px;padding:22px;border-top:1px solid #ffffff12;color:#b9c3db;font-size:14px;text-align:center}
-  .ai-powered{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:4px 10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:999px;font-size:11px;font-weight:700;color:#fff}
   /* hovers */
   .card:hover,.news:hover{transform:translateY(-2px);transition:transform .15s ease}
   @media(max-width:768px){
@@ -431,30 +407,28 @@ async function serveWebsite(env) {
       </div>
       <div class="nav-links">
         <a href="#latest" class="nav-link">Latest</a>
-        <a href="#ai" class="nav-link">AI</a>
+        <a href="#tech" class="nav-link">Tech</a>
         <a href="#crypto" class="nav-link">Crypto</a>
         <a href="#startups" class="nav-link">Startups</a>
-        <div class="ai-status">● AI Active</div>
       </div>
     </nav>
 
     <!-- HERO -->
     <section class="hero">
       <div>
-        <span class="pill">Daily Briefing • AI & Tech</span>
-        <h1 class="h1">AI-Powered News Platform</h1>
-        <p class="lead">Get the latest tech news, AI breakthroughs, and innovation updates. All content managed and updated by artificial intelligence.</p>
+        <span class="pill">Daily Briefing • Tech & Innovation</span>
+        <h1 class="h1">Breaking Tech News & Updates</h1>
+        <p class="lead">Get the latest technology news, cryptocurrency insights, and innovation updates from around the world.</p>
         <p style="margin-top:10px">
           <a class="btn btn-primary" href="#latest">Read Latest</a>
         </p>
-        <span class="ai-powered">🤖 Managed by AI</span>
       </div>
 
       <div class="card" style="background:var(--g1)">
         <div class="cardPad">
           <span class="badge">Featured</span>
-          <h3 class="title" style="color:#051324">AI-Generated Content</h3>
-          <p class="muted" style="color:#05203b">Fresh updates every 2 hours. ${articles.length} articles and counting.</p>
+          <h3 class="title" style="color:#051324">Weekly Tech Roundup</h3>
+          <p class="muted" style="color:#05203b">Top stories and breakthrough innovations. ${articles.length} articles this week.</p>
         </div>
       </div>
     </section>
@@ -462,7 +436,7 @@ async function serveWebsite(env) {
     <!-- CATEGORIES -->
     <section style="margin-top:18px">
       <div class="catGrid">
-        <a class="cat ai" href="#ai">AI</a>
+        <a class="cat ai" href="#tech">Technology</a>
         <a class="cat crypto" href="#crypto">Crypto</a>
         <a class="cat startups" href="#startups">Startups</a>
         <a class="cat finance" href="#finance">Finance</a>
@@ -477,9 +451,9 @@ async function serveWebsite(env) {
     <!-- NEWSLETTER -->
     <section style="margin-top:18px" class="newsletter card">
       <div class="cardPad">
-        <h3 class="title" style="margin:0">Stay in the loop</h3>
-        <p>Join our AI-powered news updates. Content refreshes automatically!</p>
-        <form class="field" onsubmit="event.preventDefault(); alert('Thanks for subscribing! Updates coming soon.')">
+        <h3 class="title" style="margin:0">Stay Updated</h3>
+        <p>Join thousands of readers getting daily tech news delivered to their inbox.</p>
+        <form class="field" onsubmit="event.preventDefault(); alert('Thanks for subscribing! Check your email for confirmation.')">
           <input type="email" placeholder="Enter your email" required>
           <button class="btn" style="background:#0b1020;color:#eaf2ff;border-radius:12px;border:none;padding:12px 16px;cursor:pointer">Subscribe</button>
         </form>
@@ -489,25 +463,25 @@ async function serveWebsite(env) {
     <!-- MORE CARDS -->
     <section style="margin-top:18px" class="grid cols-3">
       <div class="card"><div class="cardPad">
-        <span class="badge">Stats</span>
-        <h4 class="title">Page Views</h4>
-        <p class="muted">${analytics.views || 0} visitors tracked</p>
+        <span class="badge">Trending</span>
+        <h4 class="title">Electric Vehicles</h4>
+        <p class="muted">Latest EV launches and battery tech</p>
       </div></div>
       <div class="card"><div class="cardPad">
-        <span class="badge">Content</span>
-        <h4 class="title">Articles Generated</h4>
-        <p class="muted">${articles.length} articles published</p>
+        <span class="badge">Analysis</span>
+        <h4 class="title">Market Insights</h4>
+        <p class="muted">Tech stocks and crypto trends</p>
       </div></div>
       <div class="card"><div class="cardPad">
-        <span class="badge">Updates</span>
-        <h4 class="title">Last Updated</h4>
-        <p class="muted">${await env.NEWS_KV.get('last_updated') ? new Date(await env.NEWS_KV.get('last_updated')).toLocaleString() : 'Just now'}</p>
+        <span class="badge">Innovation</span>
+        <h4 class="title">Startup Spotlight</h4>
+        <p class="muted">Emerging companies to watch</p>
       </div></div>
     </section>
 
     <footer class="footer">
-      © 2025 Agami News • AI-Powered Tech News • Managed via Telegram<br>
-      <small style="opacity:0.7">Content updates every 2 hours automatically</small>
+      © 2025 Agami News • Technology & Innovation News<br>
+      <small style="opacity:0.7">All Rights Reserved • Privacy Policy • Terms of Service</small>
     </footer>
   </div>
 </body>
