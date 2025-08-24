@@ -484,15 +484,29 @@ async function serveWebsite(env) {
       // Check if article has image with attribution
       let imageHtml = `<div class="img" style="background:var(--g${(index % 4) + 1})"></div>`;
       
-      if (article.image && article.image.url && article.image.source === 'unsplash') {
-        imageHtml = `
-          <div class="img" style="background-image:url('${article.image.url}');background-size:cover;background-position:center;position:relative;">
-            <div style="position:absolute;bottom:2px;right:4px;font-size:9px;background:rgba(0,0,0,0.7);color:#fff;padding:2px 4px;border-radius:4px;">
-              <a href="${article.image.photographerUrl}" target="_blank" style="color:#fff;text-decoration:none;">${article.image.photographer}</a> / 
-              <a href="https://unsplash.com?utm_source=agaminews&utm_medium=referral" target="_blank" style="color:#fff;text-decoration:none;">Unsplash</a>
+      if (article.image && article.image.url) {
+        if (article.image.source === 'unsplash') {
+          imageHtml = `
+            <div class="img" style="background-image:url('${article.image.url}');background-size:cover;background-position:center;position:relative;">
+              <div style="position:absolute;bottom:2px;right:4px;font-size:9px;background:rgba(0,0,0,0.7);color:#fff;padding:2px 4px;border-radius:4px;">
+                <a href="${article.image.photographerUrl}" target="_blank" style="color:#fff;text-decoration:none;">${article.image.photographer}</a> / 
+                <a href="https://unsplash.com?utm_source=agaminews&utm_medium=referral" target="_blank" style="color:#fff;text-decoration:none;">Unsplash</a>
+              </div>
             </div>
-          </div>
-        `;
+          `;
+        } else if (article.image.source === 'pexels') {
+          imageHtml = `
+            <div class="img" style="background-image:url('${article.image.url}');background-size:cover;background-position:center;position:relative;">
+              <div style="position:absolute;bottom:2px;right:4px;font-size:9px;background:rgba(0,0,0,0.7);color:#fff;padding:2px 4px;border-radius:4px;">
+                <a href="${article.image.photographerUrl}" target="_blank" style="color:#fff;text-decoration:none;">${article.image.photographer}</a> / 
+                <a href="https://www.pexels.com" target="_blank" style="color:#fff;text-decoration:none;">Pexels</a>
+              </div>
+            </div>
+          `;
+        } else if (article.image.url) {
+          // Has image but no attribution needed (placeholder)
+          imageHtml = `<div class="img" style="background-image:url('${article.image.url}');background-size:cover;background-position:center;"></div>`;
+        }
       }
       
       return `

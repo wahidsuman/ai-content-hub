@@ -145,17 +145,26 @@ class AIWebsiteManager {
     // Get free image with attribution
     const image = await this.getFreeImage(newsItem.title);
     
-    // Add proper image HTML with attribution
+    // Add proper image HTML with attribution based on source
     let imageHtml = '';
     if (image && image.url) {
-      if (image.photographerUrl) {
-        // Unsplash image with proper attribution
+      if (image.source === 'unsplash') {
         imageHtml = `
           <div class="article-image">
             <img src="${image.url}" alt="${image.alt}" style="width:100%;border-radius:12px;">
             <p class="image-credit" style="font-size:12px;color:#666;margin-top:8px;text-align:right;">
               Photo by <a href="${image.photographerUrl}" target="_blank" rel="noopener" style="color:#666;text-decoration:underline;">${image.photographer}</a> 
               on <a href="https://unsplash.com?utm_source=agaminews&utm_medium=referral" target="_blank" rel="noopener" style="color:#666;text-decoration:underline;">Unsplash</a>
+            </p>
+          </div>
+        `;
+      } else if (image.source === 'pexels') {
+        imageHtml = `
+          <div class="article-image">
+            <img src="${image.url}" alt="${image.alt}" style="width:100%;border-radius:12px;">
+            <p class="image-credit" style="font-size:12px;color:#666;margin-top:8px;text-align:right;">
+              Photo by <a href="${image.photographerUrl}" target="_blank" rel="noopener" style="color:#666;text-decoration:underline;">${image.photographer}</a> 
+              on <a href="https://www.pexels.com" target="_blank" rel="noopener" style="color:#666;text-decoration:underline;">Pexels</a>
             </p>
           </div>
         `;
@@ -206,7 +215,31 @@ class AIWebsiteManager {
         }
       }
       
-      // Fallback to placeholder if no image found
+      // Fallback to Pexels (FREE - 200 requests/hour)
+      const pexelsRes = await fetch(
+        `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1`,
+        {
+          headers: {
+            'Authorization': 'LdY2h3tfWpLTwkj342SBdwRu2SBomuJQUsrmEJez1u3IZmBrt3myKhnp'
+          }
+        }
+      );
+      
+      if (pexelsRes.ok) {
+        const data = await pexelsRes.json();
+        if (data.photos && data.photos.length > 0) {
+          const photo = data.photos[0];
+          return {
+            url: photo.src.large,
+            photographer: photo.photographer,
+            photographerUrl: photo.photographer_url,
+            alt: photo.alt || query,
+            source: 'pexels'
+          };
+        }
+      }
+      
+      // Final fallback to placeholder if no image found
       return {
         url: `https://via.placeholder.com/800x400/667eea/ffffff?text=${encodeURIComponent(query.substring(0, 20))}`,
         photographer: null,
