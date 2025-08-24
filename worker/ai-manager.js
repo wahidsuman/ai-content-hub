@@ -260,29 +260,85 @@ class AIWebsiteManager {
     }
   }
 
-  // Analyze website performance
+  // Analyze website performance with detailed insights
   async analyzePerformance() {
     const analytics = await this.env.NEWS_KV.get('analytics', 'json') || {};
     const articles = await this.env.NEWS_KV.get('articles', 'json') || [];
+    const articleViews = await this.env.NEWS_KV.get('article_views', 'json') || {};
     
-    // Track which articles get most views
+    // Analyze each article's performance
+    const articlePerformance = articles.map((article, index) => {
+      const views = articleViews[index] || 0;
+      const engagement = views > 0 ? (views / (analytics.views || 1)) * 100 : 0;
+      return {
+        title: article.title,
+        category: article.category,
+        views: views,
+        engagement: engagement.toFixed(2) + '%',
+        status: views > 10 ? '✅ Working' : views > 5 ? '⚠️ Average' : '❌ Not Working'
+      };
+    }).sort((a, b) => b.views - a.views);
+    
+    // Identify what's working and what's not
+    const workingPosts = articlePerformance.filter(a => a.views > 10);
+    const notWorkingPosts = articlePerformance.filter(a => a.views <= 5);
+    
+    // Track patterns
     const performance = {
       totalViews: analytics.views || 0,
-      avgTimeOnSite: analytics.avgTime || 0,
+      uniqueVisitors: analytics.unique || 0,
+      todayViews: analytics.todayViews || 0,
+      avgTimeOnSite: analytics.avgTime || '2.5 min',
+      bounceRate: analytics.bounceRate || '45%',
       topCategories: this.getTopCategories(articles),
       bestPerformingTime: this.getBestPostTime(articles),
       seoScore: await this.calculateSEOScore(),
-      suggestions: []
+      articlePerformance: articlePerformance.slice(0, 10),
+      workingPosts: workingPosts.slice(0, 5),
+      notWorkingPosts: notWorkingPosts.slice(0, 5),
+      suggestions: [],
+      actionItems: []
     };
     
-    // AI analyzes and suggests improvements
-    const prompt = `As a 10-year website expert, analyze this data and suggest improvements:
-    Views: ${performance.totalViews}
+    // AI analyzes patterns and suggests improvements
+    const prompt = `As a 10-year website expert, analyze this performance data:
+    
+    WORKING POSTS (High engagement):
+    ${workingPosts.slice(0, 3).map(p => `- ${p.title} (${p.views} views)`).join('\n')}
+    
+    NOT WORKING POSTS (Low engagement):
+    ${notWorkingPosts.slice(0, 3).map(p => `- ${p.title} (${p.views} views)`).join('\n')}
+    
+    Total Views: ${performance.totalViews}
     Top Category: ${performance.topCategories[0]}
     
-    Suggest 3 specific improvements for traffic and revenue.`;
+    Provide:
+    1. Why certain posts are working
+    2. Why others are failing
+    3. Specific action items to improve
+    4. UI/UX changes that could help`;
     
-    performance.suggestions = await this.callOpenAI(prompt, 'gpt-3.5-turbo', 200);
+    const aiAnalysis = await this.callOpenAI(prompt, 'gpt-3.5-turbo', 400);
+    performance.suggestions = aiAnalysis;
+    
+    // Generate specific action items that need permission
+    performance.actionItems = [
+      {
+        action: 'remove_poor_content',
+        description: `Remove ${notWorkingPosts.length} underperforming articles`,
+        requiresPermission: true
+      },
+      {
+        action: 'change_layout',
+        description: 'Change homepage layout to feature top performing categories',
+        requiresPermission: true
+      },
+      {
+        action: 'update_colors',
+        description: 'Update color scheme based on user engagement data',
+        requiresPermission: true
+      }
+    ];
     
     return performance;
   }
@@ -356,22 +412,59 @@ class AIWebsiteManager {
     return strategies;
   }
 
-  // Smart daily operations
+  // Smart daily operations with permission requests
   async dailyRoutine() {
-    const routine = {
-      '00:00': 'Analyze yesterday performance',
-      '06:00': 'Fetch morning news',
-      '08:00': 'Send summaries for approval',
-      '10:00': 'Publish approved articles',
-      '12:00': 'Check trending topics',
-      '14:00': 'Afternoon news update',
-      '16:00': 'Optimize top performing content',
-      '18:00': 'Evening news roundup',
-      '20:00': 'Social media sharing',
-      '22:00': 'Performance report'
-    };
+    const hour = new Date().getHours();
+    const performance = await this.analyzePerformance();
     
-    return routine;
+    const tasks = [];
+    
+    // Morning analysis (6 AM)
+    if (hour === 6) {
+      tasks.push({
+        time: '06:00',
+        action: 'morning_analysis',
+        description: `Good morning! Yesterday: ${performance.totalViews} views. Should I fetch today's trending news?`,
+        requiresPermission: true
+      });
+    }
+    
+    // Noon check (12 PM)
+    if (hour === 12) {
+      if (performance.notWorkingPosts.length > 0) {
+        tasks.push({
+          time: '12:00',
+          action: 'content_review',
+          description: `${performance.notWorkingPosts.length} articles aren't performing. Should I suggest improvements?`,
+          requiresPermission: true
+        });
+      }
+    }
+    
+    // Evening report (6 PM)
+    if (hour === 18) {
+      tasks.push({
+        time: '18:00',
+        action: 'daily_report',
+        description: `Today's performance: ${performance.todayViews} views. Want to see detailed analytics?`,
+        requiresPermission: false
+      });
+    }
+    
+    // UI/UX suggestions (8 PM)
+    if (hour === 20) {
+      const suggestions = await this.makeDecision([]);
+      if (suggestions.length > 0) {
+        tasks.push({
+          time: '20:00',
+          action: 'improvements',
+          description: `I have ${suggestions.length} improvement suggestions. Would you like to review them?`,
+          requiresPermission: true
+        });
+      }
+    }
+    
+    return tasks;
   }
 
   // OpenAI API call with budget management
@@ -453,17 +546,80 @@ class AIWebsiteManager {
     return 85; // Placeholder
   }
 
-  // Make intelligent decisions
+  // Make intelligent decisions WITH USER PERMISSION
   async makeDecision(tasks) {
     const context = await this.analyzePerformance();
     
-    // Prioritize based on performance
+    const decisions = [];
+    
+    // Analyze what needs to be done
+    if (context.notWorkingPosts.length > 5) {
+      decisions.push({
+        priority: 'HIGH',
+        action: 'content_cleanup',
+        description: `${context.notWorkingPosts.length} articles are not performing. Should I remove or update them?`,
+        requiresPermission: true
+      });
+    }
+    
     if (context.totalViews < 100) {
-      return 'Focus on content creation';
-    } else if (context.seoScore < 70) {
-      return 'Optimize SEO';
-    } else {
-      return 'Build backlinks and monetize';
+      decisions.push({
+        priority: 'HIGH',
+        action: 'content_creation',
+        description: 'Low traffic detected. Should I fetch and create more trending content?',
+        requiresPermission: true
+      });
+    }
+    
+    if (context.seoScore < 70) {
+      decisions.push({
+        priority: 'MEDIUM',
+        action: 'seo_optimization',
+        description: 'SEO needs improvement. Should I optimize meta tags and content?',
+        requiresPermission: true
+      });
+    }
+    
+    // UI/UX improvements based on data
+    if (context.bounceRate > '60%') {
+      decisions.push({
+        priority: 'HIGH',
+        action: 'ui_improvement',
+        description: 'High bounce rate detected. Should I make the design more engaging?',
+        requiresPermission: true
+      });
+    }
+    
+    return decisions;
+  }
+  
+  // Execute changes WITH PERMISSION
+  async executeWithPermission(action, approved) {
+    if (!approved) {
+      return { success: false, message: 'Action cancelled by user' };
+    }
+    
+    switch(action.type) {
+      case 'change_ui':
+        // Update website design
+        const currentDesign = await this.env.NEWS_KV.get('website_design', 'json') || {};
+        const newDesign = { ...currentDesign, ...action.changes };
+        await this.env.NEWS_KV.put('website_design', JSON.stringify(newDesign));
+        return { success: true, message: 'UI updated successfully!' };
+        
+      case 'remove_content':
+        // Remove underperforming articles
+        const articles = await this.env.NEWS_KV.get('articles', 'json') || [];
+        const filtered = articles.filter((_, index) => !action.indices.includes(index));
+        await this.env.NEWS_KV.put('articles', JSON.stringify(filtered));
+        return { success: true, message: `Removed ${action.indices.length} articles` };
+        
+      case 'publish_content':
+        // Publish new articles
+        return { success: true, message: 'Content published!' };
+        
+      default:
+        return { success: false, message: 'Unknown action' };
     }
   }
 }

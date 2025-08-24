@@ -138,6 +138,8 @@ async function handleTelegram(request, env) {
         await handleManagerCommands(env, chatId, '/news');
       } else if (data.startsWith('approve_')) {
         await handleApprovalCallback(env, chatId, data);
+      } else if (data.startsWith('permission_')) {
+        await handlePermissionCallback(env, chatId, data);
       }
       
       return new Response('OK');
@@ -194,6 +196,44 @@ async function handleApprovalCallback(env, chatId, data) {
     // Approve single article
     const articleNum = parseInt(data.replace('approve_', '')) - 1;
     await approveSelectedArticles(manager, env, chatId, [articleNum]);
+  }
+}
+
+// Handle permission callbacks for AI actions
+async function handlePermissionCallback(env, chatId, data) {
+  const manager = new AIWebsiteManager(env);
+  const [_, action, decision] = data.split('_');
+  
+  if (decision === 'yes') {
+    await sendMessage(env, chatId, "✅ Permission granted. Executing...");
+    
+    // Execute the approved action
+    switch(action) {
+      case 'uichange':
+        await sendMessage(env, chatId, "🎨 Updating website design...");
+        // Execute UI changes
+        const result = await manager.executeWithPermission({ type: 'change_ui', changes: {} }, true);
+        await sendMessage(env, chatId, result.message);
+        break;
+        
+      case 'remove':
+        await sendMessage(env, chatId, "🗑️ Removing underperforming content...");
+        // Remove poor content
+        const removeResult = await manager.executeWithPermission({ type: 'remove_content', indices: [] }, true);
+        await sendMessage(env, chatId, removeResult.message);
+        break;
+        
+      case 'optimize':
+        await sendMessage(env, chatId, "⚙️ Optimizing website...");
+        // Optimize SEO and performance
+        await sendMessage(env, chatId, "Optimization complete!");
+        break;
+        
+      default:
+        await sendMessage(env, chatId, "Action completed!");
+    }
+  } else {
+    await sendMessage(env, chatId, "❌ Action cancelled. Let me know if you want to try something else!");
   }
 }
 

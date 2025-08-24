@@ -121,29 +121,35 @@ async function approveArticles(manager, env, chatId, text) {
   await sendMessageWithKeyboard(env, chatId, `🎉 All approved articles published!`, keyboard);
 }
 
-// Show performance metrics with buttons
+// Show performance metrics with detailed analysis
 async function showPerformance(manager, env, chatId) {
+  await sendMessage(env, chatId, "🔍 Analyzing your website performance...");
   const performance = await manager.analyzePerformance();
   
-  const message = `
-📊 *Website Performance Report*
+  let message = `
+📊 *Detailed Performance Analysis*
 
-*Traffic:*
+*📈 Traffic Analytics:*
 • Total Views: ${performance.totalViews}
-• Today's Views: ${performance.todayViews || 0}
-• Growth: ${performance.growth || '+0%'}
+• Unique Visitors: ${performance.uniqueVisitors}
+• Today's Views: ${performance.todayViews}
+• Avg Time on Site: ${performance.avgTimeOnSite}
+• Bounce Rate: ${performance.bounceRate}
 
-*Content:*
-• Top Category: ${performance.topCategories[0] || 'N/A'}
-• Best Time: ${performance.bestPerformingTime}
-• SEO Score: ${performance.seoScore}/100
+*✅ TOP PERFORMING POSTS:*
+${performance.workingPosts.slice(0, 3).map(p => `• ${p.title}\n  ${p.views} views | ${p.engagement} engagement`).join('\n')}
 
-*AI Suggestions:*
+*❌ UNDERPERFORMING POSTS:*
+${performance.notWorkingPosts.slice(0, 3).map(p => `• ${p.title}\n  ${p.views} views | Needs improvement`).join('\n')}
+
+*🎯 Top Categories:*
+${performance.topCategories.slice(0, 3).join(', ')}
+
+*💡 AI Analysis:*
 ${performance.suggestions}
 
-*Revenue Potential:*
-• Estimated: $${(performance.totalViews * 0.002).toFixed(2)}/day
-• Monthly: $${(performance.totalViews * 0.002 * 30).toFixed(2)}
+*🔧 Action Items Requiring Your Permission:*
+${performance.actionItems.map(item => `• ${item.description}`).join('\n')}
   `;
   
   const keyboard = {
