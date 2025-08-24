@@ -1,14 +1,21 @@
-name = "agaminews-bot"
-main = "src/index.ts"
+name = "ai-website-manager"
+main = "index.js"
 compatibility_date = "2024-01-01"
 
-[triggers]
-crons = ["0 */2 * * *"]  # Every 2 hours
+# Your custom domain
+routes = [
+  { pattern = "agaminews.in/*", custom_domain = true },
+  { pattern = "www.agaminews.in/*", custom_domain = true }
+]
 
-[[kv_namespaces]]
-binding = "NEWS_KV"
-id = "29dbf4efad134243a2f716fbadccbb10"
-preview_id = "29dbf4efad134243a2f716fbadccbb10"
+# KV Namespace binding - will be set via GitHub secrets
+# [[kv_namespaces]]
+# binding = "NEWS_KV"
+# id = "YOUR_KV_ID"
+
+# Cron trigger for automatic updates
+[triggers]
+crons = ["0 */2 * * *"]
 
 [vars]
 ENVIRONMENT = "production"
