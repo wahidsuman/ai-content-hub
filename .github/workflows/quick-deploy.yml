@@ -1,0 +1,69 @@
+name: ⚡ Quick Deploy on Command
+
+on:
+  # Trigger via issue comment (you can deploy by commenting on any issue)
+  issue_comment:
+    types: [created]
+  
+  # Trigger via pull request comment
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  check-command:
+    name: 🔍 Check for Deploy Command
+    runs-on: ubuntu-latest
+    outputs:
+      should_deploy: ${{ steps.check.outputs.should_deploy }}
+      deploy_type: ${{ steps.check.outputs.deploy_type }}
+    
+    steps:
+      - name: Check if comment contains deploy command
+        id: check
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const comment = context.payload.comment.body.toLowerCase();
+            const isOwner = context.payload.comment.user.login === context.repo.owner;
+            
+            // Only allow owner to deploy
+            if (!isOwner) {
+              console.log('Not owner, skipping');
+              return;
+            }
+            
+            // Check for deploy commands
+            if (comment.includes('/deploy all')) {
+              core.setOutput('should_deploy', 'true');
+              core.setOutput('deploy_type', 'all');
+            } else if (comment.includes('/deploy bot')) {
+              core.setOutput('should_deploy', 'true');
+              core.setOutput('deploy_type', 'worker-only');
+            } else if (comment.includes('/deploy site')) {
+              core.setOutput('should_deploy', 'true');
+              core.setOutput('deploy_type', 'site-only');
+            } else {
+              core.setOutput('should_deploy', 'false');
+            }
+      
+      - name: 👍 React to comment
+        if: steps.check.outputs.should_deploy == 'true'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'rocket'
+            });
+
+  deploy:
+    name: 🚀 Deploy
+    needs: check-command
+    if: needs.check-command.outputs.should_deploy == 'true'
+    uses: ./.github/workflows/deploy-everything.yml
+    with:
+      deploy_target: ${{ needs.check-command.outputs.deploy_type }}
+      message: "Deployed via comment command"
+    secrets: inherit
