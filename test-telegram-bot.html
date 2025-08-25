@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Bot Tester - AI Website Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .button-group {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 30px;
+        }
+        
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .result.show {
+            display: block;
+        }
+        
+        .result h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        
+        .result pre {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .commands {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f0f4ff;
+            border-radius: 8px;
+        }
+        
+        .commands h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .command-list {
+            display: grid;
+            gap: 10px;
+        }
+        
+        .command {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .command code {
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .loader {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .loader.show {
+            display: block;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AI Website Manager Bot Tester</h1>
+        <p class="subtitle">Test your Telegram bot connection and commands</p>
+        
+        <div class="input-group">
+            <label for="botToken">Bot Token</label>
+            <input type="password" id="botToken" placeholder="Enter your bot token (e.g., 1234567890:ABCdefGHIjklMNOpqrsTUVwxyz)">
+        </div>
+        
+        <div class="input-group">
+            <label for="chatId">Your Chat ID</label>
+            <input type="text" id="chatId" placeholder="Enter your Telegram chat ID (e.g., 123456789)">
+        </div>
+        
+        <div class="button-group">
+            <button class="btn-primary" onclick="testConnection()">Test Connection</button>
+            <button class="btn-secondary" onclick="getWebhookInfo()">Check Webhook</button>
+            <button class="btn-primary" onclick="sendTestMessage()">Send Test Message</button>
+            <button class="btn-secondary" onclick="getUpdates()">Get Updates</button>
+        </div>
+        
+        <div class="loader">
+            <div class="spinner"></div>
+            <p style="margin-top: 10px; color: #666;">Processing...</p>
+        </div>
+        
+        <div class="result" id="result">
+            <h3>Result</h3>
+            <div id="resultContent"></div>
+        </div>
+        
+        <div class="commands">
+            <h3>📱 Available Bot Commands</h3>
+            <div class="command-list">
+                <div class="command">
+                    <code>/start</code>
+                    <span>Show main menu</span>
+                </div>
+                <div class="command">
+                    <code>/help</code>
+                    <span>Show help message</span>
+                </div>
+                <div class="command">
+                    <code>/news</code>
+                    <span>Fetch latest news</span>
+                </div>
+                <div class="command">
+                    <code>/performance</code>
+                    <span>View analytics</span>
+                </div>
+                <div class="command">
+                    <code>/suggestions</code>
+                    <span>Get AI suggestions</span>
+                </div>
+                <div class="command">
+                    <code>/budget</code>
+                    <span>Check usage & costs</span>
+                </div>
+                <div class="command">
+                    <code>/schedule</code>
+                    <span>View posting schedule</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function showLoader() {
+            document.querySelector('.loader').classList.add('show');
+            document.getElementById('result').classList.remove('show');
+        }
+        
+        function hideLoader() {
+            document.querySelector('.loader').classList.remove('show');
+        }
+        
+        function showResult(content, status = 'info') {
+            hideLoader();
+            const resultDiv = document.getElementById('result');
+            const resultContent = document.getElementById('resultContent');
+            
+            resultContent.innerHTML = content;
+            resultDiv.classList.add('show');
+        }
+        
+        async function testConnection() {
+            const token = document.getElementById('botToken').value;
+            if (!token) {
+                alert('Please enter your bot token');
+                return;
+            }
+            
+            showLoader();
+            
+            try {
+                const response = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+                const data = await response.json();
+                
+                if (data.ok) {
+                    showResult(`
+                        <div class="status success">✅ Connection Successful!</div>
+                        <pre>${JSON.stringify(data.result, null, 2)}</pre>
+                        <p style="margin-top: 10px; color: #666;">
+                            Bot Name: <strong>${data.result.first_name}</strong><br>
+                            Username: <strong>@${data.result.username}</strong><br>
+                            Can Join Groups: ${data.result.can_join_groups ? 'Yes' : 'No'}<br>
+                            Can Read Messages: ${data.result.can_read_all_group_messages ? 'Yes' : 'No'}
+                        </p>
+                    `);
+                } else {
+                    showResult(`
+                        <div class="status error">❌ Connection Failed</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `);
+                }
+            } catch (error) {
+                showResult(`
+                    <div class="status error">❌ Error</div>
+                    <pre>${error.message}</pre>
+                `);
+            }
+        }
+        
+        async function getWebhookInfo() {
+            const token = document.getElementById('botToken').value;
+            if (!token) {
+                alert('Please enter your bot token');
+                return;
+            }
+            
+            showLoader();
+            
+            try {
+                const response = await fetch(`https://api.telegram.org/bot${token}/getWebhookInfo`);
+                const data = await response.json();
+                
+                if (data.ok) {
+                    const webhookUrl = data.result.url || 'No webhook set';
+                    const lastError = data.result.last_error_message || 'No errors';
+                    const pendingUpdates = data.result.pending_update_count || 0;
+                    
+                    showResult(`
+                        <div class="status ${data.result.url ? 'success' : 'info'}">
+                            ${data.result.url ? '✅ Webhook Active' : 'ℹ️ No Webhook Set'}
+                        </div>
+                        <p><strong>Webhook URL:</strong> ${webhookUrl}</p>
+                        <p><strong>Pending Updates:</strong> ${pendingUpdates}</p>
+                        <p><strong>Last Error:</strong> ${lastError}</p>
+                        <pre>${JSON.stringify(data.result, null, 2)}</pre>
+                    `);
+                } else {
+                    showResult(`
+                        <div class="status error">❌ Failed to get webhook info</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `);
+                }
+            } catch (error) {
+                showResult(`
+                    <div class="status error">❌ Error</div>
+                    <pre>${error.message}</pre>
+                `);
+            }
+        }
+        
+        async function sendTestMessage() {
+            const token = document.getElementById('botToken').value;
+            const chatId = document.getElementById('chatId').value;
+            
+            if (!token || !chatId) {
+                alert('Please enter both bot token and chat ID');
+                return;
+            }
+            
+            showLoader();
+            
+            const message = `🤖 *AI Website Manager Test*\\n\\nThis is a test message from your bot\\.\\n\\nTime: ${new Date().toLocaleString()}\\n\\nIf you see this, your bot is working\\! 🎉`;
+            
+            try {
+                const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        chat_id: chatId,
+                        text: message,
+                        parse_mode: 'MarkdownV2'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.ok) {
+                    showResult(`
+                        <div class="status success">✅ Message Sent Successfully!</div>
+                        <p>Check your Telegram for the test message.</p>
+                        <pre>${JSON.stringify(data.result, null, 2)}</pre>
+                    `);
+                } else {
+                    showResult(`
+                        <div class="status error">❌ Failed to send message</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `);
+                }
+            } catch (error) {
+                showResult(`
+                    <div class="status error">❌ Error</div>
+                    <pre>${error.message}</pre>
+                `);
+            }
+        }
+        
+        async function getUpdates() {
+            const token = document.getElementById('botToken').value;
+            if (!token) {
+                alert('Please enter your bot token');
+                return;
+            }
+            
+            showLoader();
+            
+            try {
+                const response = await fetch(`https://api.telegram.org/bot${token}/getUpdates?limit=5`);
+                const data = await response.json();
+                
+                if (data.ok) {
+                    if (data.result.length === 0) {
+                        showResult(`
+                            <div class="status info">ℹ️ No recent updates</div>
+                            <p>Send a message to your bot to see updates here.</p>
+                        `);
+                    } else {
+                        let updates = '<div class="status success">✅ Recent Updates</div>';
+                        data.result.forEach((update, index) => {
+                            const message = update.message || update.callback_query;
+                            if (message) {
+                                updates += `
+                                    <div style="margin: 10px 0; padding: 10px; background: white; border-radius: 5px;">
+                                        <strong>Update ${index + 1}:</strong><br>
+                                        From: ${message.from?.first_name || 'Unknown'}<br>
+                                        Text: ${message.text || message.data || 'No text'}<br>
+                                        Date: ${new Date(message.date * 1000).toLocaleString()}
+                                    </div>
+                                `;
+                            }
+                        });
+                        updates += `<pre>${JSON.stringify(data.result, null, 2)}</pre>`;
+                        showResult(updates);
+                    }
+                } else {
+                    showResult(`
+                        <div class="status error">❌ Failed to get updates</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `);
+                }
+            } catch (error) {
+                showResult(`
+                    <div class="status error">❌ Error</div>
+                    <pre>${error.message}</pre>
+                `);
+            }
+        }
+    </script>
+</body>
+</html>

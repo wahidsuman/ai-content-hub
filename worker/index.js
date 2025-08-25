@@ -70,7 +70,7 @@ export default {
   // Scheduled handler for checking news
   async scheduled(event, env, ctx) {
     const manager = new AIWebsiteManager(env);
-    const chatId = env.YOUR_TELEGRAM_ID;
+    const chatId = env.TELEGRAM_CHAT_ID;
     
     try {
       // Check for important breaking news
@@ -114,7 +114,7 @@ async function handleTelegram(request, env) {
       const data = callbackQuery.data;
       
       // Security check
-      if (chatId.toString() !== env.YOUR_TELEGRAM_ID) {
+      if (chatId.toString() !== env.TELEGRAM_CHAT_ID) {
         return new Response('Unauthorized', { status: 403 });
       }
       
