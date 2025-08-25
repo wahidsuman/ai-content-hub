@@ -134,8 +134,16 @@ async function handleTelegram(request, env) {
         await handleManagerCommands(env, chatId, '/suggestions');
       } else if (data === 'show_schedule') {
         await handleManagerCommands(env, chatId, '/schedule');
-      } else if (data === 'refresh_news') {
+      } else if (data === 'refresh_news' || data === 'get_news') {
         await handleManagerCommands(env, chatId, '/news');
+      } else if (data === 'show_performance') {
+        await handleManagerCommands(env, chatId, '/performance');
+      } else if (data === 'show_budget') {
+        await handleManagerCommands(env, chatId, '/budget');
+      } else if (data === 'get_suggestions') {
+        await handleManagerCommands(env, chatId, '/suggestions');
+      } else if (data === 'main_menu') {
+        await sendMainMenu(env, chatId);
       } else if (data.startsWith('approve_')) {
         await handleApprovalCallback(env, chatId, data);
       } else if (data.startsWith('permission_')) {
@@ -152,7 +160,7 @@ async function handleTelegram(request, env) {
       const firstName = update.message.from.first_name || 'User';
       
       // Security: Only respond to authorized user
-      if (chatId.toString() !== env.YOUR_TELEGRAM_ID) {
+      if (chatId.toString() !== env.TELEGRAM_CHAT_ID) {
         return new Response('Unauthorized', { status: 403 });
       }
       
@@ -172,8 +180,9 @@ async function handleTelegram(request, env) {
       } else if (text === '/status') {
         await sendStatusMessage(env, chatId);
       } else {
-              // Process as natural language command with full AI capabilities
-      await processNaturalCommand(env, chatId, text, firstName);
+        // Process as natural language command with full AI capabilities
+        console.log(`Processing natural language: "${text}" from ${firstName}`);
+        await processNaturalCommand(env, chatId, text, firstName);
       }
     }
     
@@ -381,13 +390,17 @@ async function processNaturalCommand(env, chatId, command, firstName) {
     // Check for action keywords first
     const lowerCommand = command.toLowerCase();
     
-    // Quick command routing
-    if (lowerCommand.includes('fetch') || lowerCommand.includes('get news') || lowerCommand.includes('show news')) {
+    // Quick command routing with more natural language patterns
+    if (lowerCommand.includes('news') || lowerCommand.includes('what\'s new') || 
+        lowerCommand.includes('latest') || lowerCommand.includes('today') ||
+        lowerCommand.includes('fetch') || lowerCommand.includes('get news') || 
+        lowerCommand.includes('show news')) {
       await handleManagerCommands(env, chatId, '/news');
       return;
     } 
     
-    if (lowerCommand.includes('publish') || lowerCommand.includes('post') || lowerCommand.includes('approve')) {
+    if (lowerCommand.includes('publish') || lowerCommand.includes('post') || 
+        lowerCommand.includes('approve') || lowerCommand.includes('create article')) {
       if (lowerCommand.match(/\d+/)) {
         // Has numbers, try to approve
         const numbers = command.match(/\d+/g).join(',');
@@ -398,13 +411,29 @@ async function processNaturalCommand(env, chatId, command, firstName) {
       return;
     }
     
-    if (lowerCommand.includes('stats') || lowerCommand.includes('performance') || lowerCommand.includes('how many')) {
+    if (lowerCommand.includes('stats') || lowerCommand.includes('performance') || 
+        lowerCommand.includes('how many') || lowerCommand.includes('visitors') ||
+        lowerCommand.includes('traffic') || lowerCommand.includes('analytics')) {
       await handleManagerCommands(env, chatId, '/performance');
       return;
     }
     
-    if (lowerCommand.includes('budget') || lowerCommand.includes('cost') || lowerCommand.includes('money')) {
+    if (lowerCommand.includes('budget') || lowerCommand.includes('cost') || 
+        lowerCommand.includes('money') || lowerCommand.includes('spend') ||
+        lowerCommand.includes('usage')) {
       await handleManagerCommands(env, chatId, '/budget');
+      return;
+    }
+    
+    if (lowerCommand.includes('help') || lowerCommand.includes('what can you do') ||
+        lowerCommand.includes('commands') || lowerCommand.includes('menu')) {
+      await sendMainMenu(env, chatId);
+      return;
+    }
+    
+    if (lowerCommand.includes('suggest') || lowerCommand.includes('improve') ||
+        lowerCommand.includes('recommendation') || lowerCommand.includes('ideas')) {
+      await handleManagerCommands(env, chatId, '/suggestions');
       return;
     }
     
@@ -460,37 +489,58 @@ Your FULL capabilities:
     Be proactive and suggest improvements.
     You can execute ANY website change they request.`;
     
-    const response = await manager.callOpenAI(
-      systemPrompt + "\n\nUser says: " + command + "\n\nRespond naturally and helpfully:",
-      'gpt-3.5-turbo',
-      300
-    );
+    // Check if OpenAI key is configured
+    let response = null;
+    
+    if (env.OPENAI_API_KEY && env.OPENAI_API_KEY !== '' && env.OPENAI_API_KEY !== 'your-openai-api-key-here') {
+      try {
+        response = await manager.callOpenAI(
+          systemPrompt + "\n\nUser says: " + command + "\n\nRespond naturally and helpfully:",
+          'gpt-3.5-turbo',
+          300
+        );
+      } catch (aiError) {
+        console.error('OpenAI API error:', aiError);
+        response = null;
+      }
+    }
+    
+    // If no AI response, provide intelligent fallback
+    if (!response) {
+      // Provide context-aware responses without AI
+      if (lowerCommand.includes('hello') || lowerCommand.includes('hi')) {
+        response = `Hello ${firstName}! 👋 I'm your AI Website Manager. I can help you manage your website, fetch news, check performance, and more. What would you like to do today?`;
+      } else if (lowerCommand.includes('thank')) {
+        response = "You're welcome! 😊 Is there anything else I can help you with?";
+      } else if (lowerCommand.includes('good')) {
+        response = "Great! I'm here whenever you need me. Feel free to ask for news, performance stats, or any website updates!";
+      } else {
+        response = `I understand you said: "${command}"\n\nI can help you with:\n📰 Fetching news\n📊 Checking performance\n💰 Budget tracking\n💡 Getting suggestions\n\nTry saying things like:\n• "Show me today's news"\n• "How is my website doing?"\n• "What's my budget?"\n\nOr use /help to see all commands.`;
+      }
+    }
     
     // Add quick action buttons based on context
-    let keyboard = null;
-    if (lowerCommand.includes('help') || lowerCommand.includes('what can')) {
-      keyboard = {
-        inline_keyboard: [
-          [
-            { text: "📰 Get News", callback_data: "get_news" },
-            { text: "📊 Performance", callback_data: "show_performance" }
-          ],
-          [
-            { text: "💰 Budget", callback_data: "show_budget" },
-            { text: "💡 Suggestions", callback_data: "get_suggestions" }
-          ]
+    let keyboard = {
+      inline_keyboard: [
+        [
+          { text: "📰 Get News", callback_data: "get_news" },
+          { text: "📊 Performance", callback_data: "show_performance" }
+        ],
+        [
+          { text: "💰 Budget", callback_data: "show_budget" },
+          { text: "💡 Suggestions", callback_data: "get_suggestions" }
+        ],
+        [
+          { text: "📋 Main Menu", callback_data: "main_menu" }
         ]
-      };
-    }
+      ]
+    };
     
-    if (keyboard) {
-      await sendMessageWithKeyboard(env, chatId, response || "I'm here to help! What would you like to do?", keyboard);
-    } else {
-      await sendMessage(env, chatId, response || "I'm here to help! You can chat naturally with me or use /help for commands.");
-    }
+    await sendMessageWithKeyboard(env, chatId, response, keyboard);
     
   } catch (error) {
-    await sendMessage(env, chatId, `❌ Sorry, I encountered an error. Try using the menu commands:\n/news - Get news\n/help - See all commands\n\nError: ${error.message}`);
+    console.error('Natural language processing error:', error);
+    await sendMessage(env, chatId, `I understand you're trying to tell me something! Here's what I can do:\n\n📰 /news - Get latest news\n📊 /performance - Check website stats\n💰 /budget - View costs\n💡 /suggestions - Get improvements\n\nOr just tell me what you need in plain English!`);
   }
 }
 
