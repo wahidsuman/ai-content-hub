@@ -1,0 +1,95 @@
+name: 🔧 Auto-Fix and Deploy
+
+on:
+  # Trigger when you create an issue with 'fix' label
+  issues:
+    types: [opened, labeled]
+  
+  # Trigger on specific labels
+  pull_request:
+    types: [opened, labeled]
+
+jobs:
+  auto-fix:
+    name: 🤖 Auto Fix Issues
+    runs-on: ubuntu-latest
+    if: contains(github.event.issue.labels.*.name, 'fix') || contains(github.event.issue.labels.*.name, 'deploy')
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+      
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: 🔍 Analyze Issue
+        id: analyze
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const title = issue.title.toLowerCase();
+            const body = issue.body ? issue.body.toLowerCase() : '';
+            
+            let action = 'none';
+            let message = '';
+            
+            // Detect what needs to be done
+            if (title.includes('deploy') || body.includes('deploy')) {
+              action = 'deploy';
+              message = 'Deploying as requested';
+            } else if (title.includes('fix') || body.includes('fix')) {
+              action = 'fix';
+              message = 'Attempting to fix the issue';
+            } else if (title.includes('update') || body.includes('update')) {
+              action = 'update';
+              message = 'Updating as requested';
+            }
+            
+            core.setOutput('action', action);
+            core.setOutput('message', message);
+            
+            // Comment on issue
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: `🤖 I'm on it! ${message}...`
+            });
+      
+      - name: 🚀 Trigger Deployment
+        if: steps.analyze.outputs.action != 'none'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            // Trigger the deployment workflow
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'deploy-everything.yml',
+              ref: 'main',
+              inputs: {
+                deploy_target: 'all',
+                message: `Auto-deploy from issue #${context.payload.issue.number}`
+              }
+            });
+            
+            // Update issue
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: `✅ Deployment triggered! Check the [Actions tab](https://github.com/${context.repo.owner}/${context.repo.repo}/actions) for progress.`
+            });
+            
+            // Close issue if it's a simple deploy request
+            if (context.payload.issue.title.toLowerCase().includes('deploy')) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.issue.number,
+                state: 'closed'
+              });
+            }

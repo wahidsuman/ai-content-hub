@@ -1,0 +1,217 @@
+name: 🚀 Deploy Everything Automatically
+
+on:
+  # Trigger on push to main branch
+  push:
+    branches: [ main, master ]
+  
+  # Trigger on manual dispatch (you can trigger from GitHub UI)
+  workflow_dispatch:
+    inputs:
+      deploy_target:
+        description: 'What to deploy'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - worker-only
+          - site-only
+      
+      message:
+        description: 'Deployment message'
+        required: false
+        default: 'Manual deployment triggered'
+
+jobs:
+  # Job 1: Deploy Cloudflare Worker (Bot)
+  deploy-worker:
+    name: 🤖 Deploy AI Bot Worker
+    runs-on: ubuntu-latest
+    if: github.event.inputs.deploy_target != 'site-only'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+      
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: 📦 Install dependencies
+        run: |
+          cd worker
+          npm ci || npm install
+      
+      - name: 🚀 Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: 'worker'
+          command: deploy
+          secrets: |
+            TELEGRAM_BOT_TOKEN
+            TELEGRAM_CHAT_ID
+            OPENAI_API_KEY
+            GITHUB_TOKEN
+            GITHUB_REPO
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_REPO: ${{ github.repository }}
+      
+      - name: 📱 Send Telegram notification
+        if: success()
+        run: |
+          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "chat_id": "${{ secrets.TELEGRAM_CHAT_ID }}",
+              "text": "✅ *Worker Deployed Successfully!*\n\n🤖 Your AI Bot is now live\n📝 Message: ${{ github.event.inputs.message || github.event.head_commit.message }}\n👤 By: ${{ github.actor }}\n🔗 [View Deployment](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})",
+              "parse_mode": "Markdown"
+            }'
+
+  # Job 2: Deploy Astro Site
+  deploy-site:
+    name: 🌐 Deploy Website
+    runs-on: ubuntu-latest
+    if: github.event.inputs.deploy_target != 'worker-only'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+      
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: 📦 Install dependencies
+        run: |
+          cd site
+          npm ci || npm install
+      
+      - name: 🏗️ Build Astro site
+        run: |
+          cd site
+          npm run build
+        env:
+          PUBLIC_WORKER_URL: ${{ secrets.WORKER_URL }}
+      
+      - name: 🚀 Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: 'agaminews'
+          directory: 'site/dist'
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: 📱 Send Telegram notification
+        if: success()
+        run: |
+          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "chat_id": "${{ secrets.TELEGRAM_CHAT_ID }}",
+              "text": "✅ *Website Deployed Successfully!*\n\n🌐 Your site is now live at https://agaminews.in\n📝 Message: ${{ github.event.inputs.message || github.event.head_commit.message }}\n👤 By: ${{ github.actor }}\n🔗 [View Deployment](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})",
+              "parse_mode": "Markdown"
+            }'
+
+  # Job 3: Update Telegram Webhook
+  update-webhook:
+    name: 🔗 Update Telegram Webhook
+    runs-on: ubuntu-latest
+    needs: deploy-worker
+    if: github.event.inputs.deploy_target != 'site-only'
+    
+    steps:
+      - name: 🔄 Set Telegram Webhook
+        run: |
+          WEBHOOK_URL="${{ secrets.WORKER_URL }}/telegram"
+          
+          # Delete old webhook
+          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/deleteWebhook"
+          
+          # Set new webhook
+          RESPONSE=$(curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/setWebhook" \
+            -H "Content-Type: application/json" \
+            -d "{\"url\": \"$WEBHOOK_URL\"}")
+          
+          echo "Webhook Response: $RESPONSE"
+          
+          # Verify webhook
+          INFO=$(curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/getWebhookInfo")
+          echo "Webhook Info: $INFO"
+      
+      - name: 📱 Notify webhook update
+        run: |
+          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "chat_id": "${{ secrets.TELEGRAM_CHAT_ID }}",
+              "text": "🔗 Webhook updated successfully!\n\nYour bot is ready to receive messages.",
+              "parse_mode": "Markdown"
+            }'
+
+  # Job 4: Run Tests
+  test-deployment:
+    name: 🧪 Test Deployment
+    runs-on: ubuntu-latest
+    needs: [deploy-worker, deploy-site]
+    if: always()
+    
+    steps:
+      - name: 🔍 Test Worker Health
+        if: github.event.inputs.deploy_target != 'site-only'
+        run: |
+          WORKER_URL="${{ secrets.WORKER_URL }}"
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$WORKER_URL/health" || echo "000")
+          
+          if [ "$RESPONSE" = "200" ]; then
+            echo "✅ Worker is healthy"
+          else
+            echo "⚠️ Worker health check failed with status: $RESPONSE"
+          fi
+      
+      - name: 🔍 Test Website
+        if: github.event.inputs.deploy_target != 'worker-only'
+        run: |
+          SITE_URL="https://agaminews.in"
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$SITE_URL" || echo "000")
+          
+          if [ "$RESPONSE" = "200" ]; then
+            echo "✅ Website is live"
+          else
+            echo "⚠️ Website check failed with status: $RESPONSE"
+          fi
+      
+      - name: 📊 Final Report
+        if: always()
+        run: |
+          MESSAGE="🎉 *Deployment Complete!*\n\n"
+          
+          if [ "${{ github.event.inputs.deploy_target }}" != "site-only" ]; then
+            MESSAGE="${MESSAGE}🤖 Bot: Deployed\n"
+          fi
+          
+          if [ "${{ github.event.inputs.deploy_target }}" != "worker-only" ]; then
+            MESSAGE="${MESSAGE}🌐 Website: Deployed\n"
+          fi
+          
+          MESSAGE="${MESSAGE}\n📝 Commit: ${{ github.event.head_commit.message || github.event.inputs.message }}"
+          MESSAGE="${MESSAGE}\n👤 Deployed by: ${{ github.actor }}"
+          MESSAGE="${MESSAGE}\n⏰ Time: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          
+          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"chat_id\": \"${{ secrets.TELEGRAM_CHAT_ID }}\",
+              \"text\": \"$MESSAGE\",
+              \"parse_mode\": \"Markdown\"
+            }"
