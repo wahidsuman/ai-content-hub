@@ -254,6 +254,10 @@ async function serveWebsite(env, request) {
     
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        html {
+            font-size: 16px;
+            overflow-x: hidden;
+        }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: ${isDark ? '#0A0A0A' : '#FFF'};
@@ -261,6 +265,8 @@ async function serveWebsite(env, request) {
             line-height: 1.6;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            width: 100%;
+            overflow-x: hidden;
         }
         .header {
             background: ${isDark ? '#1A1A1A' : '#F8F8F8'};
@@ -343,8 +349,10 @@ async function serveWebsite(env, request) {
         }
         .container {
             max-width: 1200px;
+            width: 100%;
             margin: 0 auto;
             padding: 20px;
+            box-sizing: border-box;
         }
         .stats-bar {
             background: ${isDark ? '#1A1A1A' : '#F8F8F8'};
@@ -395,12 +403,15 @@ async function serveWebsite(env, request) {
         
         @media (max-width: 768px) {
             .news-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: 1fr !important;
                 gap: 12px;
                 margin: 15px 0;
+                padding: 0 5px;
             }
             .news-card {
                 border-radius: 8px;
+                width: 100%;
+                max-width: 100%;
             }
             .news-card:hover {
                 transform: none;
@@ -507,7 +518,8 @@ async function serveWebsite(env, request) {
             
             /* Enhanced Mobile Optimizations */
             .container {
-                padding: 10px;
+                padding: 10px !important;
+                width: 100% !important;
             }
             
             /* Stats Mobile */
@@ -545,6 +557,13 @@ async function serveWebsite(env, request) {
             }
             .news-image {
                 height: 180px;
+                width: 100%;
+                max-width: 100%;
+            }
+            .news-image img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
             }
             
             /* Headlines */
