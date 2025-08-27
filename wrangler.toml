@@ -7,8 +7,8 @@ WORKER_URL = "https://agaminews.workers.dev"
 
 [[kv_namespaces]]
 binding = "NEWS_KV"
-id = "WILL_BE_CREATED"
-preview_id = "WILL_BE_CREATED"
+id = "72c0dad910574e7cb4bd8bb5918af847"
+preview_id = "72c0dad910574e7cb4bd8bb5918af847"
 
 [triggers]
 crons = ["0 */6 * * *"]
