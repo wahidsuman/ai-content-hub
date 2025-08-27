@@ -24,6 +24,9 @@ export default {
     } else if (url.pathname === '/fetch-news') {
       // Manual trigger for testing
       return await fetchLatestNews(env);
+    } else if (url.pathname.startsWith('/article/')) {
+      // Individual article pages
+      return serveArticle(env, request, url.pathname);
     } else if (url.pathname.startsWith('/api/')) {
       return handleAPI(request, env, url.pathname);
     }
@@ -327,16 +330,25 @@ async function serveWebsite(env, request) {
             gap: 20px;
             margin: 30px 0;
         }
+        .news-card-link {
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
         .news-card {
             background: ${isDark ? '#1A1A1A' : '#F8F8F8'};
             border-radius: 10px;
             overflow: hidden;
             border: 1px solid ${isDark ? '#2A2A2A' : '#E0E0E0'};
-            transition: transform 0.3s;
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
         }
         .news-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .news-card:hover .news-title {
+            color: ${config.primaryColor};
         }
         .news-image {
             position: relative;
@@ -467,26 +479,28 @@ async function serveWebsite(env, request) {
         <h2 style="margin: 30px 0 20px; font-size: 28px;">Latest News</h2>
         
         <div class="news-grid">
-            ${articles.map(article => `
-                <div class="news-card">
-                    ${article.image ? `
-                        <div class="news-image">
-                            <img src="${article.image.url || article.image}" alt="${article.title}" loading="lazy">
-                            ${article.image.credit ? `<div class="image-credit">${article.image.credit}</div>` : ''}
-                        </div>
-                    ` : ''}
-                    <div class="news-content">
-                        <div class="news-category">${article.category}</div>
-                        ${article.trending ? '<span class="trending">🔥 Trending</span>' : ''}
-                        <div class="news-title">${article.title}</div>
-                        <div class="news-summary">${article.summary || article.summary.substring(0, 150)}...</div>
-                        <div class="news-meta">
-                            <span>🕒 ${article.date || 'Today'}</span>
-                            <span>👁️ ${(article.views || 0).toLocaleString()}</span>
-                            ${article.source ? `<span>📰 ${article.source}</span>` : ''}
+            ${articles.map((article, index) => `
+                <a href="/article/${index}" class="news-card-link">
+                    <div class="news-card">
+                        ${article.image ? `
+                            <div class="news-image">
+                                <img src="${article.image.url || article.image}" alt="${article.title}" loading="lazy">
+                                ${article.image.credit ? `<div class="image-credit">${article.image.credit}</div>` : ''}
+                            </div>
+                        ` : ''}
+                        <div class="news-content">
+                            <div class="news-category">${article.category}</div>
+                            ${article.trending ? '<span class="trending">🔥 Trending</span>' : ''}
+                            <div class="news-title">${article.title}</div>
+                            <div class="news-summary">${article.summary || article.summary.substring(0, 150)}...</div>
+                            <div class="news-meta">
+                                <span>🕒 ${article.date || 'Today'}</span>
+                                <span>👁️ ${(article.views || 0).toLocaleString()}</span>
+                                ${article.source ? `<span>📰 ${article.source}</span>` : ''}
+                            </div>
                         </div>
                     </div>
-                </div>
+                </a>
             `).join('')}
         </div>
         
@@ -1735,6 +1749,302 @@ function getTimeAgo(index) {
     '30 mins ago', '45 mins ago', '1 hour ago', '2 hours ago'
   ];
   return times[Math.min(index, times.length - 1)];
+}
+
+// Serve individual article page
+async function serveArticle(env, request, pathname) {
+  const articleId = parseInt(pathname.split('/')[2]);
+  const articles = await env.NEWS_KV.get('articles', 'json') || getDefaultArticles();
+  const article = articles[articleId];
+  
+  if (!article) {
+    return new Response('Article not found', { status: 404 });
+  }
+  
+  // Track article view
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  if (!stats.articleViews) stats.articleViews = {};
+  stats.articleViews[articleId] = (stats.articleViews[articleId] || 0) + 1;
+  article.views = (article.views || 0) + 1;
+  await env.NEWS_KV.put('stats', JSON.stringify(stats));
+  
+  const config = await env.NEWS_KV.get('config', 'json') || {};
+  const isDark = config.theme === 'dark';
+  
+  // Generate full article content (expand the summary)
+  const fullContent = generateFullArticle(article);
+  
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${article.title} - ${config.siteName}</title>
+    <meta name="description" content="${article.summary}">
+    <meta property="og:title" content="${article.title}">
+    <meta property="og:description" content="${article.summary}">
+    <meta property="og:image" content="${article.image?.url || article.image || 'https://agaminews.in/og-image.jpg'}">
+    <meta property="og:url" content="https://agaminews.in/article/${articleId}">
+    <meta property="twitter:card" content="summary_large_image">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: ${isDark ? '#0A0A0A' : '#FFF'};
+            color: ${isDark ? '#FFF' : '#000'};
+            line-height: 1.8;
+        }
+        .header {
+            background: ${isDark ? '#1A1A1A' : '#F8F8F8'};
+            padding: 20px;
+            border-bottom: 2px solid ${config.primaryColor};
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-content {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: 900;
+            color: ${config.primaryColor};
+            text-decoration: none;
+        }
+        .article-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .article-category {
+            color: ${config.primaryColor};
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+        .article-title {
+            font-size: 36px;
+            font-weight: 900;
+            line-height: 1.2;
+            margin-bottom: 20px;
+        }
+        .article-meta {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid ${isDark ? '#333' : '#E0E0E0'};
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        .article-image {
+            width: 100%;
+            max-height: 500px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        .image-credit {
+            font-size: 12px;
+            opacity: 0.6;
+            text-align: right;
+            margin-bottom: 30px;
+        }
+        .article-content {
+            font-size: 18px;
+            line-height: 1.8;
+        }
+        .article-content p {
+            margin-bottom: 20px;
+        }
+        .share-buttons {
+            margin: 40px 0;
+            padding: 20px;
+            background: ${isDark ? '#1A1A1A' : '#F8F8F8'};
+            border-radius: 10px;
+            text-align: center;
+        }
+        .share-title {
+            font-size: 16px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        .share-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 5px;
+            background: ${config.primaryColor};
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: opacity 0.3s;
+        }
+        .share-btn:hover {
+            opacity: 0.8;
+        }
+        .back-btn {
+            display: inline-block;
+            margin-top: 40px;
+            padding: 12px 30px;
+            background: ${isDark ? '#2A2A2A' : '#F0F0F0'};
+            color: ${isDark ? '#FFF' : '#000'};
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        .back-btn:hover {
+            background: ${config.primaryColor};
+            color: white;
+        }
+        .related-articles {
+            margin-top: 60px;
+            padding-top: 40px;
+            border-top: 2px solid ${isDark ? '#333' : '#E0E0E0'};
+        }
+        .related-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+        .related-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        .related-card {
+            background: ${isDark ? '#1A1A1A' : '#F8F8F8'};
+            padding: 15px;
+            border-radius: 10px;
+            text-decoration: none;
+            color: inherit;
+            transition: transform 0.3s;
+        }
+        .related-card:hover {
+            transform: translateY(-3px);
+        }
+        .related-card-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        .related-card-meta {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+        @media (max-width: 768px) {
+            .article-title { font-size: 28px; }
+            .article-content { font-size: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <a href="/" class="logo">${config.siteName}</a>
+            <div style="font-size: 12px; opacity: 0.7;">Tech & Finance News</div>
+        </div>
+    </header>
+    
+    <div class="article-container">
+        <div class="article-category">${article.category}</div>
+        <h1 class="article-title">${article.title}</h1>
+        
+        <div class="article-meta">
+            <span>📅 ${article.date || 'Today'}</span>
+            <span>👁️ ${article.views?.toLocaleString() || 1} views</span>
+            ${article.source ? `<span>📰 Source: ${article.source}</span>` : ''}
+            ${article.trending ? '<span>🔥 Trending</span>' : ''}
+        </div>
+        
+        ${article.image ? `
+            <img src="${article.image.url || article.image}" alt="${article.title}" class="article-image">
+            ${article.image.credit ? `<div class="image-credit">${article.image.credit}</div>` : ''}
+        ` : ''}
+        
+        <div class="article-content">
+            ${fullContent}
+        </div>
+        
+        <div class="share-buttons">
+            <div class="share-title">Share this article</div>
+            <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${encodeURIComponent('https://agaminews.in/article/' + articleId)}" 
+               target="_blank" class="share-btn">Twitter</a>
+            <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent('https://agaminews.in/article/' + articleId)}" 
+               target="_blank" class="share-btn">Facebook</a>
+            <a href="https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent('https://agaminews.in/article/' + articleId)}" 
+               target="_blank" class="share-btn">LinkedIn</a>
+            <a href="https://wa.me/?text=${encodeURIComponent(article.title + ' https://agaminews.in/article/' + articleId)}" 
+               target="_blank" class="share-btn">WhatsApp</a>
+        </div>
+        
+        <div class="related-articles">
+            <h2 class="related-title">More Stories</h2>
+            <div class="related-grid">
+                ${articles
+                  .filter((a, i) => i !== articleId && a.category === article.category)
+                  .slice(0, 3)
+                  .map((related, index) => `
+                    <a href="/article/${articles.indexOf(related)}" class="related-card">
+                        <div class="related-card-title">${related.title}</div>
+                        <div class="related-card-meta">${related.category} • ${related.date || 'Today'}</div>
+                    </a>
+                  `).join('')}
+            </div>
+        </div>
+        
+        <a href="/" class="back-btn">← Back to Homepage</a>
+    </div>
+</body>
+</html>`;
+
+  return new Response(html, {
+    headers: { 'Content-Type': 'text/html; charset=utf-8' }
+  });
+}
+
+// Generate full article content from summary
+function generateFullArticle(article) {
+  const summary = article.summary || '';
+  
+  // Expand the summary into a full article
+  const paragraphs = [];
+  
+  // Opening paragraph (the summary)
+  paragraphs.push(`<p><strong>${summary}</strong></p>`);
+  
+  // Add context based on category
+  if (article.category === 'Technology') {
+    paragraphs.push(`<p>This development in the technology sector represents a significant shift in how we interact with digital services. Industry experts are closely watching these developments as they could reshape the competitive landscape.</p>`);
+    paragraphs.push(`<p>The implications for consumers and businesses alike are substantial. Early adopters are already reporting significant benefits, while competitors are scrambling to keep pace with these innovations.</p>`);
+  } else if (article.category === 'Business' || article.category === 'Finance') {
+    paragraphs.push(`<p>Market analysts suggest this could have far-reaching implications for investors and traders. The timing of this development is particularly significant given the current economic climate.</p>`);
+    paragraphs.push(`<p>Financial experts recommend keeping a close eye on related sectors, as ripple effects are expected across the broader market. Both institutional and retail investors should consider the potential impact on their portfolios.</p>`);
+  } else if (article.category === 'India') {
+    paragraphs.push(`<p>This development holds particular significance for India's growing economy and its position on the global stage. The government's response to these events will be closely watched by both domestic and international observers.</p>`);
+    paragraphs.push(`<p>Local communities and businesses are already beginning to feel the effects of these changes. The long-term implications could reshape various sectors of the Indian economy.</p>`);
+  } else if (article.category === 'Sports') {
+    paragraphs.push(`<p>Fans and analysts alike are discussing the implications of this development for the upcoming season. The performance showcased here sets a new benchmark for excellence in the sport.</p>`);
+    paragraphs.push(`<p>Team dynamics and strategies are likely to evolve in response to these events. The competitive landscape of the sport continues to shift as athletes push the boundaries of what's possible.</p>`);
+  } else {
+    paragraphs.push(`<p>The broader implications of this story continue to unfold. Stakeholders across various sectors are assessing how these developments might affect their interests.</p>`);
+    paragraphs.push(`<p>As this situation develops, we'll continue to provide updates and analysis. The coming days and weeks will be crucial in determining the long-term impact of these events.</p>`);
+  }
+  
+  // Add a closing thought
+  paragraphs.push(`<p>Stay tuned to AgamiNews for continued coverage of this story and other breaking news from around the world. Our team is committed to bringing you timely, accurate, and insightful reporting on the stories that matter most.</p>`);
+  
+  // Add source attribution if available
+  if (article.source) {
+    paragraphs.push(`<p><em>This article includes reporting from ${article.source} and other news agencies.</em></p>`);
+  }
+  
+  return paragraphs.join('\n');
 }
 
 // Debug info
