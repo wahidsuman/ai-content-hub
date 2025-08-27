@@ -50,7 +50,7 @@ export default {
       });
     } else if (url.pathname.startsWith('/article/')) {
       // Individual article pages
-      return serveArticle(env, request, url.pathname);
+      return await serveArticle(env, request, url.pathname);
     } else if (url.pathname.startsWith('/api/')) {
       return handleAPI(request, env, url.pathname);
     }
@@ -1973,8 +1973,8 @@ async function fetchLatestNews(env) {
           }
           
           if (title && description) {
-            // Create human-like summary
-            const summary = await createHumanSummary(title, description, feed.category);
+            // Create human-like summary with GPT-4
+            const summary = await createHumanSummary(title, description, feed.category, env);
             
             // Get appropriate image
             const image = await getArticleImage(title, feed.category, env);
@@ -2080,9 +2080,67 @@ function makeHeadlineHuman(title) {
   return title.trim();
 }
 
-// Create in-depth, journalist-quality summary
-async function createHumanSummary(title, description, category) {
-  // Clean and prepare description
+// Create in-depth, journalist-quality summary using GPT-4
+async function createHumanSummary(title, description, category, env) {
+  // Use GPT-4 for high-quality content if API key is available
+  if (env.OPENAI_API_KEY) {
+    try {
+      const prompt = `You are a senior journalist for a leading Indian news website. Create a compelling, detailed news summary for this story:
+
+Title: ${title}
+Category: ${category}
+Context: ${description || 'Breaking news story'}
+
+Requirements:
+1. Write 150-200 words of engaging, informative content
+2. Include specific details, numbers, and context
+3. Add expert perspective or analysis
+4. Write in a conversational but professional tone
+5. Make it feel like insider information
+6. Include implications and what it means for readers
+7. Use Indian English and local context
+8. Make readers want to click and read more
+9. Don't use cliches or AI-sounding phrases
+10. Write like you're explaining to a smart friend
+
+Write ONLY the article summary, no titles or metadata:`;
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4-turbo-preview', // Using GPT-4 for quality
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an expert journalist who writes engaging, detailed news summaries for educated Indian readers. Your writing is conversational yet informative, with insider perspectives and real value.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 300
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const aiSummary = data.choices[0]?.message?.content;
+        if (aiSummary && aiSummary.length > 50) {
+          return aiSummary.trim();
+        }
+      }
+    } catch (error) {
+      console.error('GPT-4 summary error:', error);
+    }
+  }
+  
+  // Fallback to pattern-based summaries if no API
   description = (description || '').substring(0, 300).trim();
   
   // Extract key information from the title for better summaries
@@ -2316,7 +2374,7 @@ async function getArticleImage(title, category, env) {
       category + ' news india' // Category fallback
     ];
     
-    // Always try to use real photos for news
+    // First, try to use real photos for news
     for (const query of searchQueries) {
       if (env.UNSPLASH_ACCESS_KEY) {
         const unsplashUrl = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=10&orientation=landscape&client_id=${env.UNSPLASH_ACCESS_KEY}`;
@@ -2365,6 +2423,46 @@ async function getArticleImage(title, category, env) {
             };
           }
         }
+      }
+    }
+    
+    // Try DALL-E 3 for custom image generation if no good photos found
+    if (env.OPENAI_API_KEY && Math.random() > 0.7) { // Use for 30% of articles to manage costs
+      try {
+        const imagePrompt = `Create a professional news photograph for: ${title}. 
+        Style: Photojournalistic, realistic, high-quality news photography. 
+        Context: ${category} news in India. 
+        Make it compelling but appropriate for a news website.`;
+        
+        const response = await fetch('https://api.openai.com/v1/images/generations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${env.OPENAI_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: 'dall-e-3',
+            prompt: imagePrompt,
+            n: 1,
+            size: '1792x1024',
+            quality: 'standard',
+            style: 'natural'
+          })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.data && data.data[0]) {
+            return {
+              url: data.data[0].url,
+              credit: 'AI Generated Image',
+              type: 'dalle',
+              isRelevant: true
+            };
+          }
+        }
+      } catch (error) {
+        console.error('DALL-E generation error:', error);
       }
     }
     
@@ -2672,8 +2770,8 @@ async function serveArticle(env, request, pathname) {
   const config = await env.NEWS_KV.get('config', 'json') || {};
   const isDark = config.theme === 'dark';
   
-  // Generate full article content (expand the summary)
-  const fullContent = generateFullArticle(article);
+  // Generate full article content with GPT-4 (expand the summary)
+  const fullContent = await generateFullArticle(article, env);
   
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -3028,8 +3126,70 @@ async function serveArticle(env, request, pathname) {
   });
 }
 
-// Generate full article content from summary
-function generateFullArticle(article) {
+// Generate full article content using GPT-4 for depth
+async function generateFullArticle(article, env) {
+  // Use GPT-4 to expand article with real insights
+  if (env.OPENAI_API_KEY) {
+    try {
+      const prompt = `Expand this news story into a detailed, insightful article:
+
+Title: ${article.title}
+Category: ${article.category}
+Summary: ${article.summary}
+Source: ${article.source || 'News agencies'}
+
+Create a 400-500 word article that includes:
+1. Opening hook paragraph expanding on the summary
+2. Background and context (why this matters now)
+3. Key stakeholders and their perspectives
+4. Data, statistics, or expert opinions (can be synthesized)
+5. Implications for different groups (businesses, citizens, investors)
+6. What to watch for next
+7. Conclusion with forward-looking insight
+
+Write in HTML paragraphs (<p> tags). Make it informative, engaging, and valuable for readers. Use Indian context and examples. Write like The Ken or Bloomberg but accessible.`;
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4-turbo-preview',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a senior journalist writing in-depth articles for educated Indian readers. Create valuable, insightful content with real analysis.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.8,
+          max_tokens: 700
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const fullContent = data.choices[0]?.message?.content;
+        if (fullContent && fullContent.length > 100) {
+          return fullContent;
+        }
+      }
+    } catch (error) {
+      console.error('GPT-4 article generation error:', error);
+    }
+  }
+  
+  // Fallback to template-based generation
+  return generateFullArticleTemplate(article);
+}
+
+// Template-based article generation (fallback)
+function generateFullArticleTemplate(article) {
   const summary = article.summary || '';
   const title = article.title || '';
   const category = article.category || 'News';
