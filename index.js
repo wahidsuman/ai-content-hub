@@ -259,14 +259,17 @@ async function serveWebsite(env, request) {
             background: ${isDark ? '#0A0A0A' : '#FFF'};
             color: ${isDark ? '#FFF' : '#000'};
             line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
         .header {
             background: ${isDark ? '#1A1A1A' : '#F8F8F8'};
-            padding: 20px;
+            padding: 15px;
             border-bottom: 2px solid ${config.primaryColor};
             position: sticky;
             top: 0;
             z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         .header-content {
             max-width: 1200px;
@@ -274,24 +277,65 @@ async function serveWebsite(env, request) {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            padding: 0 15px;
+        }
+        .logo-section {
+            display: flex;
+            flex-direction: column;
         }
         .logo {
-            font-size: 28px;
+            font-size: 24px;
             font-weight: 900;
             color: ${config.primaryColor};
         }
         .tagline {
-            font-size: 12px;
+            font-size: 10px;
             color: ${isDark ? '#999' : '#666'};
             margin-top: 2px;
+            display: none;
         }
         .live {
             background: ${config.primaryColor};
             color: white;
-            padding: 5px 15px;
+            padding: 6px 12px;
             border-radius: 20px;
-            font-size: 12px;
+            font-size: 11px;
             animation: pulse 2s infinite;
+            white-space: nowrap;
+        }
+        
+        /* Mobile Menu Button */
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: ${config.primaryColor};
+            font-size: 24px;
+            cursor: pointer;
+            padding: 5px;
+            margin-left: 10px;
+        }
+        
+        @media (max-width: 768px) {
+            .header {
+                padding: 12px 10px;
+            }
+            .header-content {
+                padding: 0 10px;
+            }
+            .logo {
+                font-size: 20px;
+            }
+            .tagline {
+                display: block;
+            }
+            .live {
+                font-size: 10px;
+                padding: 5px 10px;
+            }
+            .mobile-menu-btn {
+                display: block;
+            }
         }
         @keyframes pulse {
             0%, 100% { opacity: 1; }
@@ -334,6 +378,7 @@ async function serveWebsite(env, request) {
             text-decoration: none;
             color: inherit;
             display: block;
+            -webkit-tap-highlight-color: transparent;
         }
         .news-card {
             background: ${isDark ? '#1A1A1A' : '#F8F8F8'};
@@ -346,6 +391,23 @@ async function serveWebsite(env, request) {
         .news-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        @media (max-width: 768px) {
+            .news-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+                margin: 15px 0;
+            }
+            .news-card {
+                border-radius: 8px;
+            }
+            .news-card:hover {
+                transform: none;
+            }
+            .news-card:active {
+                transform: scale(0.98);
+            }
         }
         .news-card:hover .news-title {
             color: ${config.primaryColor};
@@ -442,19 +504,109 @@ async function serveWebsite(env, request) {
             .news-grid { grid-template-columns: 1fr; }
             .stats-bar { grid-template-columns: repeat(2, 1fr); }
             .cta-buttons { flex-direction: column; }
+            
+            /* Enhanced Mobile Optimizations */
+            .container {
+                padding: 10px;
+            }
+            
+            /* Stats Mobile */
+            .stats-bar {
+                gap: 10px;
+                padding: 12px;
+                margin: 15px 0;
+            }
+            .stat-value {
+                font-size: 18px;
+            }
+            .stat-label {
+                font-size: 10px;
+            }
+            
+            /* News Cards Mobile */
+            .news-content {
+                padding: 15px;
+            }
+            .news-category {
+                font-size: 11px;
+            }
+            .news-title {
+                font-size: 16px;
+                line-height: 1.4;
+            }
+            .news-summary {
+                font-size: 13px;
+                line-height: 1.6;
+            }
+            .news-meta {
+                font-size: 11px;
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+            .news-image {
+                height: 180px;
+            }
+            
+            /* Headlines */
+            h2 {
+                font-size: 22px !important;
+                margin: 20px 0 15px !important;
+            }
+            
+            /* Touch targets */
+            .news-card-link, button, a {
+                -webkit-tap-highlight-color: transparent;
+            }
+            
+            /* Prevent horizontal scroll */
+            body {
+                overflow-x: hidden;
+                width: 100%;
+            }
+            
+            /* CTA Mobile */
+            .cta {
+                padding: 25px 15px;
+                margin: 20px 0;
+            }
+            .cta h2 {
+                font-size: 20px;
+            }
+            .cta p {
+                font-size: 14px;
+            }
+        }
+        
+        /* Small phones */
+        @media (max-width: 380px) {
+            .logo { font-size: 18px; }
+            .stats-bar { gap: 8px; }
+            .stat-value { font-size: 16px; }
+            .news-title { font-size: 15px; }
+            .news-summary { font-size: 12px; }
         }
     </style>
 </head>
 <body>
     <header class="header">
         <div class="header-content">
-            <div>
+            <div class="logo-section">
                 <div class="logo">${config.siteName}</div>
-                <div class="tagline">Tech & Finance News • Quick Reads for Busy Indians</div>
+                <div class="tagline">Tech & Finance • Quick Reads</div>
             </div>
-            <div class="live">● LIVE</div>
+            <div style="display: flex; align-items: center;">
+                <div class="live">● LIVE</div>
+                <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+            </div>
         </div>
     </header>
+    
+    <!-- Mobile Menu -->
+    <div id="mobileMenu" style="display: none; background: ${isDark ? '#1A1A1A' : '#F8F8F8'}; padding: 15px; border-bottom: 1px solid ${isDark ? '#333' : '#E0E0E0'};">
+        <a href="/" style="display: block; padding: 10px 0; color: inherit; text-decoration: none;">🏠 Home</a>
+        <a href="/fetch-news" style="display: block; padding: 10px 0; color: inherit; text-decoration: none;">🔄 Refresh News</a>
+        <a href="#" onclick="shareApp()" style="display: block; padding: 10px 0; color: inherit; text-decoration: none;">📤 Share App</a>
+    </div>
     
     <div class="container">
         <div class="stats-bar">
@@ -513,6 +665,58 @@ async function serveWebsite(env, request) {
             </div>
         </div>
     </div>
+    
+    <script>
+        // Mobile menu toggle
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        // Share app functionality
+        function shareApp() {
+            if (navigator.share) {
+                navigator.share({
+                    title: '${config.siteName}',
+                    text: 'Check out the latest Tech & Finance news!',
+                    url: 'https://agaminews.in'
+                }).catch(() => {});
+            } else {
+                // Fallback to copy URL
+                navigator.clipboard.writeText('https://agaminews.in');
+                alert('Link copied to clipboard!');
+            }
+        }
+        
+        // Add pull-to-refresh on mobile
+        let startY = 0;
+        let isPulling = false;
+        
+        document.addEventListener('touchstart', (e) => {
+            if (window.scrollY === 0) {
+                startY = e.touches[0].pageY;
+                isPulling = true;
+            }
+        });
+        
+        document.addEventListener('touchmove', (e) => {
+            if (isPulling && e.touches[0].pageY > startY + 100) {
+                // Show refresh indicator
+            }
+        });
+        
+        document.addEventListener('touchend', (e) => {
+            if (isPulling && e.changedTouches[0].pageY > startY + 100) {
+                location.reload();
+            }
+            isPulling = false;
+        });
+        
+        // Improve scroll performance on mobile
+        if ('ontouchstart' in window) {
+            document.body.style.cursor = 'pointer';
+        }
+    </script>
 </body>
 </html>`;
 
@@ -1938,8 +2142,81 @@ async function serveArticle(env, request, pathname) {
             opacity: 0.7;
         }
         @media (max-width: 768px) {
-            .article-title { font-size: 28px; }
-            .article-content { font-size: 16px; }
+            .header {
+                padding: 12px 10px;
+            }
+            .header-content {
+                padding: 0 10px;
+            }
+            .logo {
+                font-size: 20px;
+            }
+            .article-container {
+                padding: 20px 15px;
+            }
+            .article-title { 
+                font-size: 24px;
+                line-height: 1.3;
+                margin-bottom: 15px;
+            }
+            .article-content { 
+                font-size: 15px;
+                line-height: 1.7;
+            }
+            .article-content p {
+                margin-bottom: 15px;
+            }
+            .article-meta {
+                font-size: 12px;
+                gap: 10px;
+                flex-wrap: wrap;
+                margin-bottom: 20px;
+                padding-bottom: 15px;
+            }
+            .article-image {
+                border-radius: 8px;
+                max-height: 300px;
+            }
+            .share-buttons {
+                padding: 15px;
+                margin: 30px 0;
+            }
+            .share-btn {
+                padding: 10px 15px;
+                font-size: 13px;
+                margin: 3px;
+            }
+            .back-btn {
+                padding: 12px 25px;
+                font-size: 14px;
+                margin-top: 30px;
+            }
+            .related-title {
+                font-size: 20px;
+                margin-bottom: 15px;
+            }
+            .related-grid {
+                gap: 12px;
+            }
+            .related-card {
+                padding: 12px;
+            }
+            .related-card-title {
+                font-size: 14px;
+            }
+            .related-card-meta {
+                font-size: 11px;
+            }
+        }
+        
+        @media (max-width: 380px) {
+            .article-title { font-size: 20px; }
+            .article-content { font-size: 14px; }
+            .share-btn { 
+                display: block;
+                width: 100%;
+                margin: 5px 0;
+            }
         }
     </style>
 </head>
