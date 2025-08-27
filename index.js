@@ -191,15 +191,40 @@ export default {
         stats.lastAutoFetch = new Date().toISOString();
         await env.NEWS_KV.put('stats', JSON.stringify(stats));
         
-        // Send completion notification
+        // Send completion notification with article details
         if (adminChat && fetchResult.articlesPublished > 0) {
+          // Send summary first
           await sendMessage(env, adminChat, 
             `✅ *Auto-Publishing Complete*\n\n` +
             `📰 Published: ${fetchResult.articlesPublished} articles\n` +
             `📈 Total Today: ${stats.dailyArticlesPublished}/36\n` +
             `🔗 View: https://agaminews.in\n` +
-            `⏰ Next Run: 3 hours\n\n` +
-            `*Top Article:*\n${fetchResult.topArticle || 'N/A'}`
+            `⏰ Next Run: 3 hours`
+          );
+          
+          // Send individual article notifications
+          if (fetchResult.articles && fetchResult.articles.length > 0) {
+            for (const article of fetchResult.articles) {
+              await sendMessage(env, adminChat,
+                `📰 *New Article Published*\n\n` +
+                `📌 *Title:* ${article.title}\n` +
+                `🏷️ *Category:* ${article.category}\n` +
+                `📸 *Image:* ${article.image?.type === 'generated' ? 'AI Generated' : 'Real Photo'}\n` +
+                `📊 *Quality:* ${article.fullContent.length > 3000 ? '✅ High' : '⚠️ Low'}\n` +
+                `🔗 *Link:* https://agaminews.in/article/${article.id}\n\n` +
+                `_Auto-published at ${new Date().toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})}_`
+              );
+            }
+          }
+        } else if (adminChat && fetchResult.articlesPublished === 0) {
+          await sendMessage(env, adminChat,
+            `⚠️ *Auto-Publishing Failed*\n\n` +
+            `No articles were published.\n` +
+            `Possible issues:\n` +
+            `• OpenAI API quota exceeded\n` +
+            `• RSS feeds empty\n` +
+            `• All articles were generic/low quality\n\n` +
+            `Will retry in 3 hours.`
           );
         }
       }
@@ -2346,14 +2371,32 @@ async function fetchLatestNewsAuto(env, articlesToFetch = 3, priority = 'normal'
             }
             
             // Generate full article with GPT-3.5
-            const fullContent = await generateFullArticle(
-              { title, category },
-              cleanDesc,
-              env
-            );
+            let fullContent = '';
+            try {
+              fullContent = await generateFullArticle(
+                { title, category },
+                cleanDesc,
+                env
+              );
+              
+              // Check if we got generic content (fallback template)
+              if (fullContent.includes('This development is particularly significant')) {
+                console.log('Warning: Generic content detected, OpenAI may have failed');
+                // Skip this article if it's generic
+                continue;
+              }
+            } catch (error) {
+              console.error('Article generation failed:', error);
+              continue; // Skip failed articles
+            }
             
             // Get article-specific image
             const imageData = await getArticleImage(title, category, env);
+            
+            // Check if image is generic
+            if (imageData?.credit?.includes('Unsplash') && !imageData?.isRelevant) {
+              console.log('Warning: Generic image detected for:', title);
+            }
             
             allArticles.push({
               id: `auto-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -2397,6 +2440,7 @@ async function fetchLatestNewsAuto(env, articlesToFetch = 3, priority = 'normal'
     return {
       articlesPublished: allArticles.length,
       topArticle: allArticles[0]?.title || null,
+      articles: allArticles, // Include articles for notification
       priority: priority,
       timestamp: new Date().toISOString()
     };
@@ -4197,21 +4241,26 @@ CATEGORY: ${article.category}
 RAW CONTEXT: ${description}
 SOURCE: ${article.source || 'Multiple Sources'}
 
-WRITE A 1500-2000 WORD ARTICLE LIKE A REAL HUMAN EDITOR:
+WRITE A COMPREHENSIVE 1500-2000 WORD NEWS ARTICLE:
 
-HOW TO WRITE:
-• Start with something surprising or interesting - hook them immediately
-• Write like you're telling this story to a friend - conversational, engaging
-• Include your reactions: "I couldn't believe it when..." "Here's what got me..."
-• Use real examples people can relate to: "It's like when you..."
-• Add humor where appropriate - Indians love a good joke in their news
-• Express skepticism: "They claim X, but come on..." 
-• Get excited about big numbers: "₹50,000 crores! That's insane!"
-• Reference pop culture, movies, cricket - whatever fits
-• Include specific details: exact prices, actual quotes, real names
-• Write in a mix of short punchy sentences. And longer ones that flow naturally.
+STRUCTURE YOUR ARTICLE:
+• Lead paragraph: The key news in 2-3 sentences with WHO, WHAT, WHEN, WHERE, WHY
+• Context paragraph: Background and why this matters now
+• Details section: Specific information, data, quotes from authorities
+• Analysis section: Expert opinions, precedents, comparisons
+• Impact section: How this affects common citizens, specific groups
+• Future outlook: What happens next, upcoming developments
+• Conclusion: Key takeaways without saying "in conclusion"
 
-MAKE IT HUMAN - not perfect, not formal, but interesting and real
+JOURNALISTIC STANDARDS:
+• Attribution: "According to Ministry data..." "Sources revealed..." "Officials confirmed..."
+• Specific numbers: "₹2,34,567 crore budget" not "huge budget"
+• Real quotes: Create realistic quotes from officials, experts, affected citizens
+• Timeline: "The announcement came two days after..." 
+• Comparisons: "This is 23% higher than last year's..."
+• Regional impact: "In Karnataka alone, 4.5 lakh families..."
+
+MAKE IT CREDIBLE AND INFORMATIVE - Like reading The Hindu or Times of India
 
 ${article.category.toLowerCase().includes('politic') || article.category.toLowerCase().includes('india') ? `
 POLITICAL/NATIONAL NEWS STRUCTURE:
@@ -4303,28 +4352,33 @@ Write the FULL in-depth article:`;
           messages: [
             {
               role: 'system',
-              content: `You are a human editor at a major Indian news website. Write EXACTLY like a real person would write - with personality, opinions, and natural flow.
+              content: `You are a senior journalist at The Hindu or Times of India. Write professionally but with human warmth and insight.
 
-WRITING RULES:
-- Start with what's ACTUALLY interesting, not formal introductions
-- Use conversational language: "Look, here's what happened..." "You know what's crazy?"
-- Include your thoughts: "I think...", "What surprises me is...", "Honestly..."
-- Add specific details that only a human would notice
-- Reference real events: "Remember when..." "Just like what happened in..."
-- Use Indian expressions naturally: "lakh", "crore", but also "damn", "crazy", "insane"
-- Make jokes, be sarcastic when appropriate
-- Express genuine surprise or skepticism: "Wait, what?" "Seriously?"
-- Include specific prices, dates, names - but work them in naturally
-- Write like you're explaining to a friend over coffee
+WRITING STYLE:
+- Start with the most newsworthy aspect - the real impact on readers
+- Write clearly and directly: "The government announced..." not "It has been announced..."
+- Include expert analysis: "According to Dr. Sharma from IIT Delhi..."
+- Add context: "This is the third such incident this month"
+- Use data and facts: "The policy affects 2.3 crore students"
+- Include multiple perspectives: "While supporters argue..., critics point out..."
+- Reference precedents: "Similar to the 2019 policy change..."
+- Explain implications: "This means families will need to..."
+
+PROFESSIONAL BUT HUMAN:
+- Use "we" and "our" when referring to India/Indians
+- Show empathy: "For thousands of families, this means..."
+- Highlight real impact: "A Mumbai resident told us..."
+- Be analytical: "The timing suggests..."
+- Question when needed: "However, questions remain about..."
 
 AVOID:
-- "In conclusion" - humans don't write like that
-- "It is worth noting" - too formal
-- "Moreover", "Furthermore" - nobody talks like this
-- Perfect grammar all the time - use contractions, start sentences with "And" or "But"
-- Sounding like a report - sound like a conversation
+- Overly casual language ("crazy", "insane", "damn")
+- Too many exclamations or questions
+- Gossip-style writing
+- Generic statements without substance
+- AI-sounding phrases ("In the ever-evolving landscape...")
 
-BE HUMAN: Have opinions. Be surprised. Get excited. Be skeptical. Make it interesting.`
+TONE: Authoritative, informative, balanced - like a respected newspaper, not a blog.`
             },
             {
               role: 'user',
