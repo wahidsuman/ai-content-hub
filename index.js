@@ -2994,6 +2994,93 @@ function getActiveReaders(stats) {
   return Math.max(0, activeReaders + variance);
 }
 
+// Get peak hour from analytics
+function getPeakHour(stats) {
+  const analytics = stats.analytics || {};
+  const hourly = analytics.hourly || {};
+  
+  let maxHour = 0;
+  let maxViews = 0;
+  
+  for (const [hour, views] of Object.entries(hourly)) {
+    if (views > maxViews) {
+      maxViews = views;
+      maxHour = parseInt(hour);
+    }
+  }
+  
+  if (maxViews === 0) return 'N/A';
+  
+  // Format hour nicely
+  const period = maxHour >= 12 ? 'PM' : 'AM';
+  const displayHour = maxHour === 0 ? 12 : maxHour > 12 ? maxHour - 12 : maxHour;
+  return `${displayHour}:00 ${period}`;
+}
+
+// Get top country from analytics
+function getTopCountry(stats) {
+  const analytics = stats.analytics || {};
+  const countries = analytics.countries || {};
+  
+  let topCountry = 'IN';
+  let maxViews = 0;
+  
+  for (const [country, views] of Object.entries(countries)) {
+    if (views > maxViews) {
+      maxViews = views;
+      topCountry = country;
+    }
+  }
+  
+  // Convert country code to flag emoji
+  const countryFlags = {
+    'IN': '🇮🇳 India',
+    'US': '🇺🇸 USA',
+    'GB': '🇬🇧 UK',
+    'CA': '🇨🇦 Canada',
+    'AU': '🇦🇺 Australia',
+    'AE': '🇦🇪 UAE',
+    'SG': '🇸🇬 Singapore',
+    'MY': '🇲🇾 Malaysia',
+    'PK': '🇵🇰 Pakistan',
+    'BD': '🇧🇩 Bangladesh'
+  };
+  
+  return countryFlags[topCountry] || topCountry;
+}
+
+// Get mobile traffic percentage
+function getMobilePercent(stats) {
+  const analytics = stats.analytics || {};
+  const devices = analytics.devices || {};
+  
+  const mobile = devices.mobile || 0;
+  const desktop = devices.desktop || 0;
+  const total = mobile + desktop;
+  
+  if (total === 0) return 0;
+  
+  return Math.round((mobile / total) * 100);
+}
+
+// Get top referrers
+function getTopReferrers(stats) {
+  const analytics = stats.analytics || {};
+  const referrers = analytics.referrers || {};
+  
+  // Sort referrers by views
+  const sorted = Object.entries(referrers)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
+  
+  if (sorted.length === 0) return 'No referrers yet';
+  
+  return sorted.map(([domain, views]) => {
+    const displayDomain = domain === 'direct' ? 'Direct' : domain;
+    return displayDomain;
+  }).join(', ');
+}
+
 // Default articles
 function getDefaultArticles() {
   return [
