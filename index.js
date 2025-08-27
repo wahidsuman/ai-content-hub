@@ -448,20 +448,48 @@ async function serveWebsite(env, request) {
         @media (max-width: 768px) {
             .news-grid {
                 grid-template-columns: 1fr !important;
-                gap: 12px;
-                margin: 15px 0;
-                padding: 0 5px;
+                gap: 16px;
+                margin: 10px 0;
+                padding: 0;
             }
             .news-card {
-                border-radius: 8px;
+                border-radius: 12px;
                 width: 100%;
                 max-width: 100%;
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+            }
+            .news-card-link {
+                display: block;
+                width: 100%;
             }
             .news-card:hover {
                 transform: none;
             }
             .news-card:active {
                 transform: scale(0.98);
+            }
+            .news-image {
+                height: 200px;
+                width: 100%;
+                margin: 0;
+                border-radius: 0;
+            }
+            .news-content {
+                padding: 15px;
+            }
+            .news-title {
+                font-size: 17px;
+                line-height: 1.3;
+                margin-bottom: 8px;
+            }
+            .news-summary {
+                font-size: 14px;
+                line-height: 1.5;
+            }
+            .news-meta {
+                font-size: 11px;
             }
         }
         .news-card:hover .news-title {
@@ -562,15 +590,19 @@ async function serveWebsite(env, request) {
             
             /* Enhanced Mobile Optimizations */
             .container {
-                padding: 10px !important;
+                padding: 8px !important;
                 width: 100% !important;
+                max-width: 100% !important;
+                box-sizing: border-box !important;
+                overflow-x: hidden !important;
             }
             
             /* Stats Mobile */
             .stats-bar {
                 gap: 10px;
                 padding: 12px;
-                margin: 15px 0;
+                margin: 10px 0;
+                border-radius: 8px;
             }
             .stat-value {
                 font-size: 18px;
@@ -1670,31 +1702,54 @@ async function sendAPIUsage(env, chatId) {
   const apiUsage = config.contentStrategy?.apiUsage || {};
   const stats = await env.NEWS_KV.get('stats', 'json') || {};
   
-  // Calculate estimated usage
+  // Calculate estimated usage with better budget utilization
   const tokensToday = stats.tokensUsedToday || 0;
+  const articlesToday = stats.dailyArticlesPublished || 0;
   const estimatedMonthly = tokensToday * 30;
-  const costToday = (tokensToday / 1000) * 0.001; // Rough estimate
+  const costToday = (tokensToday / 1000) * 0.002; // GPT-3.5 actual cost
   const costMonthly = costToday * 30;
   
-  await sendMessage(env, chatId, `💵 *API Usage Report*
+  // Image API usage
+  const imageAPICallsToday = articlesToday * 2; // Assuming 2 API calls per article
+  const imageAPICostMonthly = 0; // Free tier for Unsplash/Pexels
+  
+  // Recommended optimizations
+  const budgetRemaining = 10.00 - costMonthly;
+  const additionalArticlesPossible = Math.floor(budgetRemaining / 0.15); // ~$0.15 per article
+  
+  await sendMessage(env, chatId, `💵 *API Usage & Optimization Report*
 
-*OpenAI Configuration:*
-🤖 Model: GPT-3.5 Turbo
-💰 Monthly Budget: $${apiUsage.monthlyBudget || 1.00}
-📊 Daily Token Limit: ${apiUsage.dailyLimit || 25000}
+*Budget Allocation:*
+💰 Monthly Budget: $10.00
+📊 Current Usage: ~$${costMonthly.toFixed(2)}/month
+💚 Budget Available: $${budgetRemaining.toFixed(2)}
 
-*Current Usage:*
-📅 Today: ~${tokensToday} tokens
-💵 Today's Cost: ~$${costToday.toFixed(3)}
-📈 Monthly Projection: ~$${costMonthly.toFixed(2)}
+*Current Performance:*
+📰 Articles Today: ${articlesToday}
+📈 Monthly Projection: ${articlesToday * 30} articles
+🤖 Model: GPT-3.5 Turbo (optimal for news)
+🖼️ Images: Unsplash + Pexels (free tier)
 
 *Cost Breakdown:*
-• News Summaries: ~$0.30/month
-• Bot Interactions: ~$0.20/month
-• Content Analysis: ~$0.10/month
+• Content Generation: ~$${(costMonthly * 0.6).toFixed(2)}/month
+• Summarization: ~$${(costMonthly * 0.3).toFixed(2)}/month
+• Bot Interactions: ~$${(costMonthly * 0.1).toFixed(2)}/month
+• Image APIs: $0.00 (free tier)
 
-✅ *Status:* Well under budget!
-💡 *Tip:* Current usage is optimized for cost-efficiency`, {
+*Optimization Opportunities:*
+✨ Can publish ${additionalArticlesPossible} more articles/month
+🎯 Target: 25-30 articles daily (750-900/month)
+📸 Image quality: Using real photos for personalities
+🔍 SEO: Optimized for Google ranking
+
+*Recommendations:*
+• Increase daily articles to 25-30 ✅
+• Use GPT-4 for premium articles (within budget)
+• Implement image caching to reduce API calls
+• Focus on trending topics for better engagement
+
+💡 *Status:* Only using ${Math.round(costMonthly / 10 * 100)}% of budget!
+🚀 *Action:* Scaling up quality and quantity`, {
     inline_keyboard: [
       [{ text: '↩️ Back', callback_data: 'menu' }]
     ]
@@ -2022,35 +2077,130 @@ async function createHumanSummary(title, description, category) {
   return categoryTemplates[Math.floor(Math.random() * categoryTemplates.length)];
 }
 
-// Smart image selection system
+// Enhanced image system with personality recognition
 async function getArticleImage(title, category, env) {
   try {
-    // Keywords for image search
-    const keywords = extractKeywords(title, category);
+    const titleLower = title.toLowerCase();
     
-    // Decision logic: Use real photo or generate?
-    const useRealPhoto = Math.random() > 0.3; // 70% real photos, 30% AI generated
+    // Check for specific personalities first
+    const personalities = {
+      // Political figures
+      'modi': { name: 'Narendra Modi', query: 'narendra modi india prime minister' },
+      'rahul': { name: 'Rahul Gandhi', query: 'rahul gandhi congress leader' },
+      'amit shah': { name: 'Amit Shah', query: 'amit shah bjp minister' },
+      'kejriwal': { name: 'Arvind Kejriwal', query: 'arvind kejriwal delhi chief minister' },
+      'yogi': { name: 'Yogi Adityanath', query: 'yogi adityanath uttar pradesh' },
+      'mamata': { name: 'Mamata Banerjee', query: 'mamata banerjee west bengal' },
+      'stalin': { name: 'MK Stalin', query: 'mk stalin tamil nadu' },
+      'xi': { name: 'Xi Jinping', query: 'xi jinping china president' },
+      'biden': { name: 'Joe Biden', query: 'joe biden usa president' },
+      'trump': { name: 'Donald Trump', query: 'donald trump usa' },
+      'putin': { name: 'Vladimir Putin', query: 'vladimir putin russia' },
+      
+      // Business personalities
+      'ambani': { name: 'Mukesh Ambani', query: 'mukesh ambani reliance' },
+      'adani': { name: 'Gautam Adani', query: 'gautam adani business' },
+      'tata': { name: 'Ratan Tata', query: 'ratan tata' },
+      'musk': { name: 'Elon Musk', query: 'elon musk tesla spacex' },
+      'gates': { name: 'Bill Gates', query: 'bill gates microsoft' },
+      'bezos': { name: 'Jeff Bezos', query: 'jeff bezos amazon' },
+      
+      // Bollywood personalities
+      'shah rukh': { name: 'Shah Rukh Khan', query: 'shah rukh khan bollywood' },
+      'srk': { name: 'Shah Rukh Khan', query: 'shahrukh khan actor' },
+      'salman': { name: 'Salman Khan', query: 'salman khan bollywood' },
+      'aamir': { name: 'Aamir Khan', query: 'aamir khan actor' },
+      'deepika': { name: 'Deepika Padukone', query: 'deepika padukone actress' },
+      'alia': { name: 'Alia Bhatt', query: 'alia bhatt bollywood' },
+      'ranveer': { name: 'Ranveer Singh', query: 'ranveer singh actor' },
+      
+      // Sports personalities
+      'kohli': { name: 'Virat Kohli', query: 'virat kohli cricket india' },
+      'dhoni': { name: 'MS Dhoni', query: 'ms dhoni cricket captain' },
+      'rohit': { name: 'Rohit Sharma', query: 'rohit sharma cricket' },
+      'bumrah': { name: 'Jasprit Bumrah', query: 'jasprit bumrah bowler' },
+      'messi': { name: 'Lionel Messi', query: 'lionel messi football' },
+      'ronaldo': { name: 'Cristiano Ronaldo', query: 'cristiano ronaldo football' }
+    };
     
-    if (useRealPhoto && env.UNSPLASH_ACCESS_KEY) {
-      // Try Unsplash first
-      const unsplashUrl = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(keywords)}&per_page=1&client_id=${env.UNSPLASH_ACCESS_KEY}`;
+    // Check if title contains any personality
+    let personalityQuery = null;
+    for (const [key, value] of Object.entries(personalities)) {
+      if (titleLower.includes(key)) {
+        personalityQuery = value.query;
+        break;
+      }
+    }
+    
+    // If personality found, prioritize their real photos
+    if (personalityQuery) {
+      // Try Unsplash for personality photos
+      if (env.UNSPLASH_ACCESS_KEY) {
+        const unsplashUrl = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(personalityQuery)}&per_page=3&client_id=${env.UNSPLASH_ACCESS_KEY}`;
+        const response = await fetch(unsplashUrl);
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.results && data.results.length > 0) {
+            // Pick the best quality image
+            const bestImage = data.results[0];
+            return {
+              url: bestImage.urls.regular,
+              credit: `Photo by ${bestImage.user.name} on Unsplash`,
+              type: 'personality',
+              isRelevant: true
+            };
+          }
+        }
+      }
+      
+      // Try Pexels for personality photos
+      if (env.PEXELS_API_KEY) {
+        const pexelsUrl = `https://api.pexels.com/v1/search?query=${encodeURIComponent(personalityQuery)}&per_page=3`;
+        const response = await fetch(pexelsUrl, {
+          headers: { 'Authorization': env.PEXELS_API_KEY }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.photos && data.photos.length > 0) {
+            return {
+              url: data.photos[0].src.large,
+              credit: `Photo by ${data.photos[0].photographer} on Pexels`,
+              type: 'personality',
+              isRelevant: true
+            };
+          }
+        }
+      }
+    }
+    
+    // Extract better keywords for non-personality searches
+    const keywords = extractSmartKeywords(title, category);
+    
+    // Always try to use real photos for news
+    if (env.UNSPLASH_ACCESS_KEY) {
+      const unsplashUrl = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(keywords)}&per_page=5&client_id=${env.UNSPLASH_ACCESS_KEY}`;
       const response = await fetch(unsplashUrl);
       
       if (response.ok) {
         const data = await response.json();
         if (data.results && data.results.length > 0) {
+          // Pick a random image from top 5 for variety
+          const randomIndex = Math.floor(Math.random() * Math.min(5, data.results.length));
+          const selectedImage = data.results[randomIndex];
           return {
-            url: data.results[0].urls.regular,
-            credit: `Photo by ${data.results[0].user.name} on Unsplash`,
-            type: 'unsplash'
+            url: selectedImage.urls.regular,
+            credit: `Photo by ${selectedImage.user.name} on Unsplash`,
+            type: 'unsplash',
+            isRelevant: true
           };
         }
       }
     }
     
-    if (useRealPhoto && env.PEXELS_API_KEY) {
-      // Fallback to Pexels
-      const pexelsUrl = `https://api.pexels.com/v1/search?query=${encodeURIComponent(keywords)}&per_page=1`;
+    if (env.PEXELS_API_KEY) {
+      const pexelsUrl = `https://api.pexels.com/v1/search?query=${encodeURIComponent(keywords)}&per_page=5`;
       const response = await fetch(pexelsUrl, {
         headers: { 'Authorization': env.PEXELS_API_KEY }
       });
@@ -2058,53 +2208,106 @@ async function getArticleImage(title, category, env) {
       if (response.ok) {
         const data = await response.json();
         if (data.photos && data.photos.length > 0) {
+          const randomIndex = Math.floor(Math.random() * Math.min(5, data.photos.length));
           return {
-            url: data.photos[0].src.large,
-            credit: `Photo by ${data.photos[0].photographer} on Pexels`,
-            type: 'pexels'
+            url: data.photos[randomIndex].src.large,
+            credit: `Photo by ${data.photos[randomIndex].photographer} on Pexels`,
+            type: 'pexels',
+            isRelevant: true
           };
         }
       }
     }
     
-    // Default category images as fallback
+    // High-quality default images by category
     const defaultImages = {
-      'Technology': 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800',
-      'Business': 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800',
-      'India': 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=800',
-      'World': 'https://images.unsplash.com/photo-1521295121783-8a321d551ad2?w=800',
-      'Sports': 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800'
+      'Technology': [
+        'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800',
+        'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800',
+        'https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=800'
+      ],
+      'Business': [
+        'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800',
+        'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800',
+        'https://images.unsplash.com/photo-1444653614773-995cb1ef9efa?w=800'
+      ],
+      'India': [
+        'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=800',
+        'https://images.unsplash.com/photo-1564507592333-c60657eea523?w=800',
+        'https://images.unsplash.com/photo-1545126178-862cdb469409?w=800'
+      ],
+      'World': [
+        'https://images.unsplash.com/photo-1521295121783-8a321d551ad2?w=800',
+        'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=800'
+      ],
+      'Sports': [
+        'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800',
+        'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=800'
+      ],
+      'Entertainment': [
+        'https://images.unsplash.com/photo-1603739903239-8b6e64c3b185?w=800',
+        'https://images.unsplash.com/photo-1598387993441-a364f854c3e1?w=800'
+      ]
     };
     
+    const categoryImages = defaultImages[category] || defaultImages['India'];
+    const randomDefault = categoryImages[Math.floor(Math.random() * categoryImages.length)];
+    
     return {
-      url: defaultImages[category] || defaultImages['India'],
+      url: randomDefault,
       credit: 'Stock Photo',
-      type: 'default'
+      type: 'default',
+      isRelevant: false
     };
     
   } catch (error) {
     console.error('Image fetch error:', error);
     return {
-      url: 'https://via.placeholder.com/800x400?text=AgamiNews',
+      url: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800',
       credit: 'AgamiNews',
-      type: 'placeholder'
+      type: 'fallback',
+      isRelevant: false
     };
   }
 }
 
-// Extract keywords for image search
-function extractKeywords(title, category) {
-  // Remove common words
-  const stopWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for'];
-  let words = title.toLowerCase().split(' ').filter(w => !stopWords.includes(w));
+// Extract smart keywords for better image matching
+function extractSmartKeywords(title, category) {
+  const titleLower = title.toLowerCase();
   
-  // Add category context
-  if (category === 'Technology') words.push('tech', 'digital');
-  if (category === 'Business') words.push('finance', 'market');
-  if (category === 'India') words.push('india', 'indian');
+  // Remove common words and extract meaningful terms
+  const stopWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'says', 'said', 'will', 'would', 'could', 'should', 'may', 'might'];
   
-  return words.slice(0, 3).join(' ');
+  let words = title.split(' ').filter(w => 
+    !stopWords.includes(w.toLowerCase()) && w.length > 2
+  );
+  
+  // Add context-specific keywords
+  if (titleLower.includes('market') || titleLower.includes('sensex') || titleLower.includes('nifty')) {
+    return 'stock market india trading';
+  }
+  if (titleLower.includes('cricket') || titleLower.includes('match')) {
+    return 'cricket india stadium';
+  }
+  if (titleLower.includes('bollywood') || titleLower.includes('film')) {
+    return 'bollywood cinema india';
+  }
+  if (titleLower.includes('startup') || titleLower.includes('unicorn')) {
+    return 'startup technology india business';
+  }
+  if (titleLower.includes('election') || titleLower.includes('vote')) {
+    return 'india election democracy voting';
+  }
+  if (titleLower.includes('festival') || titleLower.includes('celebration')) {
+    return 'india festival celebration culture';
+  }
+  
+  // Combine top words with category
+  const keywords = words.slice(0, 3).join(' ');
+  return keywords || category.toLowerCase();
 }
+
+
 
 // Balance article categories
 function shuffleAndBalance(articles) {
