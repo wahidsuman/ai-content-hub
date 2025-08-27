@@ -19,6 +19,8 @@ export default {
       return new Response(`User-agent: *\nAllow: /\nSitemap: ${url.origin}/sitemap.xml`, {
         headers: { 'Content-Type': 'text/plain' }
       });
+    } else if (url.pathname === '/debug') {
+      return debugInfo(env);
     } else if (url.pathname.startsWith('/api/')) {
       return handleAPI(request, env, url.pathname);
     }
@@ -275,6 +277,12 @@ async function serveWebsite(env) {
 // Telegram handler
 async function handleTelegram(request, env) {
   try {
+    // Check if token exists
+    if (!env.TELEGRAM_BOT_TOKEN) {
+      console.error('TELEGRAM_BOT_TOKEN not found in environment variables');
+      return new Response('Token not configured', { status: 500 });
+    }
+    
     const update = await request.json();
     
     if (update.message) {
@@ -442,6 +450,25 @@ async function handleCallback(env, query) {
     default:
       await sendMessage(env, chatId, 'Processing...');
   }
+}
+
+// Debug info
+async function debugInfo(env) {
+  const hasToken = !!env.TELEGRAM_BOT_TOKEN;
+  const tokenLength = env.TELEGRAM_BOT_TOKEN ? env.TELEGRAM_BOT_TOKEN.length : 0;
+  const hasKV = !!env.NEWS_KV;
+  
+  return new Response(JSON.stringify({
+    status: 'debug',
+    telegram_token_configured: hasToken,
+    token_length: tokenLength,
+    kv_configured: hasKV,
+    environment: {
+      worker_url: env.WORKER_URL || 'not set'
+    }
+  }, null, 2), {
+    headers: { 'Content-Type': 'application/json' }
+  });
 }
 
 // Setup webhook
