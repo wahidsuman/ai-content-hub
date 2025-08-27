@@ -1083,26 +1083,53 @@ Or use /menu for all options! 🚀
 
 // New function: Handle fetch news
 async function handleFetchNews(env, chatId) {
-  await sendMessage(env, chatId, `🔄 *Fetching Latest News...*\n\nThis will take about 30 seconds...`);
+  await sendMessage(env, chatId, `🔄 *Fetching Premium News...*\n\n⏳ Processing with GPT-4o for quality content...\nThis may take 30-60 seconds.`);
   
   try {
     // Call the fetch news function
     const result = await fetchLatestNews(env);
-    const data = await result.json();
+    
+    if (!result) {
+      throw new Error('No response from fetch function');
+    }
+    
+    let data;
+    try {
+      data = await result.json();
+    } catch (e) {
+      throw new Error('Invalid response format');
+    }
     
     if (data.success) {
+      const stats = await env.NEWS_KV.get('stats', 'json') || {};
       await sendMessage(env, chatId, `
-✅ *News Update Complete!*
+✅ *Premium News Update Complete!*
 
-📰 Articles fetched: ${data.articles}
-📸 Images loaded: All with credits
-🌍 Sources: TOI, NDTV, Hindu, BBC, CNN, TechCrunch
-⏰ Next auto-update: 3 hours
+📰 Articles published: ${data.articles}
+✨ Quality: ${env.OPENAI_API_KEY ? 'Premium (GPT-4o)' : 'Standard'}
+📸 Images: ${env.OPENAI_API_KEY ? 'AI + Photos' : 'Stock Photos'}
+🌍 Sources: Multiple RSS feeds
+📊 Daily Progress: ${stats.dailyArticlesPublished || data.articles}/12
 
-Visit your site to see the fresh content!
-https://agaminews.in
+Visit: https://agaminews.in
 
-*Tip:* News auto-updates every 3 hours. Use /fetch anytime for manual update.
+*Next auto-update:* 3 hours
+*Quality Mode:* 10-12 articles/day
+      `, {
+        inline_keyboard: [
+          [{ text: '📊 View Stats', callback_data: 'stats' }],
+          [{ text: '↩️ Back', callback_data: 'menu' }]
+        ]
+      });
+    } else if (data.message && data.message.includes('limit reached')) {
+      await sendMessage(env, chatId, `
+ℹ️ *Daily Quality Limit Reached*
+
+✅ Published today: ${data.published}/12 articles
+📌 Strategy: Premium quality over quantity
+⏰ Next batch: Tomorrow 6 AM
+
+Current articles: https://agaminews.in
       `, {
         inline_keyboard: [
           [{ text: '📊 View Stats', callback_data: 'stats' }],
@@ -1110,10 +1137,25 @@ https://agaminews.in
         ]
       });
     } else {
-      throw new Error(data.error || 'Failed to fetch');
+      throw new Error(data.error || data.message || 'Failed to fetch');
     }
   } catch (error) {
-    await sendMessage(env, chatId, `❌ Error fetching news: ${error.message}\n\nTry again in a moment.`);
+    console.error('Fetch error:', error);
+    await sendMessage(env, chatId, `❌ *Error Fetching News*
+
+${error.message}
+
+*Possible Issues:*
+• RSS feeds temporarily down
+• OpenAI API key issue (if set)
+• Network connectivity
+
+*Try:*
+1. Check /status for system health
+2. Wait a moment and try again
+3. Verify API keys in Cloudflare
+
+*Debug:* ${error.stack ? error.stack.substring(0, 200) : 'No stack trace'}`);
   }
 }
 
@@ -1893,8 +1935,9 @@ async function sendSEOReport(env, chatId) {
   });
 }
 
-// Enhanced news fetching for 20-30 daily articles
+// Enhanced news fetching for premium quality articles
 async function fetchLatestNews(env) {
+  console.log('Starting news fetch...');
   try {
     const config = await env.NEWS_KV.get('config', 'json') || {};
     const stats = await env.NEWS_KV.get('stats', 'json') || {};
@@ -1941,8 +1984,13 @@ async function fetchLatestNews(env) {
     
     // Fetch from each feed
     for (const feed of feeds) {
+      console.log(`Fetching from ${feed.source}...`);
       try {
         const response = await fetch(feed.url);
+        if (!response.ok) {
+          console.error(`Failed to fetch ${feed.source}: ${response.status}`);
+          continue;
+        }
         const text = await response.text();
         
         // Enhanced RSS parsing
@@ -2021,12 +2069,24 @@ async function fetchLatestNews(env) {
       await sendMessage(env, adminChat, `📰 *News Update Complete!*\n\n✅ Published: ${allArticles.length} new articles\n📈 Daily Progress: ${stats.dailyArticlesPublished}/${dailyTarget} (${dailyProgress}%)\n📊 Categories: ${[...new Set(allArticles.map(a => a.category))].join(', ')}\n⏰ Next update: 3 hours\n\n💡 *Quality Focus:* Each article has in-depth research and unique angles`);
     }
     
-    return new Response(JSON.stringify({ success: true, articles: allArticles.length }), {
+    return new Response(JSON.stringify({ 
+      success: true, 
+      articles: allArticles.length,
+      dailyPublished: stats.dailyArticlesPublished
+    }), {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error) {
     console.error('News fetch error:', error);
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    console.error('Error stack:', error.stack);
+    return new Response(JSON.stringify({ 
+      success: false,
+      error: error.message || 'Unknown error occurred',
+      details: error.stack ? error.stack.substring(0, 500) : 'No stack trace'
+    }), { 
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }
 
