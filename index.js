@@ -1084,6 +1084,12 @@ Trending: ${articles.filter(a => a.trending).length}
 async function handleNaturalLanguage(env, chatId, text) {
   const lower = text.toLowerCase();
   
+  // Test command (also handle as natural language)
+  if (lower === 'test' || lower.includes('test article') || lower.includes('test generation')) {
+    await handleTestGeneration(env, chatId);
+    return;
+  }
+  
   // Fetch news commands
   if (lower.includes('fetch') || lower.includes('update news') || lower.includes('get news')) {
     await handleFetchNews(env, chatId);
