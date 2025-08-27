@@ -2008,25 +2008,34 @@ async function fetchLatestNews(env) {
       }), { headers: { 'Content-Type': 'application/json' } });
     }
     
-    // Fetch from multiple RSS feeds - Focus on Tech and Auto
+    // Fetch from comprehensive RSS feeds - All categories with depth
     const feeds = [
-      // Tech & Gadgets (Priority)
+      // Political & National News (Important)
+      { url: 'https://timesofindia.indiatimes.com/rssfeeds/1221656.cms', category: 'Politics', source: 'TOI' },
+      { url: 'https://feeds.feedburner.com/ndtvnews-top-stories', category: 'India', source: 'NDTV' },
+      { url: 'https://www.thehindu.com/news/national/feeder/default.rss', category: 'Politics', source: 'The Hindu' },
+      { url: 'https://indianexpress.com/feed/', category: 'Politics', source: 'Indian Express' },
+      
+      // Technology & Gadgets
       { url: 'https://feeds.feedburner.com/ndtvgadgets-latest', category: 'Technology', source: 'NDTV Gadgets' },
-      { url: 'https://www.gsmarena.com/rss-news-reviews.php3', category: 'Mobile', source: 'GSMArena' },
-      { url: 'https://gadgets360.com/rss/feeds', category: 'Gadgets', source: 'Gadgets 360' },
+      { url: 'https://www.gsmarena.com/rss-news-reviews.php3', category: 'Technology', source: 'GSMArena' },
       { url: 'https://techcrunch.com/feed/', category: 'Technology', source: 'TechCrunch' },
       
-      // Auto & Cars
-      { url: 'https://www.cartoq.com/feed/', category: 'Auto', source: 'CarToq' },
-      { url: 'https://www.cardekho.com/rss/latest-car-news.xml', category: 'Auto', source: 'CarDekho' },
-      { url: 'https://auto.economictimes.indiatimes.com/rss/topstories', category: 'Auto', source: 'ET Auto' },
-      
-      // Business & Markets
+      // Business & Economy
       { url: 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms', category: 'Business', source: 'ET Markets' },
       { url: 'https://www.moneycontrol.com/rss/latestnews.xml', category: 'Business', source: 'MoneyControl' },
+      { url: 'https://www.livemint.com/rss/markets', category: 'Business', source: 'Mint' },
       
-      // General News
-      { url: 'https://timesofindia.indiatimes.com/rssfeeds/1221656.cms', category: 'India', source: 'TOI' }
+      // International News
+      { url: 'https://feeds.bbci.co.uk/news/world/rss.xml', category: 'World', source: 'BBC' },
+      { url: 'https://rss.cnn.com/rss/edition_world.rss', category: 'World', source: 'CNN' },
+      
+      // Auto & Cars
+      { url: 'https://auto.economictimes.indiatimes.com/rss/topstories', category: 'Auto', source: 'ET Auto' },
+      
+      // Sports & Entertainment
+      { url: 'https://www.espncricinfo.com/rss/content/story/feeds/0.xml', category: 'Sports', source: 'ESPN' },
+      { url: 'https://feeds.feedburner.com/ndtvmovies-latest', category: 'Entertainment', source: 'NDTV Movies' }
     ];
     
     let allArticles = [];
@@ -2222,13 +2231,13 @@ async function createHumanSummary(title, description, category, env) {
   // Use GPT-4 for high-quality content if API key is available
   if (env.OPENAI_API_KEY) {
     try {
-      const prompt = `You are a viral tech/auto journalist writing clickable, specification-rich news for Indian readers.
+      const prompt = `You are an investigative journalist creating deeply researched, comprehensive news summaries for educated Indian readers.
 
 HEADLINE: ${title}
 CATEGORY: ${category}  
 CONTEXT: ${description || 'Breaking news story'}
 
-CREATE A 200-250 WORD VIRAL SUMMARY WITH MAXIMUM SPECIFICATIONS:
+CREATE A 300-400 WORD WELL-RESEARCHED SUMMARY WITH:
 
 ${category.toLowerCase().includes('tech') || category.toLowerCase().includes('gadget') ? `
 TECH/MOBILE SPECS TO INCLUDE:
@@ -2256,17 +2265,27 @@ AUTO/VEHICLE SPECS TO INCLUDE:
 • vs competitors: "better mileage than Creta", "cheaper than Innova"
 ` : ''}
 
-WRITING RULES:
-• START with the most impressive number (price/mileage/RAM)
-• Use exact specifications, never vague terms
-• Include "vs" comparisons with popular models
-• Add urgency: "booking starts tomorrow", "only 1000 units"
-• Mention offers: "free accessories worth ₹50,000"
-• End with action: when/where to book/buy
+COMPREHENSIVE COVERAGE REQUIREMENTS:
+• DEPTH: Provide context, background, and why this matters now
+• SPECIFICS: Include ALL relevant numbers, dates, names, locations
+• MULTIPLE PERSPECTIVES: Government view, opposition response, public impact
+• EXPERT ANALYSIS: What experts/analysts are saying
+• HISTORICAL CONTEXT: Previous similar events, precedents
+• FUTURE IMPLICATIONS: Short-term and long-term consequences
+• REGIONAL IMPACT: How it affects different states/communities
+• GLOBAL CONNECTION: International relevance if any
+• DATA & STATISTICS: Surveys, polls, economic indicators
+• GROUND REALITY: Real stories from affected people
 
-Write like GSMArena, 91mobiles, CarDekho - make it shareable!
+WRITING STYLE:
+• Investigative and thorough like The Hindu or Indian Express
+• Include specific examples and case studies
+• Quote relevant authorities and sources
+• Provide actionable insights for readers
+• Balance multiple viewpoints fairly
+• Use data to support every claim
 
-Write ONLY the viral, spec-rich summary:`;
+Write a COMPREHENSIVE, WELL-RESEARCHED summary that readers would find in premium newspapers:`;
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -2286,11 +2305,11 @@ Write ONLY the viral, spec-rich summary:`;
               content: prompt
             }
           ],
-          temperature: 0.9,
-          max_tokens: 500, // More tokens for richer content
-          presence_penalty: 0.2,
-          frequency_penalty: 0.2,
-          top_p: 0.95 // Better creativity
+          temperature: 0.7, // More factual for research
+          max_tokens: 800, // Much more for comprehensive coverage
+          presence_penalty: 0.3,
+          frequency_penalty: 0.3,
+          top_p: 0.9 // Balanced creativity and accuracy
         })
       });
 
@@ -3304,53 +3323,93 @@ async function generateFullArticle(article, env) {
   // Use GPT-4 to expand article with real insights
   if (env.OPENAI_API_KEY) {
     try {
-      const prompt = `You are writing viral, specification-packed articles for Indian tech/auto enthusiasts.
+      const prompt = `You are an investigative journalist writing comprehensive, well-researched articles for educated Indian readers.
 
 HEADLINE: ${article.title}
 CATEGORY: ${article.category}
 SUMMARY: ${article.summary}
-SOURCE: ${article.source || 'Exclusive'}
+SOURCE: ${article.source || 'Multiple Sources'}
 
-CREATE A 600-800 WORD VIRAL ARTICLE:
+CREATE A 1000-1200 WORD IN-DEPTH INVESTIGATIVE ARTICLE:
 
-${article.category.toLowerCase().includes('tech') || article.category.toLowerCase().includes('mobile') || article.category.toLowerCase().includes('gadget') ? `
-TECH ARTICLE STRUCTURE:
-<p><strong>Price & Availability:</strong> Start with exact price (₹XX,XXX), EMI details, launch date, sale date, platforms (Amazon/Flipkart)</p>
-<p><strong>Specifications Table:</strong> Display (size, type, refresh rate), Processor (exact model), RAM/Storage variants, Camera setup (all sensors), Battery & charging speeds</p>
-<p><strong>Unique Features:</strong> What makes this different - AI features, exclusive tech, special modes</p>
-<p><strong>Performance Comparison:</strong> Benchmark scores, real-world usage, gaming performance vs competitors</p>
-<p><strong>Camera Samples:</strong> Describe photo quality, video capabilities, special modes</p>
-<p><strong>Value Proposition:</strong> Compare with 3 competitors - show why this is better/worse</p>
-<p><strong>Who Should Buy:</strong> Target audience, use cases, alternatives to consider</p>
-<p><strong>Verdict:</strong> Pros, cons, final score, should you wait or buy now</p>
+${article.category.toLowerCase().includes('politic') || article.category.toLowerCase().includes('india') ? `
+POLITICAL/NATIONAL NEWS STRUCTURE:
+<p><strong>The Development:</strong> What exactly happened, when, where, who's involved</p>
+<p><strong>Background & Context:</strong> How we got here - timeline of events, previous attempts, historical precedents</p>
+<p><strong>Key Players:</strong> All stakeholders - government, opposition, civil society, affected communities</p>
+<p><strong>The Numbers:</strong> Budget allocations, voter statistics, demographic data, economic impact</p>
+<p><strong>Ground Report:</strong> Real stories from affected people, quotes from locals, on-ground situation</p>
+<p><strong>Political Analysis:</strong> Why now? Electoral implications, power dynamics, hidden agendas</p>
+<p><strong>Opposition Response:</strong> Detailed reactions from all political parties, their strategies</p>
+<p><strong>Expert Views:</strong> Constitutional experts, economists, political analysts' perspectives</p>
+<p><strong>State-wise Impact:</strong> How different states are affected, regional variations</p>
+<p><strong>International Perspective:</strong> Global reactions, comparisons with other countries</p>
+<p><strong>Legal Aspects:</strong> Constitutional provisions, court cases, legal challenges</p>
+<p><strong>Future Scenarios:</strong> What happens next, possible outcomes, timeline ahead</p>
 ` : ''}
 
-${article.category.toLowerCase().includes('auto') || article.category.toLowerCase().includes('car') ? `
-AUTO ARTICLE STRUCTURE:
-<p><strong>Price & Variants:</strong> All variants with prices, on-road prices for major cities, EMI calculator</p>
-<p><strong>Engine & Performance:</strong> All engine options, power figures, 0-100 times, top speed</p>
-<p><strong>Mileage Deep Dive:</strong> City/Highway/Combined KMPL, real-world vs claimed, fuel tank capacity</p>
-<p><strong>Features List:</strong> Segment-first features, what each variant gets, missing features</p>
-<p><strong>Space & Comfort:</strong> Boot space (litres), seating configuration, rear seat comfort</p>
-<p><strong>Safety:</strong> NCAP rating, airbags count, ADAS features, build quality</p>
-<p><strong>vs Rivals:</strong> Detailed comparison with top 3 competitors on price, features, mileage</p>
-<p><strong>Buying Advice:</strong> Best variant to buy, waiting period, upcoming updates</p>
+${article.category.toLowerCase().includes('business') || article.category.toLowerCase().includes('economy') ? `
+BUSINESS/ECONOMY STRUCTURE:
+<p><strong>Market Movement:</strong> Exact numbers - indices, stock prices, percentage changes, volumes</p>
+<p><strong>Company Details:</strong> Revenue, profit, market cap, employee count, expansion plans</p>
+<p><strong>Sector Analysis:</strong> Industry trends, market size, growth projections, competition</p>
+<p><strong>Regulatory Environment:</strong> Government policies, RBI decisions, SEBI regulations</p>
+<p><strong>Global Context:</strong> International markets, dollar rates, crude prices, FII/DII data</p>
+<p><strong>Expert Commentary:</strong> Fund managers, economists, industry leaders' views</p>
+<p><strong>Historical Performance:</strong> 5-year trends, comparison with previous quarters/years</p>
+<p><strong>Investment Angle:</strong> Should you invest? Risk factors, return expectations</p>
+<p><strong>Impact on Common People:</strong> How it affects savings, loans, jobs, prices</p>
+<p><strong>Competitor Analysis:</strong> What rivals are doing, market share changes</p>
 ` : ''}
 
-MUST INCLUDE:
-• At least 10 specific numbers (prices, specs, percentages)
-• Comparison table with 3+ competitors
-• "Should you buy" verdict with clear yes/no
-• Upcoming alternatives to wait for
-• Current offers/discounts available
-• Expert tip or hack (how to get best deal)
+${article.category.toLowerCase().includes('tech') ? `
+TECHNOLOGY DEEP DIVE:
+<p><strong>Technical Specifications:</strong> Complete specs with benchmarks, real-world performance</p>
+<p><strong>Innovation Analysis:</strong> What's genuinely new, what's marketing, patent details</p>
+<p><strong>Market Context:</strong> Pricing strategy, target audience, competition landscape</p>
+<p><strong>User Experience:</strong> Real-world usage, pros/cons, long-term reliability</p>
+<p><strong>Ecosystem Impact:</strong> How it fits with other products, compatibility, integration</p>
+<p><strong>Future Roadmap:</strong> Upcoming updates, next generation plans, industry direction</p>
+` : ''}
 
-STYLE: Write like Team-BHP, GSMArena, CarWale - enthusiast-focused
-FORMAT: HTML <p> tags, use <strong> for specs, <em> for emphasis
+${article.category.toLowerCase().includes('world') || article.category.toLowerCase().includes('international') ? `
+INTERNATIONAL NEWS ANALYSIS:
+<p><strong>Global Context:</strong> Why this matters to India, bilateral relations, trade impact</p>
+<p><strong>Geopolitical Analysis:</strong> Power dynamics, alliance implications, strategic interests</p>
+<p><strong>Economic Implications:</strong> Trade, investment, currency, commodity price impacts</p>
+<p><strong>Historical Background:</strong> How this situation developed, key turning points</p>
+<p><strong>Indian Diaspora:</strong> Impact on Indians abroad, NRI perspectives</p>
+<p><strong>Diplomatic Angle:</strong> India's position, MEA response, UN involvement</p>
+<p><strong>Future Outlook:</strong> Scenarios, India's options, timeline of events</p>
+` : ''}
 
-Create content that readers will share in WhatsApp groups!
+RESEARCH REQUIREMENTS:
+• Include 15-20 specific data points (statistics, amounts, percentages, dates)
+• Quote at least 3-4 authoritative sources or experts
+• Provide historical context going back 5-10 years
+• Include multiple perspectives (minimum 3 different viewpoints)
+• Add regional/demographic breakdown where relevant
+• Connect to 3-4 related developments or trends
+• Explain technical/legal terms in simple language
+• Include "What this means for you" section for readers
+• Provide timeline of events where applicable
+• Add comparison with 2-3 similar cases/situations
 
-Write the FULL specification-rich article:`;
+JOURNALISTIC STANDARDS:
+• Fact-based reporting with verified information
+• Balanced coverage of all viewpoints
+• Clear attribution of sources
+• Explanation of complex topics in accessible language
+• Logical flow from context to analysis to implications
+• Use of specific examples and case studies
+• Data-driven arguments and conclusions
+
+STYLE: Investigative journalism like The Hindu, Indian Express, The Wire
+FORMAT: HTML <p> tags, use <strong> for emphasis, <em> for quotes
+
+Create comprehensive content that informs, educates, and empowers readers!
+
+Write the FULL in-depth article:`;
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -3370,11 +3429,11 @@ Write the FULL specification-rich article:`;
               content: prompt
             }
           ],
-          temperature: 0.9,
-          max_tokens: 1000, // Maximum depth for articles
-          presence_penalty: 0.2,
-          frequency_penalty: 0.2,
-          top_p: 0.95
+          temperature: 0.7, // More factual
+          max_tokens: 1500, // Maximum depth for long articles
+          presence_penalty: 0.3,
+          frequency_penalty: 0.3,
+          top_p: 0.9
         })
       });
 
