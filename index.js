@@ -77,10 +77,10 @@ async function initializeSystem(env) {
     await env.NEWS_KV.put('aiInstructions', JSON.stringify({
       role: 'AI News Manager',
       dailyArticleTarget: {
-        minimum: 20,
-        target: 25,
-        maximum: 30,
-        strategy: 'Publish throughout the day for maximum engagement'
+        minimum: 15,
+        target: 18,
+        maximum: 20,
+        strategy: 'Quality over quantity - publish throughout the day'
       },
       writingStyle: {
         tone: 'Professional journalist with personality - like reading The Ken or Morning Context',
@@ -113,7 +113,7 @@ async function initializeSystem(env) {
         'Provide actionable takeaways for readers'
       ],
       objectives: [
-        'Publish 20-30 high-quality articles daily',
+        'Publish 15-20 high-quality articles daily',
         'Each article must be unique and valuable',
         'Focus on exclusive angles competitors miss',
         'Prioritize: 35% Tech, 25% Finance, 20% India News, 10% International, 10% Trending',
@@ -142,13 +142,13 @@ async function initializeSystem(env) {
         'Connecting the dots', 'Reading between the lines'
       ],
       dailyTasks: [
-        '6 AM: 5 articles - Morning news digest',
-        '9 AM: 4 articles - Market opening analysis',
-        '12 PM: 5 articles - Midday updates',
-        '3 PM: 4 articles - Afternoon developments',
-        '6 PM: 5 articles - Evening roundup',
-        '9 PM: 5 articles - Night edition',
-        'Total: 28 articles spread across the day'
+        '6 AM: 3 articles - Morning news digest',
+        '9 AM: 3 articles - Market opening analysis',
+        '12 PM: 3 articles - Midday updates',
+        '3 PM: 3 articles - Afternoon developments',
+        '6 PM: 3 articles - Evening roundup',
+        '9 PM: 3 articles - Night edition',
+        'Total: 18 articles spread across the day'
       ],
       seoStrategy: [
         'Target featured snippets with question-based content',
@@ -1738,12 +1738,12 @@ async function sendAPIUsage(env, chatId) {
 
 *Optimization Opportunities:*
 ✨ Can publish ${additionalArticlesPossible} more articles/month
-🎯 Target: 25-30 articles daily (750-900/month)
+🎯 Target: 15-20 articles daily (450-600/month)
 📸 Image quality: Using real photos for personalities
 🔍 SEO: Optimized for Google ranking
 
 *Recommendations:*
-• Increase daily articles to 25-30 ✅
+• Maintain 15-20 quality articles daily ✅
 • Use GPT-4 for premium articles (within budget)
 • Implement image caching to reduce API calls
 • Focus on trending topics for better engagement
@@ -1810,11 +1810,11 @@ async function fetchLatestNews(env) {
     }
     
     // Check if we've hit daily target
-    const dailyTarget = aiInstructions.dailyArticleTarget?.target || 25;
+    const dailyTarget = aiInstructions.dailyArticleTarget?.target || 18;
     const currentArticles = stats.dailyArticlesPublished || 0;
     
-    if (currentArticles >= 30) {
-      console.log('Daily article limit reached (30)');
+    if (currentArticles >= 20) {
+      console.log('Daily article limit reached (20)');
       return new Response(JSON.stringify({ 
         message: 'Daily article limit reached',
         published: currentArticles 
@@ -1849,7 +1849,7 @@ async function fetchLatestNews(env) {
         // Enhanced RSS parsing
         const items = text.match(/<item>([\s\S]*?)<\/item>/g) || [];
         
-        for (let i = 0; i < Math.min(5, items.length); i++) {
+        for (let i = 0; i < Math.min(3, items.length); i++) {
           const item = items[i];
           // Extract with more flexible regex that handles multiline
           let title = (item.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '';
@@ -1901,8 +1901,8 @@ async function fetchLatestNews(env) {
     // Sort by relevance and mix categories
     allArticles = shuffleAndBalance(allArticles);
     
-    // Keep 25-30 articles for daily quota
-    allArticles = allArticles.slice(0, Math.min(30, Math.max(25, allArticles.length)));
+    // Keep 15-20 articles for daily quota
+    allArticles = allArticles.slice(0, Math.min(20, Math.max(15, allArticles.length)));
     
     // Save to KV
     await env.NEWS_KV.put('articles', JSON.stringify(allArticles));
