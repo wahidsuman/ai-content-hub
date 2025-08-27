@@ -1120,9 +1120,10 @@ Or use /menu for all options! 🚀
 
 // New function: Handle fetch news
 async function handleFetchNews(env, chatId) {
-  await sendMessage(env, chatId, `🔄 *Fetching Premium News...*\n\n⏳ Processing with GPT-4o for quality content...\nThis may take 30-60 seconds.`);
+  await sendMessage(env, chatId, `🔄 *Fetching Comprehensive Articles...*\n\n⏳ Generating full investigative articles with GPT-3.5 Turbo...\n⚠️ This takes 2-3 minutes for quality content.`);
   
   try {
+    console.log('Starting news fetch from Telegram command...');
     // Call the fetch news function
     const result = await fetchLatestNews(env);
     
@@ -2091,7 +2092,7 @@ async function fetchLatestNews(env) {
         // Enhanced RSS parsing
         const items = text.match(/<item>([\s\S]*?)<\/item>/g) || [];
         
-        for (let i = 0; i < Math.min(2, items.length); i++) { // Fewer articles for quality
+        for (let i = 0; i < Math.min(3, items.length); i++) { // 3 articles per feed for better coverage
           const item = items[i];
           // Extract with more flexible regex that handles multiline
           let title = (item.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '';
@@ -2135,9 +2136,20 @@ async function fetchLatestNews(env) {
             
             // Generate FULL article content immediately (no summary)
             console.log(`Generating full article for: ${title}`);
-            const fullArticle = await generateFullArticle(article, description, env);
-            console.log(`Generated ${fullArticle.length} chars for: ${title}`);
-            article.fullContent = fullArticle;
+            let fullArticle = '';
+            try {
+              // Add timeout for article generation (30 seconds max)
+              fullArticle = await Promise.race([
+                generateFullArticle(article, description, env),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Article generation timeout')), 30000))
+              ]);
+              console.log(`Generated ${fullArticle.length} chars for: ${title}`);
+              article.fullContent = fullArticle;
+            } catch (genError) {
+              console.error(`Failed to generate article for ${title}:`, genError.message);
+              // Skip this article if generation fails
+              continue;
+            }
             
             // Extract first 500 chars of article as preview for homepage
             const plainText = fullArticle.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
@@ -2151,11 +2163,25 @@ async function fetchLatestNews(env) {
       }
     }
     
+    console.log(`Total articles fetched from RSS: ${allArticles.length}`);
+    
+    if (allArticles.length === 0) {
+      console.error('No articles fetched from any RSS feed');
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'No articles fetched from RSS feeds',
+        message: 'RSS feeds may be down or empty. Try again later.'
+      }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
     // Sort by relevance and mix categories
     allArticles = shuffleAndBalance(allArticles);
     
     // Keep 10-12 premium articles for daily quota
     allArticles = allArticles.slice(0, Math.min(12, Math.max(10, allArticles.length)));
+    console.log(`Articles after limiting to quota: ${allArticles.length}`);
     
     // Save to KV - APPEND to existing articles, don't overwrite
     const existingArticlesForSave = await env.NEWS_KV.get('articles', 'json') || [];
