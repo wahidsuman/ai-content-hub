@@ -27,6 +27,19 @@ export default {
     } else if (url.pathname === '/test-article') {
       // Test single article generation
       return testArticleGeneration(env);
+    } else if (url.pathname === '/status-check') {
+      // Simple status check that doesn't need OpenAI
+      return new Response(JSON.stringify({
+        status: 'alive',
+        timestamp: new Date().toISOString(),
+        apiKeyConfigured: !!env.OPENAI_API_KEY,
+        apiKeyLength: env.OPENAI_API_KEY ? env.OPENAI_API_KEY.length : 0,
+        telegramConfigured: !!env.TELEGRAM_BOT_TOKEN,
+        workerUrl: env.WORKER_URL || 'not set',
+        kvNamespace: !!env.NEWS_KV
+      }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
     } else if (url.pathname === '/force-refresh') {
       // Force refresh endpoint to clear cache
       const articles = await env.NEWS_KV.get('articles', 'json') || [];
@@ -984,6 +997,9 @@ Or just talk to me naturally! Try:
       } else if (text === '/reset') {
         // Reset counter command
         await handleResetCounter(env, chatId);
+      } else if (text === '/test') {
+        // Test article generation
+        await handleTestGeneration(env, chatId);
       } else {
         await handleNaturalLanguage(env, chatId, text);
       }
@@ -1857,6 +1873,45 @@ Use /fetch to add new articles.`, {
       break;
     default:
       await sendMessage(env, chatId, 'Processing...');
+  }
+}
+
+// Handle test generation command
+async function handleTestGeneration(env, chatId) {
+  await sendMessage(env, chatId, `🧪 *Testing Article Generation*\n\n⏳ Generating one test article...`);
+  
+  try {
+    const testArticle = {
+      title: 'Test: Modi Announces ₹50,000 Crore Digital India Fund',
+      category: 'Technology',
+      preview: 'Testing...'
+    };
+    
+    const startTime = Date.now();
+    const hasApiKey = !!env.OPENAI_API_KEY;
+    
+    if (!hasApiKey) {
+      await sendMessage(env, chatId, `❌ *OpenAI API Key Missing!*\n\nPlease set OPENAI_API_KEY in Cloudflare Worker settings.`);
+      return;
+    }
+    
+    // Try to generate article
+    const fullContent = await generateFullArticle(
+      testArticle, 
+      'Prime Minister announces massive digital infrastructure fund.', 
+      env
+    );
+    
+    const timeTaken = ((Date.now() - startTime) / 1000).toFixed(1);
+    const contentLength = fullContent.length;
+    
+    if (contentLength < 500) {
+      await sendMessage(env, chatId, `⚠️ *Article Too Short*\n\n📏 Length: ${contentLength} chars\n⏱️ Time: ${timeTaken}s\n\nLikely using fallback template. Check OpenAI API.`);
+    } else {
+      await sendMessage(env, chatId, `✅ *Test Successful!*\n\n📏 Generated: ${contentLength} characters\n⏱️ Time: ${timeTaken} seconds\n📝 Preview: ${fullContent.replace(/<[^>]*>/g, '').substring(0, 200)}...\n\n*OpenAI is working correctly!*`);
+    }
+  } catch (error) {
+    await sendMessage(env, chatId, `❌ *Test Failed*\n\nError: ${error.message}\n\nCheck:\n1. OpenAI API key in Cloudflare\n2. API credits available\n3. Network connectivity`);
   }
 }
 
