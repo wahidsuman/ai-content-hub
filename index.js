@@ -1719,9 +1719,13 @@ async function fetchLatestNews(env) {
         
         for (let i = 0; i < Math.min(3, items.length); i++) {
           const item = items[i];
-          const title = (item.match(/<title>(.*?)<\/title>/) || [])[1]?.replace(/<!\[CDATA\[(.*?)\]\]>/, '$1') || '';
-          const description = (item.match(/<description>(.*?)<\/description>/) || [])[1]?.replace(/<!\[CDATA\[(.*?)\]\]>/, '$1') || '';
+          let title = (item.match(/<title>(.*?)<\/title>/) || [])[1] || '';
+          let description = (item.match(/<description>(.*?)<\/description>/) || [])[1] || '';
           const link = (item.match(/<link>(.*?)<\/link>/) || [])[1] || '';
+          
+          // Clean CDATA and HTML from title and description
+          title = cleanRSSContent(title);
+          description = cleanRSSContent(description);
           
           if (title && description) {
             // Create human-like summary
@@ -1779,6 +1783,35 @@ async function fetchLatestNews(env) {
   }
 }
 
+// Clean RSS content from HTML and CDATA
+function cleanRSSContent(text) {
+  if (!text) return '';
+  
+  return text
+    // Remove CDATA
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+    // Remove image tags completely
+    .replace(/<img[^>]*>/gi, '')
+    // Remove all HTML tags
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/p>/gi, ' ')
+    .replace(/<[^>]*>/g, '')
+    // Decode HTML entities
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&#x27;/gi, "'")
+    .replace(/&#x2F;/gi, '/')
+    .replace(/&#(\d+);/gi, (match, num) => String.fromCharCode(num))
+    // Clean up whitespace
+    .replace(/\s+/g, ' ')
+    .replace(/^\s+|\s+$/g, '')
+    .trim();
+}
+
 // Make headlines more human and engaging
 function makeHeadlineHuman(title) {
   // Remove source tags
@@ -1802,8 +1835,13 @@ function makeHeadlineHuman(title) {
 
 // Create human-like summary
 async function createHumanSummary(title, description, category) {
-  // Strip HTML
-  description = description.replace(/<[^>]*>/g, '').substring(0, 200);
+  // Description is already cleaned by cleanRSSContent, just trim to length
+  description = description.substring(0, 200);
+  
+  // If description is too short or empty, create a generic one
+  if (!description || description.length < 20) {
+    description = `Latest updates and developments in ${category.toLowerCase()} news. This story is currently developing.`;
+  }
   
   // Human-style templates based on category
   const templates = {
