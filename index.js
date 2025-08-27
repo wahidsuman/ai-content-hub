@@ -2718,12 +2718,37 @@ async function getArticleImage(title, category, env) {
     // Extract better keywords for non-personality searches
     const keywords = extractSmartKeywords(title, category);
     
-    // Try multiple search strategies for best image
-    let searchQueries = [
-      keywords, // Primary search
-      keywords.split(' ').slice(0, 2).join(' '), // Simplified search
-      category + ' news india' // Category fallback
-    ];
+    // Build ULTRA-SPECIFIC search queries for relevant images
+    let searchQueries = [];
+    
+    // Add hyper-specific queries based on exact content
+    if (titleLower.includes('modi')) searchQueries.unshift('narendra modi prime minister india speech');
+    if (titleLower.includes('rahul')) searchQueries.unshift('rahul gandhi congress leader india');
+    if (titleLower.includes('parliament')) searchQueries.unshift('indian parliament lok sabha session 2024');
+    if (titleLower.includes('budget')) searchQueries.unshift('india union budget 2024 finance minister');
+    if (titleLower.includes('election')) searchQueries.unshift('india election voting evm booth 2024');
+    if (titleLower.includes('supreme court')) searchQueries.unshift('supreme court india building judges');
+    if (titleLower.includes('railway')) searchQueries.unshift('indian railways train vande bharat');
+    if (titleLower.includes('airport')) searchQueries.unshift('delhi mumbai airport terminal india');
+    if (titleLower.includes('hospital')) searchQueries.unshift('aiims apollo indian hospital doctors');
+    if (titleLower.includes('school') || titleLower.includes('student')) searchQueries.unshift('indian school students uniform classroom');
+    if (titleLower.includes('farmer')) searchQueries.unshift('indian farmer punjab haryana field tractor');
+    if (titleLower.includes('startup')) searchQueries.unshift('bangalore startup office unicorn india');
+    if (titleLower.includes('sensex') || titleLower.includes('nifty')) searchQueries.unshift('bombay stock exchange bse nse trading');
+    if (titleLower.includes('cricket')) searchQueries.unshift('india cricket team virat kohli rohit sharma');
+    if (titleLower.includes('bollywood')) searchQueries.unshift('bollywood mumbai film city shah rukh khan');
+    
+    // Add original keywords if we have specific matches
+    if (searchQueries.length > 0) {
+      searchQueries.push(keywords);
+    } else {
+      // No specific match, use smart keywords
+      searchQueries = [
+        keywords,
+        keywords.split(' ').slice(0, 3).join(' '),
+        `${category} india 2024`
+      ];
+    }
     
     // First, try to use real photos for news
     for (const query of searchQueries) {
@@ -2777,10 +2802,10 @@ async function getArticleImage(title, category, env) {
       }
     }
     
-    // Try DALL-E 3 for custom image generation for premium articles
-    if (env.OPENAI_API_KEY && Math.random() > 0.2) { // Use for 80% of articles for maximum quality
+    // Try DALL-E 3 for custom image generation - but only for 30% to save costs
+    if (env.OPENAI_API_KEY && Math.random() > 0.7) { // Use for 30% of articles
       try {
-        // Extract key data points from title for infographic-style images
+        // Extract key data points from title for specific images
         const hasNumbers = /\d+/.test(title);
         const numbers = title.match(/\d+\.?\d*/g) || [];
         const hasCurrency = /₹|Rs|Crore|Lakh|Billion|Million/i.test(title);
@@ -3652,16 +3677,21 @@ CATEGORY: ${article.category}
 RAW CONTEXT: ${description}
 SOURCE: ${article.source || 'Multiple Sources'}
 
-CREATE A 1500-2000 WORD COMPREHENSIVE INVESTIGATIVE ARTICLE WITH REAL INFORMATION:
+WRITE A 1500-2000 WORD ARTICLE LIKE A REAL HUMAN EDITOR:
 
-CRITICAL REQUIREMENTS:
-• NO SUMMARIES - This is the FULL article that readers will see
-• Include REAL data, statistics, quotes (you can synthesize realistic ones)
-• Provide ACTUAL analysis, not generic statements
-• Include specific examples, case studies, precedents
-• Write as if you have done field reporting and interviews
-• Make it so detailed that readers learn something new
-• This should be publication-ready for a major newspaper
+HOW TO WRITE:
+• Start with something surprising or interesting - hook them immediately
+• Write like you're telling this story to a friend - conversational, engaging
+• Include your reactions: "I couldn't believe it when..." "Here's what got me..."
+• Use real examples people can relate to: "It's like when you..."
+• Add humor where appropriate - Indians love a good joke in their news
+• Express skepticism: "They claim X, but come on..." 
+• Get excited about big numbers: "₹50,000 crores! That's insane!"
+• Reference pop culture, movies, cricket - whatever fits
+• Include specific details: exact prices, actual quotes, real names
+• Write in a mix of short punchy sentences. And longer ones that flow naturally.
+
+MAKE IT HUMAN - not perfect, not formal, but interesting and real
 
 ${article.category.toLowerCase().includes('politic') || article.category.toLowerCase().includes('india') ? `
 POLITICAL/NATIONAL NEWS STRUCTURE:
@@ -3753,18 +3783,28 @@ Write the FULL in-depth article:`;
           messages: [
             {
               role: 'system',
-              content: `You are a senior investigative journalist at The Hindu. Your articles are known for:
-- Deep research with specific data points, statistics, and real numbers
-- Multiple expert quotes (create realistic ones)
-- Historical context and precedents
-- Ground reports and real examples
-- Balanced perspectives from all stakeholders
-- Data tables and comparative analysis
-- Actionable insights for readers
+              content: `You are a human editor at a major Indian news website. Write EXACTLY like a real person would write - with personality, opinions, and natural flow.
 
-NEVER write generic statements. ALWAYS include specific names, numbers, dates, locations.
-Write as if you've done actual field reporting, interviews, and data analysis.
-Make it so detailed that readers learn something new in every paragraph.`
+WRITING RULES:
+- Start with what's ACTUALLY interesting, not formal introductions
+- Use conversational language: "Look, here's what happened..." "You know what's crazy?"
+- Include your thoughts: "I think...", "What surprises me is...", "Honestly..."
+- Add specific details that only a human would notice
+- Reference real events: "Remember when..." "Just like what happened in..."
+- Use Indian expressions naturally: "lakh", "crore", but also "damn", "crazy", "insane"
+- Make jokes, be sarcastic when appropriate
+- Express genuine surprise or skepticism: "Wait, what?" "Seriously?"
+- Include specific prices, dates, names - but work them in naturally
+- Write like you're explaining to a friend over coffee
+
+AVOID:
+- "In conclusion" - humans don't write like that
+- "It is worth noting" - too formal
+- "Moreover", "Furthermore" - nobody talks like this
+- Perfect grammar all the time - use contractions, start sentences with "And" or "But"
+- Sounding like a report - sound like a conversation
+
+BE HUMAN: Have opinions. Be surprised. Get excited. Be skeptical. Make it interesting.`
             },
             {
               role: 'user',
