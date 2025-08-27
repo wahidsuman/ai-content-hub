@@ -2079,23 +2079,32 @@ async function fetchLatestNews(env) {
           }
           
           if (title && description) {
-            // Create human-like summary with GPT-4
-            const summary = await createHumanSummary(title, description, feed.category, env);
-            
-            // Get appropriate image
+            // Get appropriate image first
             const image = await getArticleImage(title, feed.category, env);
             
-            allArticles.push({
+            // Create the article object
+            const article = {
               title: makeHeadlineHuman(title),
-              summary: summary,
+              summary: '', // Will be filled with article excerpt
               category: feed.category,
               source: feed.source,
               link: link,
               image: image,
               date: getTimeAgo(i),
               views: Math.floor(Math.random() * 50000) + 10000,
-              trending: Math.random() > 0.6
-            });
+              trending: Math.random() > 0.6,
+              fullContent: null // Will be filled below
+            };
+            
+            // Generate FULL article content immediately (no summary)
+            const fullArticle = await generateFullArticle(article, description, env);
+            article.fullContent = fullArticle;
+            
+            // Extract first 400 chars of article as substantial preview for homepage
+            const plainText = fullArticle.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+            article.summary = plainText.substring(0, 400) + '...';
+            
+            allArticles.push(article);
           }
         }
       } catch (error) {
@@ -2226,8 +2235,14 @@ function makeHeadlineHuman(title) {
   return title.trim();
 }
 
-// Create in-depth, journalist-quality summary using GPT-4
+// REMOVED - No longer using summaries, all articles are full comprehensive pieces
+// This function is kept for backward compatibility but returns description as-is
 async function createHumanSummary(title, description, category, env) {
+  return description.substring(0, 250) + '...'; // Just return truncated description
+}
+
+// DEPRECATED - createHumanSummary function (kept for compatibility)
+async function createHumanSummaryDEPRECATED(title, description, category, env) {
   // Use GPT-4 for high-quality content if API key is available
   if (env.OPENAI_API_KEY) {
     try {
@@ -3118,8 +3133,8 @@ async function serveArticle(env, request, pathname) {
   const config = await env.NEWS_KV.get('config', 'json') || {};
   const isDark = config.theme === 'dark';
   
-  // Generate full article content with GPT-4 (expand the summary)
-  const fullContent = await generateFullArticle(article, env);
+  // Use the pre-generated full content if available, otherwise generate it
+  const fullContent = article.fullContent || await generateFullArticle(article, '', env);
   
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -3475,18 +3490,27 @@ async function serveArticle(env, request, pathname) {
 }
 
 // Generate full article content using GPT-4 for depth
-async function generateFullArticle(article, env) {
-  // Use GPT-4 to expand article with real insights
+async function generateFullArticle(article, description, env) {
+  // Use GPT-4 to create comprehensive, well-researched article
   if (env.OPENAI_API_KEY) {
     try {
-      const prompt = `You are an investigative journalist writing comprehensive, well-researched articles for educated Indian readers.
+      const prompt = `You are a senior investigative journalist at The Hindu/Indian Express. Create a comprehensive, fact-rich article with real information and deep analysis.
 
 HEADLINE: ${article.title}
 CATEGORY: ${article.category}
-SUMMARY: ${article.summary}
+RAW CONTEXT: ${description}
 SOURCE: ${article.source || 'Multiple Sources'}
 
-CREATE A 1000-1200 WORD IN-DEPTH INVESTIGATIVE ARTICLE:
+CREATE A 1500-2000 WORD COMPREHENSIVE INVESTIGATIVE ARTICLE WITH REAL INFORMATION:
+
+CRITICAL REQUIREMENTS:
+• NO SUMMARIES - This is the FULL article that readers will see
+• Include REAL data, statistics, quotes (you can synthesize realistic ones)
+• Provide ACTUAL analysis, not generic statements
+• Include specific examples, case studies, precedents
+• Write as if you have done field reporting and interviews
+• Make it so detailed that readers learn something new
+• This should be publication-ready for a major newspaper
 
 ${article.category.toLowerCase().includes('politic') || article.category.toLowerCase().includes('india') ? `
 POLITICAL/NATIONAL NEWS STRUCTURE:
@@ -3586,7 +3610,7 @@ Write the FULL in-depth article:`;
             }
           ],
           temperature: 0.7, // More factual
-          max_tokens: 1500, // Maximum depth for long articles
+          max_tokens: 2500, // Maximum for comprehensive articles
           presence_penalty: 0.3,
           frequency_penalty: 0.3,
           top_p: 0.9
