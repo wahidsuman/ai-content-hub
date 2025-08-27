@@ -947,6 +947,9 @@ Or just talk to me naturally! Try:
       } else if (text === '/clear') {
         // Admin-only clear command
         await handleClearArticles(env, chatId);
+      } else if (text === '/reset') {
+        // Reset counter command
+        await handleResetCounter(env, chatId);
       } else {
         await handleNaturalLanguage(env, chatId, text);
       }
@@ -1808,6 +1811,31 @@ Use /fetch to add new articles.`, {
   }
 }
 
+// Handle reset counter command
+async function handleResetCounter(env, chatId) {
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  
+  const oldCounter = stats.dailyArticlesPublished || 0;
+  stats.dailyArticlesPublished = 0;
+  stats.dailyFetches = 0;
+  stats.tokensUsedToday = 0;
+  await env.NEWS_KV.put('stats', JSON.stringify(stats));
+  
+  await sendMessage(env, chatId, `🔄 *Counter Reset Complete*
+
+Previous counter: ${oldCounter}
+Actual articles: ${articles.length}
+New counter: 0
+
+${articles.length === 0 ? '⚠️ No articles found in storage\n\nUse /fetch to add new articles!' : `✅ ${articles.length} articles available on website`}`, {
+    inline_keyboard: [
+      [{ text: '📰 Fetch News', callback_data: 'fetch' }],
+      [{ text: '↩️ Back to Menu', callback_data: 'menu' }]
+    ]
+  });
+}
+
 // New handler functions for AI Manager
 async function sendContentStrategy(env, chatId) {
   const config = await env.NEWS_KV.get('config', 'json') || {};
@@ -1955,6 +1983,18 @@ async function fetchLatestNews(env) {
       stats.dailyArticlesPublished = 0;
     }
     
+    // Check actual articles in storage and fix counter mismatch
+    const existingArticles = await env.NEWS_KV.get('articles', 'json') || [];
+    const actualArticleCount = existingArticles.length;
+    
+    // Reset counter if mismatch detected
+    if (actualArticleCount === 0 && stats.dailyArticlesPublished > 0) {
+      console.log(`Counter mismatch detected - resetting (was ${stats.dailyArticlesPublished}, actual: 0)`);
+      stats.dailyArticlesPublished = 0;
+      stats.dailyFetches = 0;
+      await env.NEWS_KV.put('stats', JSON.stringify(stats));
+    }
+    
     // Check if we've hit daily target
     const dailyTarget = aiInstructions.dailyArticleTarget?.target || 11;
     const currentArticles = stats.dailyArticlesPublished || 0;
@@ -1962,6 +2002,7 @@ async function fetchLatestNews(env) {
     if (currentArticles >= 12) {
       console.log('Daily article limit reached (12)');
       return new Response(JSON.stringify({ 
+        success: false,
         message: 'Daily article limit reached - focusing on quality',
         published: currentArticles 
       }), { headers: { 'Content-Type': 'application/json' } });
@@ -2055,9 +2096,16 @@ async function fetchLatestNews(env) {
     // Keep 10-12 premium articles for daily quota
     allArticles = allArticles.slice(0, Math.min(12, Math.max(10, allArticles.length)));
     
-    // Save to KV
-    await env.NEWS_KV.put('articles', JSON.stringify(allArticles));
+    // Save to KV - APPEND to existing articles, don't overwrite
+    const existingArticlesForSave = await env.NEWS_KV.get('articles', 'json') || [];
+    const combinedArticles = [...allArticles, ...existingArticlesForSave].slice(0, 50); // Keep last 50 articles
+    
+    await env.NEWS_KV.put('articles', JSON.stringify(combinedArticles));
     await env.NEWS_KV.put('lastFetch', new Date().toISOString());
+    
+    // Verify save
+    const verifyArticles = await env.NEWS_KV.get('articles', 'json') || [];
+    console.log(`Articles saved: ${verifyArticles.length} total (${allArticles.length} new + ${existingArticlesForSave.length} existing)`);
     
     // Update stats with daily article tracking
     stats.lastFetchDate = today;
