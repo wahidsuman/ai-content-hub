@@ -2134,7 +2134,9 @@ async function fetchLatestNews(env) {
             };
             
             // Generate FULL article content immediately (no summary)
+            console.log(`Generating full article for: ${title}`);
             const fullArticle = await generateFullArticle(article, description, env);
+            console.log(`Generated ${fullArticle.length} chars for: ${title}`);
             article.fullContent = fullArticle;
             
             // Extract first 400 chars of article as substantial preview for homepage
@@ -2273,14 +2275,9 @@ function makeHeadlineHuman(title) {
   return title.trim();
 }
 
-// REMOVED - No longer using summaries, all articles are full comprehensive pieces
-// This function is kept for backward compatibility but returns description as-is
+// This function should not be used - articles should be generated in full
+// But keeping it functional for any legacy calls
 async function createHumanSummary(title, description, category, env) {
-  return description.substring(0, 250) + '...'; // Just return truncated description
-}
-
-// DEPRECATED - createHumanSummary function (kept for compatibility)
-async function createHumanSummaryDEPRECATED(title, description, category, env) {
   // Use GPT-4 for high-quality content if API key is available
   if (env.OPENAI_API_KEY) {
     try {
@@ -2347,7 +2344,7 @@ Write a COMPREHENSIVE, WELL-RESEARCHED summary that readers would find in premiu
           'Authorization': `Bearer ${env.OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-4', // Using GPT-4 for highest quality content
+          model: 'gpt-3.5-turbo-16k', // Using GPT-3.5 16K for comprehensive content
           messages: [
             {
               role: 'system',
@@ -3532,9 +3529,11 @@ async function serveArticle(env, request, pathname) {
   });
 }
 
-// Generate full article content using GPT-4 for depth
+// Generate full article content using GPT for depth
 async function generateFullArticle(article, description, env) {
-  // Use GPT-4 to create comprehensive, well-researched article
+  // Use GPT to create comprehensive, well-researched article
+  console.log(`generateFullArticle called for: ${article.title}, API key: ${env.OPENAI_API_KEY ? 'present' : 'missing'}`);
+  
   if (env.OPENAI_API_KEY) {
     try {
       const prompt = `You are a senior investigative journalist at The Hindu/Indian Express. Create a comprehensive, fact-rich article with real information and deep analysis.
@@ -3793,7 +3792,7 @@ async function testOpenAI(env) {
           'Authorization': `Bearer ${env.OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-4', // Testing with GPT-4
+          model: 'gpt-3.5-turbo', // Testing with GPT-3.5 Turbo
           messages: [
             {
               role: 'user',
