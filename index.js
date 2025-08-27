@@ -2277,83 +2277,112 @@ async function getArticleImage(title, category, env) {
     // Extract better keywords for non-personality searches
     const keywords = extractSmartKeywords(title, category);
     
+    // Try multiple search strategies for best image
+    let searchQueries = [
+      keywords, // Primary search
+      keywords.split(' ').slice(0, 2).join(' '), // Simplified search
+      category + ' news india' // Category fallback
+    ];
+    
     // Always try to use real photos for news
-    if (env.UNSPLASH_ACCESS_KEY) {
-      const unsplashUrl = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(keywords)}&per_page=5&client_id=${env.UNSPLASH_ACCESS_KEY}`;
-      const response = await fetch(unsplashUrl);
+    for (const query of searchQueries) {
+      if (env.UNSPLASH_ACCESS_KEY) {
+        const unsplashUrl = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=10&orientation=landscape&client_id=${env.UNSPLASH_ACCESS_KEY}`;
+        const response = await fetch(unsplashUrl);
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.results && data.results.length > 0) {
+            // Sort by relevance and quality (likes)
+            const sortedImages = data.results.sort((a, b) => b.likes - a.likes);
+            
+            // Pick from top 3 best images
+            const topImages = sortedImages.slice(0, 3);
+            const selectedImage = topImages[Math.floor(Math.random() * topImages.length)];
+            
+            return {
+              url: selectedImage.urls.regular,
+              credit: `Photo by ${selectedImage.user.name} on Unsplash`,
+              type: 'unsplash',
+              isRelevant: true,
+              description: selectedImage.description || selectedImage.alt_description
+            };
+          }
+        }
+      }
       
-      if (response.ok) {
-        const data = await response.json();
-        if (data.results && data.results.length > 0) {
-          // Pick a random image from top 5 for variety
-          const randomIndex = Math.floor(Math.random() * Math.min(5, data.results.length));
-          const selectedImage = data.results[randomIndex];
-          return {
-            url: selectedImage.urls.regular,
-            credit: `Photo by ${selectedImage.user.name} on Unsplash`,
-            type: 'unsplash',
-            isRelevant: true
-          };
+      if (env.PEXELS_API_KEY) {
+        const pexelsUrl = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=10&orientation=landscape`;
+        const response = await fetch(pexelsUrl, {
+          headers: { 'Authorization': env.PEXELS_API_KEY }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.photos && data.photos.length > 0) {
+            // Pick from top images (Pexels returns relevance-sorted)
+            const topImages = data.photos.slice(0, 3);
+            const selectedImage = topImages[Math.floor(Math.random() * topImages.length)];
+            
+            return {
+              url: selectedImage.src.large,
+              credit: `Photo by ${selectedImage.photographer} on Pexels`,
+              type: 'pexels',
+              isRelevant: true,
+              description: selectedImage.alt
+            };
+          }
         }
       }
     }
     
-    if (env.PEXELS_API_KEY) {
-      const pexelsUrl = `https://api.pexels.com/v1/search?query=${encodeURIComponent(keywords)}&per_page=5`;
-      const response = await fetch(pexelsUrl, {
-        headers: { 'Authorization': env.PEXELS_API_KEY }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.photos && data.photos.length > 0) {
-          const randomIndex = Math.floor(Math.random() * Math.min(5, data.photos.length));
-          return {
-            url: data.photos[randomIndex].src.large,
-            credit: `Photo by ${data.photos[randomIndex].photographer} on Pexels`,
-            type: 'pexels',
-            isRelevant: true
-          };
-        }
-      }
-    }
-    
-    // High-quality default images by category
+    // Last resort: High-quality, specific default images
+    // These are carefully selected for visual appeal and relevance
     const defaultImages = {
       'Technology': [
-        'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800',
-        'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800',
-        'https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=800'
+        'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800', // Tech desk setup
+        'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=800', // Futuristic tech
+        'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800'  // Code matrix
       ],
       'Business': [
-        'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800',
-        'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800',
-        'https://images.unsplash.com/photo-1444653614773-995cb1ef9efa?w=800'
+        'https://images.unsplash.com/photo-1559526324-593bc073d938?w=800', // Business meeting
+        'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=800', // Office workers
+        'https://images.unsplash.com/photo-1553729459-efe14ef6055d?w=800'  // Money growth
       ],
       'India': [
-        'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=800',
-        'https://images.unsplash.com/photo-1564507592333-c60657eea523?w=800',
-        'https://images.unsplash.com/photo-1545126178-862cdb469409?w=800'
+        'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=800', // India Gate
+        'https://images.unsplash.com/photo-1587474260584-136574528ed5?w=800', // Delhi skyline
+        'https://images.unsplash.com/photo-1609609830354-8f615d61b9c8?w=800'  // Mumbai cityscape
       ],
       'World': [
-        'https://images.unsplash.com/photo-1521295121783-8a321d551ad2?w=800',
-        'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=800'
+        'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800', // Globe technology
+        'https://images.unsplash.com/photo-1529655683826-aba9b3e77383?w=800', // London Tower Bridge
+        'https://images.unsplash.com/photo-1508433957232-3107f5fd5995?w=800'  // NYC skyline
       ],
       'Sports': [
-        'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800',
-        'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=800'
+        'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?w=800', // Cricket stadium
+        'https://images.unsplash.com/photo-1594736797933-d0501ba2fe65?w=800', // Cricket action
+        'https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=800'  // Stadium crowd
       ],
       'Entertainment': [
-        'https://images.unsplash.com/photo-1603739903239-8b6e64c3b185?w=800',
-        'https://images.unsplash.com/photo-1598387993441-a364f854c3e1?w=800'
+        'https://images.unsplash.com/photo-1598899134739-24c46f58b8c0?w=800', // Cinema
+        'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=800', // Movie theater
+        'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800'  // Concert crowd
       ]
     };
     
-    const categoryImages = defaultImages[category] || defaultImages['India'];
-    const randomDefault = categoryImages[Math.floor(Math.random() * categoryImages.length)];
+    // If no category match, use a breaking news style image
+    const breakingNewsImages = [
+      'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=800', // News broadcast
+      'https://images.unsplash.com/photo-1572949645841-094f3a9c4c94?w=800', // Breaking news
+      'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800'  // News desk
+    ];
+    
+    const categoryImages = defaultImages[category] || breakingNewsImages;
+    const selectedDefault = categoryImages[Math.floor(Math.random() * categoryImages.length)];
     
     return {
-      url: randomDefault,
+      url: selectedDefault,
       credit: 'Stock Photo',
       type: 'default',
       isRelevant: false
@@ -2370,40 +2399,149 @@ async function getArticleImage(title, category, env) {
   }
 }
 
-// Extract smart keywords for better image matching
+// Extract smart keywords for highly relevant image matching
 function extractSmartKeywords(title, category) {
   const titleLower = title.toLowerCase();
   
-  // Remove common words and extract meaningful terms
-  const stopWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'says', 'said', 'will', 'would', 'could', 'should', 'may', 'might'];
+  // Topic-specific keyword extraction for maximum relevance
   
-  let words = title.split(' ').filter(w => 
-    !stopWords.includes(w.toLowerCase()) && w.length > 2
+  // Financial/Market news
+  if (titleLower.includes('sensex') || titleLower.includes('nifty')) {
+    if (titleLower.includes('crash') || titleLower.includes('fall')) {
+      return 'stock market crash red charts down arrow';
+    }
+    if (titleLower.includes('rally') || titleLower.includes('surge') || titleLower.includes('hit')) {
+      return 'stock market rally green charts bull market';
+    }
+    return 'bombay stock exchange trading floor india';
+  }
+  
+  // Company/Business specific
+  if (titleLower.includes('reliance') || titleLower.includes('ambani')) {
+    return 'mukesh ambani reliance industries jio';
+  }
+  if (titleLower.includes('tata')) {
+    return 'tata group headquarters ratan tata';
+  }
+  if (titleLower.includes('infosys')) {
+    return 'infosys campus bangalore office';
+  }
+  if (titleLower.includes('adani')) {
+    return 'gautam adani ports business india';
+  }
+  
+  // Technology specific
+  if (titleLower.includes('ai') || titleLower.includes('artificial intelligence')) {
+    return 'artificial intelligence robot technology future';
+  }
+  if (titleLower.includes('5g')) {
+    return '5g network tower telecommunications india';
+  }
+  if (titleLower.includes('electric vehicle') || titleLower.includes('ev')) {
+    return 'electric vehicle charging tesla ola uber';
+  }
+  if (titleLower.includes('startup')) {
+    if (titleLower.includes('funding') || titleLower.includes('raise')) {
+      return 'startup funding venture capital money investment';
+    }
+    return 'startup office team bangalore ecosystem';
+  }
+  
+  // Political/Government
+  if (titleLower.includes('parliament')) {
+    return 'indian parliament building new delhi government';
+  }
+  if (titleLower.includes('supreme court')) {
+    return 'supreme court india justice law legal';
+  }
+  if (titleLower.includes('election')) {
+    return 'india election voting ballot democracy';
+  }
+  if (titleLower.includes('budget')) {
+    return 'india budget finance minister briefcase parliament';
+  }
+  
+  // Weather/Disaster
+  if (titleLower.includes('rainfall') || titleLower.includes('flood')) {
+    return 'heavy rainfall flooding monsoon india disaster';
+  }
+  if (titleLower.includes('cyclone')) {
+    return 'cyclone satellite image storm weather';
+  }
+  if (titleLower.includes('earthquake')) {
+    return 'earthquake damage disaster rescue';
+  }
+  
+  // Sports specific
+  if (titleLower.includes('cricket')) {
+    if (titleLower.includes('kohli')) return 'virat kohli batting cricket india';
+    if (titleLower.includes('dhoni')) return 'ms dhoni cricket captain csk';
+    if (titleLower.includes('ipl')) return 'ipl cricket stadium crowd excitement';
+    if (titleLower.includes('world cup')) return 'cricket world cup trophy india team';
+    return 'cricket match india stadium action';
+  }
+  if (titleLower.includes('football')) {
+    return 'football soccer india isl stadium';
+  }
+  if (titleLower.includes('olympics')) {
+    return 'olympics india athletes medals sports';
+  }
+  
+  // Entertainment
+  if (titleLower.includes('bollywood')) {
+    if (titleLower.includes('box office')) return 'bollywood movie theater crowd tickets';
+    if (titleLower.includes('award')) return 'bollywood awards red carpet ceremony';
+    return 'bollywood film shooting mumbai cinema';
+  }
+  
+  // Infrastructure/Development
+  if (titleLower.includes('metro')) {
+    return 'metro train station india urban transport';
+  }
+  if (titleLower.includes('airport')) {
+    return 'airport terminal india aviation flight';
+  }
+  if (titleLower.includes('highway') || titleLower.includes('expressway')) {
+    return 'highway expressway india infrastructure roads';
+  }
+  
+  // Health/Medical
+  if (titleLower.includes('vaccine') || titleLower.includes('vaccination')) {
+    return 'covid vaccine vaccination india hospital';
+  }
+  if (titleLower.includes('hospital')) {
+    return 'hospital india medical healthcare doctors';
+  }
+  
+  // Education
+  if (titleLower.includes('iit')) {
+    return 'iit campus india engineering students';
+  }
+  if (titleLower.includes('exam') || titleLower.includes('results')) {
+    return 'students exam results education india';
+  }
+  
+  // Default: Extract most important words
+  const stopWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'says', 'said', 'will', 'would', 'could', 'should', 'may', 'might', 'has', 'have', 'had', 'is', 'are', 'was', 'were', 'been', 'being'];
+  
+  // Extract key nouns and action words
+  let words = title.split(/[\s,.:;!?]+/)
+    .filter(w => !stopWords.includes(w.toLowerCase()) && w.length > 2)
+    .map(w => w.toLowerCase());
+  
+  // Prioritize action words and specific terms
+  const importantWords = words.filter(w => 
+    w.includes('crash') || w.includes('surge') || w.includes('launch') || 
+    w.includes('announce') || w.includes('reveal') || w.includes('break') ||
+    w.includes('win') || w.includes('lose') || w.includes('record')
   );
   
-  // Add context-specific keywords
-  if (titleLower.includes('market') || titleLower.includes('sensex') || titleLower.includes('nifty')) {
-    return 'stock market india trading';
-  }
-  if (titleLower.includes('cricket') || titleLower.includes('match')) {
-    return 'cricket india stadium';
-  }
-  if (titleLower.includes('bollywood') || titleLower.includes('film')) {
-    return 'bollywood cinema india';
-  }
-  if (titleLower.includes('startup') || titleLower.includes('unicorn')) {
-    return 'startup technology india business';
-  }
-  if (titleLower.includes('election') || titleLower.includes('vote')) {
-    return 'india election democracy voting';
-  }
-  if (titleLower.includes('festival') || titleLower.includes('celebration')) {
-    return 'india festival celebration culture';
+  if (importantWords.length > 0) {
+    return importantWords.concat(words).slice(0, 4).join(' ');
   }
   
-  // Combine top words with category
-  const keywords = words.slice(0, 3).join(' ');
-  return keywords || category.toLowerCase();
+  // Return most relevant words
+  return words.slice(0, 3).join(' ') + ' ' + category.toLowerCase();
 }
 
 
