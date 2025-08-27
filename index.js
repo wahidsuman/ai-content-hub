@@ -1,5 +1,6 @@
 // AGAMINEWS - COMPLETE AUTOMATED SYSTEM
 // Single file for easy management and deployment
+// IMPORTANT: Google Analytics ID G-ZW77WM2VPG must be on EVERY page!
 
 export default {
   async fetch(request, env) {
@@ -222,6 +223,24 @@ export default {
     }
   }
 };
+
+// CRITICAL: Google Analytics code - MUST be on EVERY page
+function getGoogleAnalyticsCode(pageTitle = 'AgamiNews', pagePath = '/') {
+  return `
+    <!-- Google Analytics - REQUIRED ON ALL PAGES -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZW77WM2VPG"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-ZW77WM2VPG', {
+        page_path: '${pagePath}',
+        page_title: '${pageTitle}',
+        page_location: window.location.href
+      });
+    </script>
+  `;
+}
 
 // Initialize system
 async function initializeSystem(env) {
@@ -3647,7 +3666,66 @@ async function serveArticle(env, request, pathname) {
   const article = articles[articleId];
   
   if (!article) {
-    return new Response('Article not found', { status: 404 });
+    // 404 page with Google Analytics
+    const html404 = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Article Not Found - AgamiNews</title>
+    
+    <!-- Google Analytics - ALWAYS INCLUDE -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZW77WM2VPG"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-ZW77WM2VPG', {
+        page_path: '/404',
+        page_title: '404 - Article Not Found'
+      });
+    </script>
+    
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background: #f5f5f5;
+      }
+      .error-container {
+        text-align: center;
+        padding: 20px;
+      }
+      h1 { color: #CC0000; font-size: 72px; margin: 0; }
+      h2 { color: #333; margin: 20px 0; }
+      a {
+        display: inline-block;
+        margin-top: 20px;
+        padding: 10px 20px;
+        background: #CC0000;
+        color: white;
+        text-decoration: none;
+        border-radius: 5px;
+      }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <h1>404</h1>
+        <h2>Article Not Found</h2>
+        <p>The article you're looking for doesn't exist or has been removed.</p>
+        <a href="/">← Back to Homepage</a>
+    </div>
+</body>
+</html>`;
+    return new Response(html404, { 
+      status: 404,
+      headers: { 'Content-Type': 'text/html; charset=utf-8' }
+    });
   }
   
   // Track article view
