@@ -1109,7 +1109,7 @@ async function handleFetchNews(env, chatId) {
 ✅ *Premium News Update Complete!*
 
 📰 Articles published: ${data.articles}
-✨ Quality: ${env.OPENAI_API_KEY ? 'Premium (GPT-3.5 Turbo)' : 'Standard'}
+✨ Quality: ${env.OPENAI_API_KEY ? 'ULTRA Premium (GPT-4)' : 'Standard'}
 📸 Images: ${env.OPENAI_API_KEY ? 'AI + Photos' : 'Stock Photos'}
 🌍 Sources: Multiple RSS feeds
 📊 Daily Progress: ${stats.dailyArticlesPublished || data.articles}/12
@@ -1874,11 +1874,12 @@ async function sendAPIUsage(env, chatId) {
 🤖 Model: GPT-3.5 Turbo (optimal for news)
 🖼️ Images: Unsplash + Pexels (free tier)
 
-*Cost Breakdown:*
-• Content Generation: ~$${(costMonthly * 0.6).toFixed(2)}/month
-• Summarization: ~$${(costMonthly * 0.3).toFixed(2)}/month
-• Bot Interactions: ~$${(costMonthly * 0.1).toFixed(2)}/month
-• Image APIs: $0.00 (free tier)
+*Cost Breakdown (GPT-4 + DALL-E 3):*
+• GPT-4 Summaries (10-12/day): ~$3.50/month
+• GPT-4 Articles (10-12/day): ~$4.50/month
+• DALL-E 3 HD Images (80%): ~$2.00/month
+• Bot Interactions: ~$0.50/month
+• Total Premium Cost: ~$10.50/month
 
 *Optimization Opportunities:*
 ✨ Premium content strategy activated
@@ -2148,25 +2149,30 @@ async function createHumanSummary(title, description, category, env) {
   // Use GPT-4 for high-quality content if API key is available
   if (env.OPENAI_API_KEY) {
     try {
-      const prompt = `You are a senior journalist for a leading Indian news website. Create a compelling, detailed news summary for this story:
+      const prompt = `You are an award-winning journalist at Bloomberg or The Economist, writing for an Indian audience. Create an exceptional, insight-rich news summary.
 
-Title: ${title}
-Category: ${category}
-Context: ${description || 'Breaking news story'}
+HEADLINE: ${title}
+CATEGORY: ${category}
+CONTEXT: ${description || 'Breaking news story'}
 
-Requirements:
-1. Write 150-200 words of engaging, informative content
-2. Include specific details, numbers, and context
-3. Add expert perspective or analysis
-4. Write in a conversational but professional tone
-5. Make it feel like insider information
-6. Include implications and what it means for readers
-7. Use Indian English and local context
-8. Make readers want to click and read more
-9. Don't use cliches or AI-sounding phrases
-10. Write like you're explaining to a smart friend
+WRITE A 200-250 WORD PREMIUM SUMMARY THAT:
+• Opens with a compelling hook that reveals something surprising
+• Includes 3-4 specific data points (percentages, amounts, dates)
+• Names key players (companies, people, organizations)
+• Provides expert analysis or insider perspective
+• Explains the "why" behind the news - what's really happening
+• Connects to broader trends or implications
+• Uses vivid, specific language (not generic terms)
+• Includes a forward-looking insight or prediction
+• Writes like The Ken, Bloomberg Quint, or Morning Context
+• Uses sophisticated vocabulary while remaining accessible
+• Creates FOMO - makes readers need to know more
 
-Write ONLY the article summary, no titles or metadata:`;
+STYLE: Authoritative yet conversational. Like a senior analyst briefing a CEO.
+AVOID: Generic phrases, obvious statements, AI-sounding language
+FOCUS: Unique angles, non-obvious insights, actionable intelligence
+
+Write ONLY the premium summary:`;
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -2175,7 +2181,7 @@ Write ONLY the article summary, no titles or metadata:`;
           'Authorization': `Bearer ${env.OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-3.5-turbo', // Using GPT-3.5 Turbo (reliable and cost-effective)
+          model: 'gpt-4', // Using GPT-4 for highest quality content
           messages: [
             {
               role: 'system',
@@ -2186,10 +2192,11 @@ Write ONLY the article summary, no titles or metadata:`;
               content: prompt
             }
           ],
-          temperature: 0.8,
-          max_tokens: 350,
-          presence_penalty: 0.1,
-          frequency_penalty: 0.1
+          temperature: 0.9,
+          max_tokens: 500, // More tokens for richer content
+          presence_penalty: 0.2,
+          frequency_penalty: 0.2,
+          top_p: 0.95 // Better creativity
         })
       });
 
@@ -2499,7 +2506,7 @@ async function getArticleImage(title, category, env) {
     }
     
     // Try DALL-E 3 for custom image generation for premium articles
-    if (env.OPENAI_API_KEY && Math.random() > 0.5) { // Use for 50% of articles for quality
+    if (env.OPENAI_API_KEY && Math.random() > 0.2) { // Use for 80% of articles for maximum quality
       try {
         const imagePrompt = `Create a professional news photograph for: ${title}. 
         Style: Photojournalistic, realistic, high-quality news photography. 
@@ -2517,7 +2524,7 @@ async function getArticleImage(title, category, env) {
             prompt: imagePrompt,
             n: 1,
             size: '1792x1024',
-            quality: 'standard',
+            quality: 'hd', // HD quality for best images
             style: 'natural'
           })
         });
@@ -3203,23 +3210,40 @@ async function generateFullArticle(article, env) {
   // Use GPT-4 to expand article with real insights
   if (env.OPENAI_API_KEY) {
     try {
-      const prompt = `Expand this news story into a detailed, insightful article:
+      const prompt = `You are a senior editor at The Economist writing an in-depth analysis for sophisticated Indian readers. Create a premium long-form article.
 
-Title: ${article.title}
-Category: ${article.category}
-Summary: ${article.summary}
-Source: ${article.source || 'News agencies'}
+HEADLINE: ${article.title}
+CATEGORY: ${article.category}
+SUMMARY: ${article.summary}
+SOURCE: ${article.source || 'Exclusive sources'}
 
-Create a 400-500 word article that includes:
-1. Opening hook paragraph expanding on the summary
-2. Background and context (why this matters now)
-3. Key stakeholders and their perspectives
-4. Data, statistics, or expert opinions (can be synthesized)
-5. Implications for different groups (businesses, citizens, investors)
-6. What to watch for next
-7. Conclusion with forward-looking insight
+CREATE A 600-800 WORD MASTERPIECE THAT INCLUDES:
 
-Write in HTML paragraphs (<p> tags). Make it informative, engaging, and valuable for readers. Use Indian context and examples. Write like The Ken or Bloomberg but accessible.`;
+STRUCTURE:
+• Compelling opening that challenges conventional thinking (100 words)
+• Deep context - the story behind the story (150 words)
+• Multi-stakeholder analysis with conflicting perspectives (150 words)
+• Data-driven insights with specific numbers and trends (100 words)
+• Implications across sectors - second and third-order effects (150 words)
+• Forward-looking scenarios and expert predictions (100 words)
+• Powerful conclusion with actionable intelligence (50 words)
+
+REQUIREMENTS:
+• Include at least 5 specific data points (percentages, amounts, timeframes)
+• Name at least 4 key players (companies, executives, regulators)
+• Connect to 2-3 global trends or precedents
+• Provide 3 non-obvious insights that readers won't find elsewhere
+• Include historical parallels or case studies
+• Add contrarian viewpoints or devil's advocate perspectives
+• Use sophisticated financial/business terminology correctly
+• Create narrative tension and resolution
+• Make complex topics accessible without dumbing down
+
+STYLE: The Economist meets Bloomberg - authoritative, data-rich, insightful
+OUTPUT: HTML paragraphs (<p> tags) with <strong> for emphasis
+GOAL: Content so valuable readers would pay to read it
+
+Write the FULL premium article:`;
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -3228,7 +3252,7 @@ Write in HTML paragraphs (<p> tags). Make it informative, engaging, and valuable
           'Authorization': `Bearer ${env.OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-3.5-turbo-16k', // Using GPT-3.5 Turbo 16K for longer articles
+          model: 'gpt-4', // Using GPT-4 for premium in-depth articles
           messages: [
             {
               role: 'system',
@@ -3239,8 +3263,11 @@ Write in HTML paragraphs (<p> tags). Make it informative, engaging, and valuable
               content: prompt
             }
           ],
-          temperature: 0.8,
-          max_tokens: 700
+          temperature: 0.9,
+          max_tokens: 1000, // Maximum depth for articles
+          presence_penalty: 0.2,
+          frequency_penalty: 0.2,
+          top_p: 0.95
         })
       });
 
@@ -3359,7 +3386,7 @@ async function testOpenAI(env) {
           'Authorization': `Bearer ${env.OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
+          model: 'gpt-4', // Testing with GPT-4
           messages: [
             {
               role: 'user',
