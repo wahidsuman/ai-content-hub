@@ -1109,7 +1109,7 @@ async function handleFetchNews(env, chatId) {
 ✅ *Premium News Update Complete!*
 
 📰 Articles published: ${data.articles}
-✨ Quality: ${env.OPENAI_API_KEY ? 'Premium (GPT-4o)' : 'Standard'}
+✨ Quality: ${env.OPENAI_API_KEY ? 'Premium (GPT-3.5 Turbo)' : 'Standard'}
 📸 Images: ${env.OPENAI_API_KEY ? 'AI + Photos' : 'Stock Photos'}
 🌍 Sources: Multiple RSS feeds
 📊 Daily Progress: ${stats.dailyArticlesPublished || data.articles}/12
@@ -2175,19 +2175,21 @@ Write ONLY the article summary, no titles or metadata:`;
           'Authorization': `Bearer ${env.OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-4-turbo-preview', // Using GPT-4 Turbo for best quality
+          model: 'gpt-3.5-turbo', // Using GPT-3.5 Turbo (reliable and cost-effective)
           messages: [
             {
               role: 'system',
-              content: 'You are an expert journalist who writes engaging, detailed news summaries for educated Indian readers. Your writing is conversational yet informative, with insider perspectives and real value.'
+              content: 'You are a senior journalist at a premium Indian news publication like The Ken or Bloomberg Quint. Write engaging, detailed summaries with specific data, expert insights, and real value. Be conversational but authoritative. Include numbers, percentages, company names, and specific details. Make every word count.'
             },
             {
               role: 'user',
               content: prompt
             }
           ],
-          temperature: 0.7,
-          max_tokens: 300
+          temperature: 0.8,
+          max_tokens: 350,
+          presence_penalty: 0.1,
+          frequency_penalty: 0.1
         })
       });
 
@@ -3226,7 +3228,7 @@ Write in HTML paragraphs (<p> tags). Make it informative, engaging, and valuable
           'Authorization': `Bearer ${env.OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-4-turbo-preview', // Premium GPT-4 Turbo for article expansion
+          model: 'gpt-3.5-turbo-16k', // Using GPT-3.5 Turbo 16K for longer articles
           messages: [
             {
               role: 'system',
@@ -3357,7 +3359,7 @@ async function testOpenAI(env) {
           'Authorization': `Bearer ${env.OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-4-turbo-preview',
+          model: 'gpt-3.5-turbo',
           messages: [
             {
               role: 'user',
