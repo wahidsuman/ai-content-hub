@@ -62,12 +62,51 @@ async function serveWebsite(env) {
   const isDark = config.theme === 'dark';
   
   const html = `<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${config.siteName} - AI-Powered News</title>
-    <meta name="description" content="Latest news and updates powered by AI">
+    <title>${config.siteName} - Latest Breaking News, India News, World News</title>
+    <meta name="description" content="Get latest breaking news from India and around the world. Live updates on politics, business, technology, sports, and entertainment. AI-powered news aggregation.">
+    <meta name="keywords" content="news, India news, breaking news, latest news, world news, politics, business, technology, sports, entertainment, AgamiNews">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://agaminews.in/">
+    <meta property="og:title" content="${config.siteName} - Latest Breaking News">
+    <meta property="og:description" content="Get latest breaking news from India and around the world. Live updates 24/7.">
+    <meta property="og:image" content="https://agaminews.in/og-image.jpg">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://agaminews.in/">
+    <meta property="twitter:title" content="${config.siteName} - Latest Breaking News">
+    <meta property="twitter:description" content="Get latest breaking news from India and around the world.">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://agaminews.in/">
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "NewsMediaOrganization",
+      "name": "${config.siteName}",
+      "url": "https://agaminews.in",
+      "logo": "https://agaminews.in/logo.png",
+      "description": "AI-powered news aggregation platform providing latest breaking news from India and around the world",
+      "foundingDate": "2024",
+      "sameAs": [
+        "https://t.me/AgamiNewsBot"
+      ],
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://agaminews.in/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+    
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -496,15 +535,59 @@ async function setupWebhook(env, origin) {
 // Generate sitemap
 async function generateSitemap(env) {
   const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  const today = new Date().toISOString().split('T')[0];
+  
+  // Generate URLs for all articles
+  let articleUrls = '';
+  articles.forEach((article, index) => {
+    articleUrls += `
+  <url>
+    <loc>https://agaminews.in/article/${index}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`;
+  });
   
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
   <url>
     <loc>https://agaminews.in/</loc>
-    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
-    <changefreq>daily</changefreq>
+    <lastmod>${today}</lastmod>
+    <changefreq>always</changefreq>
     <priority>1.0</priority>
   </url>
+  <url>
+    <loc>https://agaminews.in/india</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://agaminews.in/world</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://agaminews.in/technology</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://agaminews.in/business</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://agaminews.in/sports</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>${articleUrls}
 </urlset>`;
 
   return new Response(sitemap, {
@@ -543,27 +626,83 @@ async function runScheduledTasks(env) {
 function getDefaultArticles() {
   return [
     {
-      title: "AI Revolution: ChatGPT Reaches 200 Million Users",
+      title: "India's Digital Economy Set to Reach $1 Trillion by 2030",
+      category: "India",
+      summary: "Government initiatives and startup ecosystem drive unprecedented growth in digital sector. Tech giants increase investments.",
+      date: "1 hour ago",
+      views: 25420,
+      trending: true
+    },
+    {
+      title: "ISRO Successfully Launches New Communication Satellite",
       category: "Technology",
-      summary: "OpenAI's ChatGPT has reached 200 million weekly active users, doubling its user base in just six months.",
+      summary: "India's space agency achieves another milestone with advanced satellite for enhanced connectivity across rural areas.",
       date: "2 hours ago",
-      views: 15420,
+      views: 22350,
       trending: true
     },
     {
-      title: "Federal Reserve Signals Rate Cuts in 2024",
+      title: "Stock Markets Touch All-Time High, Sensex Crosses 75,000",
       category: "Business",
-      summary: "The Federal Reserve indicated possible rate cuts as inflation shows signs of cooling.",
+      summary: "BSE Sensex reaches historic milestone as foreign investors show confidence in Indian markets amid global uncertainty.",
       date: "3 hours ago",
-      views: 12890,
+      views: 28900,
       trending: true
     },
     {
-      title: "Climate Summit: $100B for Green Energy",
-      category: "Environment",
-      summary: "World leaders pledge massive funding for renewable energy projects.",
+      title: "India Wins Test Series Against Australia 2-1",
+      category: "Sports",
+      summary: "Historic victory at Melbourne Cricket Ground seals series win for Team India after 10 years.",
       date: "4 hours ago",
-      views: 9756,
+      views: 32100,
+      trending: true
+    },
+    {
+      title: "Global Climate Summit: India Pledges Net Zero by 2070",
+      category: "World",
+      summary: "PM announces ambitious renewable energy targets at COP summit, commits to sustainable development goals.",
+      date: "5 hours ago",
+      views: 18750,
+      trending: false
+    },
+    {
+      title: "New AI Breakthrough: Indian Startup Develops Language Model",
+      category: "Technology",
+      summary: "Bangalore-based startup creates revolutionary AI that understands and processes all 22 major Indian languages.",
+      date: "6 hours ago",
+      views: 21200,
+      trending: true
+    },
+    {
+      title: "RBI Keeps Repo Rate Unchanged at 6.5% in Policy Review",
+      category: "Business",
+      summary: "Central bank maintains status quo citing inflation concerns while supporting economic growth trajectory.",
+      date: "7 hours ago",
+      views: 19800,
+      trending: false
+    },
+    {
+      title: "Bollywood Film Breaks International Box Office Records",
+      category: "Entertainment",
+      summary: "Latest blockbuster crosses ₹1000 crore mark globally, becomes highest-grossing Indian film of all time.",
+      date: "8 hours ago",
+      views: 26500,
+      trending: true
+    },
+    {
+      title: "Electric Vehicle Sales Surge 150% in India",
+      category: "Auto",
+      summary: "EV adoption accelerates as government incentives and charging infrastructure expand across major cities.",
+      date: "9 hours ago",
+      views: 17600,
+      trending: false
+    },
+    {
+      title: "India to Host G20 Digital Economy Ministers Meeting",
+      category: "India",
+      summary: "Focus on AI governance, digital public infrastructure, and cybersecurity cooperation among member nations.",
+      date: "10 hours ago",
+      views: 14300,
       trending: false
     }
   ];
