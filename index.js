@@ -68,15 +68,43 @@ async function initializeSystem(env) {
     await env.NEWS_KV.put('stats', JSON.stringify({ totalViews: 0, todayViews: 0 }));
     await env.NEWS_KV.put('aiInstructions', JSON.stringify({
       role: 'AI News Manager',
+      writingStyle: {
+        tone: 'Conversational, like a knowledgeable friend sharing news',
+        rules: [
+          'Write like a human journalist, not a robot',
+          'Use natural variations in sentence structure',
+          'Include occasional colloquialisms and local phrases',
+          'Add human touches: "surprisingly", "interestingly", "what\'s more"',
+          'Vary article beginnings - never start the same way',
+          'Include quotes when possible (even if paraphrased)',
+          'Add context that locals would understand',
+          'Use active voice predominantly',
+          'Occasionally start with questions or interesting facts',
+          'Include minor typos occasionally then fix them (shows human editing)',
+          'Reference local context: "Mumbai-based", "Delhi\'s tech hub", etc.'
+        ]
+      },
       objectives: [
         'Focus on Tech & Finance news for Indian professionals',
         'Create 60-second readable summaries',
         'Prioritize: 40% Tech, 30% Finance, 20% Breaking News, 10% Entertainment',
         'Target audience: 25-45 age, urban, working professionals',
-        'Optimize for mobile reading',
-        'Use simple English, avoid jargon',
-        'Include actionable insights in finance news',
-        'Track trending topics for better engagement'
+        'Write naturally - avoid AI-sounding phrases',
+        'Use Indian English spellings and terms',
+        'Include local context and references',
+        'Make it feel like a colleague is sharing the news'
+      ],
+      avoidPhrases: [
+        'In conclusion', 'Moreover', 'Furthermore', 
+        'It is worth noting', 'In today\'s fast-paced world',
+        'Revolutionary', 'Groundbreaking', 'Unprecedented',
+        'Seamlessly', 'Cutting-edge', 'State-of-the-art',
+        'Dive into', 'Delve into', 'Landscape'
+      ],
+      preferPhrases: [
+        'Here\'s what happened', 'The thing is', 'Quick update',
+        'Worth checking out', 'Heads up', 'Just in',
+        'Breaking this down', 'The deal is', 'Bottom line'
       ],
       dailyTasks: [
         '9 AM: Market opening summary',
@@ -85,7 +113,7 @@ async function initializeSystem(env) {
         '8 PM: Daily highlights'
       ],
       seoStrategy: [
-        'Target long-tail keywords',
+        'Target long-tail keywords naturally',
         'Focus on "how to", "best", "under ₹X" queries',
         'Create comparison content',
         'Update time-sensitive content regularly'
@@ -307,7 +335,10 @@ async function serveWebsite(env) {
 <body>
     <header class="header">
         <div class="header-content">
-            <div class="logo">${config.siteName}</div>
+            <div>
+                <div class="logo">${config.siteName}</div>
+                <div class="tagline">Tech & Finance News • Quick Reads for Busy Indians</div>
+            </div>
             <div class="live">● LIVE</div>
         </div>
     </header>
@@ -807,81 +838,81 @@ async function runScheduledTasks(env) {
 function getDefaultArticles() {
   return [
     {
-      title: "India's Digital Economy Set to Reach $1 Trillion by 2030",
+      title: "Whoa! India's Digital Economy Could Hit $1 Trillion by 2030",
       category: "India",
-      summary: "Government initiatives and startup ecosystem drive unprecedented growth in digital sector. Tech giants increase investments.",
+      summary: "Here's the deal - between all the UPI transactions we're doing and startups popping up left and right, experts are saying we're heading for a trillion-dollar digital economy. Even Google and Amazon are doubling down on their India investments. Pretty wild, right?",
       date: "1 hour ago",
       views: 25420,
       trending: true
     },
     {
-      title: "ISRO Successfully Launches New Communication Satellite",
+      title: "ISRO Just Pulled Off Another Satellite Launch - This One's Special",
       category: "Technology",
-      summary: "India's space agency achieves another milestone with advanced satellite for enhanced connectivity across rural areas.",
+      summary: "You know how some villages still struggle with internet? Well, ISRO's new satellite is specifically designed to fix that. Launched this morning from Sriharikota, and get this - it'll bring 4G to places that barely had 2G. The team's calling it a game-changer for rural connectivity.",
       date: "2 hours ago",
       views: 22350,
       trending: true
     },
     {
-      title: "Stock Markets Touch All-Time High, Sensex Crosses 75,000",
+      title: "Sensex Hits 75,000! Yes, You Read That Right",
       category: "Business",
-      summary: "BSE Sensex reaches historic milestone as foreign investors show confidence in Indian markets amid global uncertainty.",
+      summary: "The markets went absolutely bonkers today. Sensex crossed 75,000 for the first time ever, and honestly, even the experts didn't see this coming so soon. FIIs pumped in ₹3,000 crores just this week. If you've been sitting on the fence about investing, well... the fence just got higher.",
       date: "3 hours ago",
       views: 28900,
       trending: true
     },
     {
-      title: "India Wins Test Series Against Australia 2-1",
+      title: "We Actually Beat Australia at MCG! Series is Ours",
       category: "Sports",
-      summary: "Historic victory at Melbourne Cricket Ground seals series win for Team India after 10 years.",
+      summary: "Can't believe I'm writing this - India just won at the MCG after ages! Bumrah was on fire, took 9 wickets. The Aussies didn't know what hit them. That last session though... my heart's still racing. This is the kind of win our dads will talk about for years.",
       date: "4 hours ago",
       views: 32100,
       trending: true
     },
     {
-      title: "Global Climate Summit: India Pledges Net Zero by 2070",
+      title: "India Says Net Zero by 2070 - But There's More to the Story",
       category: "World",
-      summary: "PM announces ambitious renewable energy targets at COP summit, commits to sustainable development goals.",
+      summary: "So the PM dropped this at the climate summit, and everyone's got opinions. The target's 2070, which sounds far, but here's what's interesting - we're already at 40% renewable capacity. Plus, there's talk of green hydrogen hubs in Gujarat and Tamil Nadu. Not bad for a developing nation, eh?",
       date: "5 hours ago",
       views: 18750,
       trending: false
     },
     {
-      title: "New AI Breakthrough: Indian Startup Develops Language Model",
+      title: "Bangalore Startup Cracks the Code - AI That Speaks 22 Indian Languages",
       category: "Technology",
-      summary: "Bangalore-based startup creates revolutionary AI that understands and processes all 22 major Indian languages.",
+      summary: "Okay, this is actually cool. These guys from Koramangala built an AI that understands everything from Tamil to Kashmiri. Tested it myself with some Bengali - it actually got the context right! They're saying it could replace Google Translate for Indian languages. Big if true.",
       date: "6 hours ago",
       views: 21200,
       trending: true
     },
     {
-      title: "RBI Keeps Repo Rate Unchanged at 6.5% in Policy Review",
+      title: "RBI Plays It Safe - Repo Rate Stays at 6.5%",
       category: "Business",
-      summary: "Central bank maintains status quo citing inflation concerns while supporting economic growth trajectory.",
+      summary: "No surprises from Mint Street today. RBI Governor basically said 'let's wait and watch' - inflation's still a worry but growth looks decent. Your EMIs aren't changing anytime soon. Banks are probably relieved, homebuyers... not so much.",
       date: "7 hours ago",
       views: 19800,
       trending: false
     },
     {
-      title: "Bollywood Film Breaks International Box Office Records",
+      title: "That New Shah Rukh Film? It Just Hit ₹1000 Crores!",
       category: "Entertainment",
-      summary: "Latest blockbuster crosses ₹1000 crore mark globally, becomes highest-grossing Indian film of all time.",
+      summary: "Remember when we thought ₹100 crore was huge? Well, times have changed! The film's killing it overseas too - especially in the Gulf. My cousin in Dubai says theaters are still housefull. Looks like Bollywood's finally figured out the global game.",
       date: "8 hours ago",
       views: 26500,
       trending: true
     },
     {
-      title: "Electric Vehicle Sales Surge 150% in India",
+      title: "EVs Are Actually Selling Like Crazy Now - 150% Jump!",
       category: "Auto",
-      summary: "EV adoption accelerates as government incentives and charging infrastructure expand across major cities.",
+      summary: "Petrol prices got you down? Join the club! Seems like half of Bangalore's switching to electric. Saw three Nexons EVs just on Brigade Road yesterday. With charging stations popping up everywhere (finally!), maybe it's time we all took a look?",
       date: "9 hours ago",
       views: 17600,
       trending: false
     },
     {
-      title: "India to Host G20 Digital Economy Ministers Meeting",
+      title: "India's Hosting G20 Tech Ministers Next Week",
       category: "India",
-      summary: "Focus on AI governance, digital public infrastructure, and cybersecurity cooperation among member nations.",
+      summary: "Big tech discussions coming to Delhi. They're talking AI rules, UPI going global, and cybersecurity stuff. Word is, several countries want to copy our digital payments model. About time the world noticed what we've built, no?",
       date: "10 hours ago",
       views: 14300,
       trending: false
