@@ -24,6 +24,24 @@ export default {
     } else if (url.pathname === '/test-openai') {
       // Test OpenAI integration
       return testOpenAI(env);
+    } else if (url.pathname === '/force-refresh') {
+      // Force refresh endpoint to clear cache
+      const articles = await env.NEWS_KV.get('articles', 'json') || [];
+      await env.NEWS_KV.put('articlesTimestamp', Date.now().toString());
+      
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Cache cleared - please refresh your browser (Ctrl+F5)',
+        articlesCount: articles.length,
+        timestamp: new Date().toISOString()
+      }), {
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
     } else if (url.pathname === '/fetch-news') {
       // Disabled public endpoint - use Telegram bot instead
       return new Response('This endpoint is disabled. Use the Telegram bot to manage news.', { 
@@ -204,8 +222,16 @@ async function initializeSystem(env) {
 
 // Serve website
 async function serveWebsite(env, request) {
+  // Force fresh data fetch with timestamp check
   const config = await env.NEWS_KV.get('config', 'json') || {};
-  const articles = await env.NEWS_KV.get('articles', 'json') || getDefaultArticles();
+  const articlesTimestamp = await env.NEWS_KV.get('articlesTimestamp');
+  
+  // Always fetch fresh articles from KV (no caching)
+  const articles = await env.NEWS_KV.get('articles', 'json').then(data => {
+    console.log(`Fetched ${data ? data.length : 0} articles from KV (timestamp: ${articlesTimestamp})`);
+    return data || getDefaultArticles();
+  });
+  
   const stats = await env.NEWS_KV.get('stats', 'json') || {};
   
   // Enhanced analytics tracking
@@ -868,7 +894,12 @@ async function serveWebsite(env, request) {
 </html>`;
 
   return new Response(html, {
-    headers: { 'Content-Type': 'text/html;charset=UTF-8' }
+    headers: { 
+      'Content-Type': 'text/html;charset=UTF-8',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    }
   });
 }
 
@@ -1791,8 +1822,14 @@ Use /fetch for manual updates anytime!
     case 'confirm_clear':
       // Clear all articles - admin only through Telegram
       await env.NEWS_KV.put('articles', JSON.stringify([]));
+      await env.NEWS_KV.put('articlesTimestamp', Date.now().toString()); // Force refresh
+      await env.NEWS_KV.put('lastFetch', new Date().toISOString());
+      
       const stats = await env.NEWS_KV.get('stats', 'json') || {};
       stats.dailyArticlesPublished = 0;
+      stats.dailyFetches = 0;
+      stats.tokensUsedToday = 0;
+      stats.articleViews = {};
       await env.NEWS_KV.put('stats', JSON.stringify(stats));
       
       await sendMessage(env, chatId, `✅ *All Articles Deleted*
@@ -2124,6 +2161,7 @@ async function fetchLatestNews(env) {
     
     await env.NEWS_KV.put('articles', JSON.stringify(combinedArticles));
     await env.NEWS_KV.put('lastFetch', new Date().toISOString());
+    await env.NEWS_KV.put('articlesTimestamp', Date.now().toString());
     
     // Verify save
     const verifyArticles = await env.NEWS_KV.get('articles', 'json') || [];
@@ -3485,7 +3523,12 @@ async function serveArticle(env, request, pathname) {
 </html>`;
 
   return new Response(html, {
-    headers: { 'Content-Type': 'text/html; charset=utf-8' }
+    headers: { 
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    }
   });
 }
 
