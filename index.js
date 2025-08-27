@@ -2008,21 +2008,25 @@ async function fetchLatestNews(env) {
       }), { headers: { 'Content-Type': 'application/json' } });
     }
     
-    // Fetch from multiple RSS feeds
+    // Fetch from multiple RSS feeds - Focus on Tech and Auto
     const feeds = [
-      // Indian sources
-      { url: 'https://timesofindia.indiatimes.com/rssfeeds/1221656.cms', category: 'India', source: 'TOI' },
-      { url: 'https://feeds.feedburner.com/ndtvnews-top-stories', category: 'India', source: 'NDTV' },
-      { url: 'https://www.thehindu.com/news/national/feeder/default.rss', category: 'India', source: 'The Hindu' },
-      // Tech
+      // Tech & Gadgets (Priority)
       { url: 'https://feeds.feedburner.com/ndtvgadgets-latest', category: 'Technology', source: 'NDTV Gadgets' },
+      { url: 'https://www.gsmarena.com/rss-news-reviews.php3', category: 'Mobile', source: 'GSMArena' },
+      { url: 'https://gadgets360.com/rss/feeds', category: 'Gadgets', source: 'Gadgets 360' },
       { url: 'https://techcrunch.com/feed/', category: 'Technology', source: 'TechCrunch' },
-      // Business
+      
+      // Auto & Cars
+      { url: 'https://www.cartoq.com/feed/', category: 'Auto', source: 'CarToq' },
+      { url: 'https://www.cardekho.com/rss/latest-car-news.xml', category: 'Auto', source: 'CarDekho' },
+      { url: 'https://auto.economictimes.indiatimes.com/rss/topstories', category: 'Auto', source: 'ET Auto' },
+      
+      // Business & Markets
       { url: 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms', category: 'Business', source: 'ET Markets' },
       { url: 'https://www.moneycontrol.com/rss/latestnews.xml', category: 'Business', source: 'MoneyControl' },
-      // International
-      { url: 'https://feeds.bbci.co.uk/news/world/rss.xml', category: 'World', source: 'BBC' },
-      { url: 'https://rss.cnn.com/rss/edition_world.rss', category: 'World', source: 'CNN' }
+      
+      // General News
+      { url: 'https://timesofindia.indiatimes.com/rssfeeds/1221656.cms', category: 'India', source: 'TOI' }
     ];
     
     let allArticles = [];
@@ -2171,22 +2175,43 @@ function cleanRSSContent(text) {
     .trim();
 }
 
-// Make headlines more human and engaging
+// Make headlines more engaging with specifications
 function makeHeadlineHuman(title) {
   // Remove source tags
   title = title.replace(/\s*-\s*Times of India$/, '');
   title = title.replace(/\s*\|\s*.*$/, '');
+  title = title.replace(/\s*-\s*NDTV.*$/, '');
+  title = title.replace(/\s*-\s*The Hindu$/, '');
   
-  // Add engaging elements randomly
-  const prefixes = ['Breaking:', 'Just In:', 'Update:', 'Big News:', ''];
-  const exclamations = ['!', '', '?', ' - Here\'s Why', ' - What We Know'];
+  // Detect if title has specifications
+  const hasSpecs = /\d+GB|\d+MP|\d+mAh|₹\d+|\$\d+|\d+\s*km|kmpl|bhp|cc|Launch|Launched/i.test(title);
+  const hasQuestion = title.includes('?');
   
-  if (Math.random() > 0.7) {
-    title = prefixes[Math.floor(Math.random() * prefixes.length)] + ' ' + title;
+  // Enhanced prefixes for different types
+  const techPrefixes = ['Launch:', 'Launched:', 'New:', 'Official:', 'Confirmed:'];
+  const newsPrefixes = ['Breaking:', 'Just In:', 'Update:', 'Alert:', 'Exclusive:'];
+  
+  // Add suffixes for engagement
+  const suffixes = [
+    ' - Full Specs & Price',
+    ' - Price & Features', 
+    ' - Everything You Need to Know',
+    ' - Booking Opens',
+    ' - Available Now'
+  ];
+  
+  // Apply prefix based on content type
+  if (hasSpecs && Math.random() > 0.5) {
+    const prefix = techPrefixes[Math.floor(Math.random() * techPrefixes.length)];
+    title = prefix + ' ' + title;
+  } else if (!hasQuestion && Math.random() > 0.7) {
+    const prefix = newsPrefixes[Math.floor(Math.random() * newsPrefixes.length)];
+    title = prefix + ' ' + title;
   }
   
-  if (Math.random() > 0.8 && !title.includes('?')) {
-    title = title + exclamations[Math.floor(Math.random() * exclamations.length)];
+  // Add suffix for tech/auto content
+  if (hasSpecs && Math.random() > 0.6 && !hasQuestion) {
+    title = title + suffixes[Math.floor(Math.random() * suffixes.length)];
   }
   
   return title.trim();
@@ -2197,30 +2222,51 @@ async function createHumanSummary(title, description, category, env) {
   // Use GPT-4 for high-quality content if API key is available
   if (env.OPENAI_API_KEY) {
     try {
-      const prompt = `You are an award-winning journalist at Bloomberg or The Economist, writing for an Indian audience. Create an exceptional, insight-rich news summary.
+      const prompt = `You are a viral tech/auto journalist writing clickable, specification-rich news for Indian readers.
 
 HEADLINE: ${title}
-CATEGORY: ${category}
+CATEGORY: ${category}  
 CONTEXT: ${description || 'Breaking news story'}
 
-WRITE A 200-250 WORD PREMIUM SUMMARY THAT:
-• Opens with a compelling hook that reveals something surprising
-• Includes 3-4 specific data points (percentages, amounts, dates)
-• Names key players (companies, people, organizations)
-• Provides expert analysis or insider perspective
-• Explains the "why" behind the news - what's really happening
-• Connects to broader trends or implications
-• Uses vivid, specific language (not generic terms)
-• Includes a forward-looking insight or prediction
-• Writes like The Ken, Bloomberg Quint, or Morning Context
-• Uses sophisticated vocabulary while remaining accessible
-• Creates FOMO - makes readers need to know more
+CREATE A 200-250 WORD VIRAL SUMMARY WITH MAXIMUM SPECIFICATIONS:
 
-STYLE: Authoritative yet conversational. Like a senior analyst briefing a CEO.
-AVOID: Generic phrases, obvious statements, AI-sounding language
-FOCUS: Unique angles, non-obvious insights, actionable intelligence
+${category.toLowerCase().includes('tech') || category.toLowerCase().includes('gadget') ? `
+TECH/MOBILE SPECS TO INCLUDE:
+• Price: ₹X,XXX (exact), EMI ₹X/month, exchange offers
+• RAM & Storage: 8GB/12GB/16GB, 128GB/256GB/512GB/1TB
+• Processor: Snapdragon/MediaTek/Exynos with model number
+• Camera: 108MP/200MP main, features
+• Battery: 5000mAh, 100W/120W fast charging
+• Display: 6.7" AMOLED, 120Hz/144Hz
+• Special features: 5G, AI features, unique selling points
+• Launch date, sale date, availability
+• Comparison: "beats iPhone 15", "cheaper than OnePlus"
+` : ''}
 
-Write ONLY the premium summary:`;
+${category.toLowerCase().includes('auto') || category.toLowerCase().includes('car') ? `
+AUTO/VEHICLE SPECS TO INCLUDE:
+• Price: ₹X lakhs (ex-showroom), on-road price
+• EMI: ₹X/month, down payment ₹X
+• Mileage: XX KMPL city, XX KMPL highway
+• Engine: XXXXcc, XXX bhp, XXX Nm torque
+• Variants: 5-seater/7-seater, manual/automatic
+• Features: sunroof, ADAS, ventilated seats
+• Safety: 5-star NCAP, 6 airbags
+• Launch/delivery timeline
+• vs competitors: "better mileage than Creta", "cheaper than Innova"
+` : ''}
+
+WRITING RULES:
+• START with the most impressive number (price/mileage/RAM)
+• Use exact specifications, never vague terms
+• Include "vs" comparisons with popular models
+• Add urgency: "booking starts tomorrow", "only 1000 units"
+• Mention offers: "free accessories worth ₹50,000"
+• End with action: when/where to book/buy
+
+Write like GSMArena, 91mobiles, CarDekho - make it shareable!
+
+Write ONLY the viral, spec-rich summary:`;
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -3258,40 +3304,53 @@ async function generateFullArticle(article, env) {
   // Use GPT-4 to expand article with real insights
   if (env.OPENAI_API_KEY) {
     try {
-      const prompt = `You are a senior editor at The Economist writing an in-depth analysis for sophisticated Indian readers. Create a premium long-form article.
+      const prompt = `You are writing viral, specification-packed articles for Indian tech/auto enthusiasts.
 
 HEADLINE: ${article.title}
 CATEGORY: ${article.category}
 SUMMARY: ${article.summary}
-SOURCE: ${article.source || 'Exclusive sources'}
+SOURCE: ${article.source || 'Exclusive'}
 
-CREATE A 600-800 WORD MASTERPIECE THAT INCLUDES:
+CREATE A 600-800 WORD VIRAL ARTICLE:
 
-STRUCTURE:
-• Compelling opening that challenges conventional thinking (100 words)
-• Deep context - the story behind the story (150 words)
-• Multi-stakeholder analysis with conflicting perspectives (150 words)
-• Data-driven insights with specific numbers and trends (100 words)
-• Implications across sectors - second and third-order effects (150 words)
-• Forward-looking scenarios and expert predictions (100 words)
-• Powerful conclusion with actionable intelligence (50 words)
+${article.category.toLowerCase().includes('tech') || article.category.toLowerCase().includes('mobile') || article.category.toLowerCase().includes('gadget') ? `
+TECH ARTICLE STRUCTURE:
+<p><strong>Price & Availability:</strong> Start with exact price (₹XX,XXX), EMI details, launch date, sale date, platforms (Amazon/Flipkart)</p>
+<p><strong>Specifications Table:</strong> Display (size, type, refresh rate), Processor (exact model), RAM/Storage variants, Camera setup (all sensors), Battery & charging speeds</p>
+<p><strong>Unique Features:</strong> What makes this different - AI features, exclusive tech, special modes</p>
+<p><strong>Performance Comparison:</strong> Benchmark scores, real-world usage, gaming performance vs competitors</p>
+<p><strong>Camera Samples:</strong> Describe photo quality, video capabilities, special modes</p>
+<p><strong>Value Proposition:</strong> Compare with 3 competitors - show why this is better/worse</p>
+<p><strong>Who Should Buy:</strong> Target audience, use cases, alternatives to consider</p>
+<p><strong>Verdict:</strong> Pros, cons, final score, should you wait or buy now</p>
+` : ''}
 
-REQUIREMENTS:
-• Include at least 5 specific data points (percentages, amounts, timeframes)
-• Name at least 4 key players (companies, executives, regulators)
-• Connect to 2-3 global trends or precedents
-• Provide 3 non-obvious insights that readers won't find elsewhere
-• Include historical parallels or case studies
-• Add contrarian viewpoints or devil's advocate perspectives
-• Use sophisticated financial/business terminology correctly
-• Create narrative tension and resolution
-• Make complex topics accessible without dumbing down
+${article.category.toLowerCase().includes('auto') || article.category.toLowerCase().includes('car') ? `
+AUTO ARTICLE STRUCTURE:
+<p><strong>Price & Variants:</strong> All variants with prices, on-road prices for major cities, EMI calculator</p>
+<p><strong>Engine & Performance:</strong> All engine options, power figures, 0-100 times, top speed</p>
+<p><strong>Mileage Deep Dive:</strong> City/Highway/Combined KMPL, real-world vs claimed, fuel tank capacity</p>
+<p><strong>Features List:</strong> Segment-first features, what each variant gets, missing features</p>
+<p><strong>Space & Comfort:</strong> Boot space (litres), seating configuration, rear seat comfort</p>
+<p><strong>Safety:</strong> NCAP rating, airbags count, ADAS features, build quality</p>
+<p><strong>vs Rivals:</strong> Detailed comparison with top 3 competitors on price, features, mileage</p>
+<p><strong>Buying Advice:</strong> Best variant to buy, waiting period, upcoming updates</p>
+` : ''}
 
-STYLE: The Economist meets Bloomberg - authoritative, data-rich, insightful
-OUTPUT: HTML paragraphs (<p> tags) with <strong> for emphasis
-GOAL: Content so valuable readers would pay to read it
+MUST INCLUDE:
+• At least 10 specific numbers (prices, specs, percentages)
+• Comparison table with 3+ competitors
+• "Should you buy" verdict with clear yes/no
+• Upcoming alternatives to wait for
+• Current offers/discounts available
+• Expert tip or hack (how to get best deal)
 
-Write the FULL premium article:`;
+STYLE: Write like Team-BHP, GSMArena, CarWale - enthusiast-focused
+FORMAT: HTML <p> tags, use <strong> for specs, <em> for emphasis
+
+Create content that readers will share in WhatsApp groups!
+
+Write the FULL specification-rich article:`;
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
