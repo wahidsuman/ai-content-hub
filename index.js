@@ -21,6 +21,9 @@ export default {
       });
     } else if (url.pathname === '/debug') {
       return debugInfo(env);
+    } else if (url.pathname === '/test-openai') {
+      // Test OpenAI integration
+      return testOpenAI(env);
     } else if (url.pathname === '/fetch-news') {
       // Disabled public endpoint - use Telegram bot instead
       return new Response('This endpoint is disabled. Use the Telegram bot to manage news.', { 
@@ -2172,7 +2175,7 @@ Write ONLY the article summary, no titles or metadata:`;
           'Authorization': `Bearer ${env.OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-4o', // Using latest GPT-4o for best quality
+          model: 'gpt-4-turbo-preview', // Using GPT-4 Turbo for best quality
           messages: [
             {
               role: 'system',
@@ -2192,11 +2195,18 @@ Write ONLY the article summary, no titles or metadata:`;
         const data = await response.json();
         const aiSummary = data.choices[0]?.message?.content;
         if (aiSummary && aiSummary.length > 50) {
+          console.log('GPT-4 summary created successfully');
           return aiSummary.trim();
+        }
+      } else {
+        const errorData = await response.json();
+        console.error('OpenAI API error:', errorData);
+        if (errorData.error?.message?.includes('API key')) {
+          console.error('Invalid OpenAI API key');
         }
       }
     } catch (error) {
-      console.error('GPT-4 summary error:', error);
+      console.error('GPT-4 summary error:', error.message);
     }
   }
   
@@ -3216,7 +3226,7 @@ Write in HTML paragraphs (<p> tags). Make it informative, engaging, and valuable
           'Authorization': `Bearer ${env.OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-4o', // Premium GPT-4o for article expansion
+          model: 'gpt-4-turbo-preview', // Premium GPT-4 Turbo for article expansion
           messages: [
             {
               role: 'system',
@@ -3326,6 +3336,82 @@ function generateFullArticleTemplate(article) {
   }
   
   return paragraphs.join('\n');
+}
+
+// Test OpenAI integration
+async function testOpenAI(env) {
+  const results = {
+    openai_configured: !!env.OPENAI_API_KEY,
+    test_summary: null,
+    test_image: null,
+    errors: []
+  };
+  
+  if (env.OPENAI_API_KEY) {
+    // Test GPT-4
+    try {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4-turbo-preview',
+          messages: [
+            {
+              role: 'user',
+              content: 'Say "GPT-4 is working!" in 5 words.'
+            }
+          ],
+          max_tokens: 20
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        results.test_summary = data.choices[0]?.message?.content || 'No response';
+      } else {
+        const error = await response.json();
+        results.errors.push(`GPT-4 error: ${error.error?.message || 'Unknown'}`);
+      }
+    } catch (e) {
+      results.errors.push(`GPT-4 test failed: ${e.message}`);
+    }
+    
+    // Test DALL-E (optional, comment out to save costs)
+    /*
+    try {
+      const response = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'dall-e-2', // Using DALL-E 2 for test (cheaper)
+          prompt: 'A simple red square',
+          n: 1,
+          size: '256x256'
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        results.test_image = 'DALL-E working';
+      } else {
+        const error = await response.json();
+        results.errors.push(`DALL-E error: ${error.error?.message || 'Unknown'}`);
+      }
+    } catch (e) {
+      results.errors.push(`DALL-E test failed: ${e.message}`);
+    }
+    */
+  }
+  
+  return new Response(JSON.stringify(results, null, 2), {
+    headers: { 'Content-Type': 'application/json' }
+  });
 }
 
 // Debug info
