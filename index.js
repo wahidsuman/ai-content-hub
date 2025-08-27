@@ -2191,23 +2191,54 @@ async function serveArticle(env, request, pathname) {
         }
         .related-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+        }
+        @media (max-width: 768px) {
+            .related-grid {
+                grid-template-columns: 1fr;
+            }
         }
         .related-card {
             background: ${isDark ? '#1A1A1A' : '#F8F8F8'};
-            padding: 15px;
+            padding: 12px;
             border-radius: 10px;
             text-decoration: none;
             color: inherit;
             transition: transform 0.3s;
+            display: flex;
+            gap: 12px;
+            align-items: center;
         }
         .related-card:hover {
             transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .related-card-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            overflow: hidden;
+            flex-shrink: 0;
+            background: ${isDark ? '#0A0A0A' : '#F0F0F0'};
+        }
+        .related-card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .related-card-content {
+            flex: 1;
+            min-width: 0;
         }
         .related-card-title {
             font-weight: 600;
             margin-bottom: 5px;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
         .related-card-meta {
             font-size: 12px;
@@ -2271,10 +2302,15 @@ async function serveArticle(env, request, pathname) {
                 gap: 12px;
             }
             .related-card {
-                padding: 12px;
+                padding: 10px;
+            }
+            .related-card-image {
+                width: 60px;
+                height: 60px;
             }
             .related-card-title {
-                font-size: 14px;
+                font-size: 13px;
+                -webkit-line-clamp: 2;
             }
             .related-card-meta {
                 font-size: 11px;
@@ -2337,13 +2373,23 @@ async function serveArticle(env, request, pathname) {
             <div class="related-grid">
                 ${articles
                   .filter((a, i) => i !== articleId && a.category === article.category)
-                  .slice(0, 3)
-                  .map((related, index) => `
-                    <a href="/article/${articles.indexOf(related)}" class="related-card">
-                        <div class="related-card-title">${related.title}</div>
-                        <div class="related-card-meta">${related.category} • ${related.date || 'Today'}</div>
+                  .slice(0, 4)
+                  .map((related, index) => {
+                    const relatedIndex = articles.indexOf(related);
+                    const imageUrl = related.image?.url || related.image || 
+                                   `https://via.placeholder.com/160x160/333/999?text=${encodeURIComponent(related.category)}`;
+                    return `
+                    <a href="/article/${relatedIndex}" class="related-card">
+                        <div class="related-card-image">
+                            <img src="${imageUrl}" alt="${related.title}" loading="lazy">
+                        </div>
+                        <div class="related-card-content">
+                            <div class="related-card-title">${related.title}</div>
+                            <div class="related-card-meta">${related.category} • ${related.date || 'Today'}</div>
+                        </div>
                     </a>
-                  `).join('')}
+                  `;
+                  }).join('')}
             </div>
         </div>
         
