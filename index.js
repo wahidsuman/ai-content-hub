@@ -24,6 +24,9 @@ export default {
     } else if (url.pathname === '/test-openai') {
       // Test OpenAI integration
       return testOpenAI(env);
+    } else if (url.pathname === '/test-article') {
+      // Test single article generation
+      return testArticleGeneration(env);
     } else if (url.pathname === '/force-refresh') {
       // Force refresh endpoint to clear cache
       const articles = await env.NEWS_KV.get('articles', 'json') || [];
@@ -1120,12 +1123,20 @@ Or use /menu for all options! 🚀
 
 // New function: Handle fetch news
 async function handleFetchNews(env, chatId) {
-  await sendMessage(env, chatId, `🔄 *Fetching Comprehensive Articles...*\n\n⏳ Generating full investigative articles with GPT-3.5 Turbo...\n⚠️ This takes 2-3 minutes for quality content.`);
+  // Send initial message
+  await sendMessage(env, chatId, `🔄 *Starting Article Generation...*\n\n📊 Checking system status...`);
+  
+  // Quick diagnostic check
+  const hasApiKey = !!env.OPENAI_API_KEY;
+  await sendMessage(env, chatId, `✅ API Key: ${hasApiKey ? 'Configured' : '❌ MISSING'}\n🔄 Fetching RSS feeds...`);
   
   try {
     console.log('Starting news fetch from Telegram command...');
-    // Call the fetch news function
-    const result = await fetchLatestNews(env);
+    // Call the fetch news function with timeout
+    const result = await Promise.race([
+      fetchLatestNews(env),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Fetch timeout after 3 minutes')), 180000))
+    ]);
     
     if (!result) {
       throw new Error('No response from fetch function');
@@ -2078,9 +2089,20 @@ async function fetchLatestNews(env) {
     
     let allArticles = [];
     
+    // Notify progress
+    const adminChat = await env.NEWS_KV.get('admin_chat');
+    let feedCount = 0;
+    
     // Fetch from each feed
     for (const feed of feeds) {
-      console.log(`Fetching from ${feed.source}...`);
+      feedCount++;
+      console.log(`Fetching from ${feed.source}... (${feedCount}/${feeds.length})`);
+      
+      // Send progress update every 3 feeds
+      if (feedCount % 3 === 0 && adminChat && env.TELEGRAM_BOT_TOKEN) {
+        await sendMessage(env, adminChat, `📡 Progress: Fetched ${feedCount}/${feeds.length} RSS feeds...`);
+      }
+      
       try {
         const response = await fetch(feed.url);
         if (!response.ok) {
@@ -3797,6 +3819,42 @@ function generateFullArticleTemplate(article) {
   }
   
   return paragraphs.join('\n');
+}
+
+// Test single article generation
+async function testArticleGeneration(env) {
+  const testArticle = {
+    title: 'Test Article: OpenAI Integration Check',
+    category: 'Technology',
+    preview: 'Testing article generation...'
+  };
+  
+  try {
+    console.log('Testing article generation...');
+    const startTime = Date.now();
+    
+    const fullContent = await generateFullArticle(testArticle, 'This is a test to verify OpenAI article generation is working properly.', env);
+    
+    const timeTaken = ((Date.now() - startTime) / 1000).toFixed(2);
+    
+    return new Response(JSON.stringify({
+      success: true,
+      timeTaken: `${timeTaken} seconds`,
+      contentLength: fullContent.length,
+      preview: fullContent.substring(0, 200) + '...',
+      apiKeyPresent: !!env.OPENAI_API_KEY
+    }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message,
+      apiKeyPresent: !!env.OPENAI_API_KEY
+    }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
 }
 
 // Test OpenAI integration
