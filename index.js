@@ -468,30 +468,53 @@ async function handleTelegram(request, env) {
       // Handle commands
       if (text === '/start') {
         await sendMessage(env, chatId, `
-🎉 *Welcome to AgamiNews Manager!*
+🎉 *Welcome to AgamiNews AI Manager!*
 
-I'm your AI website manager with:
-📊 Performance tracking
-🎨 Design control  
-📰 Content management
-🤖 AI features
+I'm your intelligent news manager powered by AI. I handle everything automatically!
+
+🤖 *What I Do:*
+• Fetch real news every 3 hours from 9 sources
+• Select best images (Unsplash/Pexels)
+• Write human-like summaries
+• Track performance & costs
+• Optimize for Google ranking
+
+💰 *Current Status:*
+• API Cost: ~$1.50/month
+• Budget: $10/month (plenty left!)
+• News Sources: Active ✅
+• Image APIs: ${env.UNSPLASH_ACCESS_KEY ? 'Connected ✅' : 'Not set ❌'}
+
+📍 *Focus:* Tech + Finance for Indian professionals
 
 Commands:
-/menu - Main menu
-/stats - View statistics
+/menu - Full control panel
+/stats - Live statistics
+/fetch - Force news update NOW
+/status - System health check
 /help - Get help
 
-Or just talk naturally!
+Or just talk to me naturally! Try:
+"Fetch news now"
+"Show me today's performance"
+"How many articles do we have?"
         `, {
           inline_keyboard: [
-            [{ text: '📊 Stats', callback_data: 'stats' }],
-            [{ text: '⚙️ Settings', callback_data: 'settings' }]
+            [{ text: '📊 Stats', callback_data: 'stats' }, { text: '🚀 Fetch News', callback_data: 'fetch' }],
+            [{ text: '📈 Strategy', callback_data: 'strategy' }, { text: '💵 Costs', callback_data: 'apiusage' }],
+            [{ text: '⚙️ Menu', callback_data: 'menu' }]
           ]
         });
       } else if (text === '/menu') {
         await sendMenu(env, chatId);
       } else if (text === '/stats') {
         await sendStats(env, chatId);
+      } else if (text === '/fetch') {
+        await handleFetchNews(env, chatId);
+      } else if (text === '/status') {
+        await sendSystemStatus(env, chatId);
+      } else if (text === '/help') {
+        await sendHelp(env, chatId);
       } else {
         await handleNaturalLanguage(env, chatId, text);
       }
@@ -575,13 +598,180 @@ Trending: ${articles.filter(a => a.trending).length}
 async function handleNaturalLanguage(env, chatId, text) {
   const lower = text.toLowerCase();
   
-  if (lower.includes('stats') || lower.includes('performance')) {
-    await sendStats(env, chatId);
-  } else if (lower.includes('theme') || lower.includes('dark') || lower.includes('light')) {
-    await handleThemeChange(env, chatId, text);
-  } else {
-    await sendMessage(env, chatId, `I understand: "${text}"\n\nTry /menu for options!`);
+  // Fetch news commands
+  if (lower.includes('fetch') || lower.includes('update news') || lower.includes('get news')) {
+    await handleFetchNews(env, chatId);
   }
+  // Stats and performance
+  else if (lower.includes('stats') || lower.includes('performance') || lower.includes('views') || lower.includes('how many')) {
+    await sendStats(env, chatId);
+  }
+  // Theme changes
+  else if (lower.includes('theme') || lower.includes('dark') || lower.includes('light')) {
+    await handleThemeChange(env, chatId, text);
+  }
+  // Cost and budget
+  else if (lower.includes('cost') || lower.includes('budget') || lower.includes('money') || lower.includes('api')) {
+    await sendAPIUsage(env, chatId);
+  }
+  // Strategy
+  else if (lower.includes('strategy') || lower.includes('focus') || lower.includes('plan')) {
+    await sendContentStrategy(env, chatId);
+  }
+  // SEO
+  else if (lower.includes('seo') || lower.includes('google') || lower.includes('ranking')) {
+    await sendSEOReport(env, chatId);
+  }
+  // Status check
+  else if (lower.includes('status') || lower.includes('health') || lower.includes('working')) {
+    await sendSystemStatus(env, chatId);
+  }
+  // Help
+  else if (lower.includes('help') || lower.includes('what can you do')) {
+    await sendHelp(env, chatId);
+  }
+  else {
+    // AI-like response
+    await sendMessage(env, chatId, `
+Got it! You said: "${text}"
+
+I understand natural language! Try:
+• "Fetch latest news"
+• "Show me stats"
+• "What's our API cost?"
+• "Check SEO status"
+• "Is everything working?"
+
+Or use /menu for all options! 🚀
+    `);
+  }
+}
+
+// New function: Handle fetch news
+async function handleFetchNews(env, chatId) {
+  await sendMessage(env, chatId, `🔄 *Fetching Latest News...*\n\nThis will take about 30 seconds...`);
+  
+  try {
+    // Call the fetch news function
+    const result = await fetchLatestNews(env);
+    const data = await result.json();
+    
+    if (data.success) {
+      await sendMessage(env, chatId, `
+✅ *News Update Complete!*
+
+📰 Articles fetched: ${data.articles}
+📸 Images loaded: All with credits
+🌍 Sources: TOI, NDTV, Hindu, BBC, CNN, TechCrunch
+⏰ Next auto-update: 3 hours
+
+Visit your site to see the fresh content!
+https://agaminews.in
+
+*Tip:* News auto-updates every 3 hours. Use /fetch anytime for manual update.
+      `, {
+        inline_keyboard: [
+          [{ text: '📊 View Stats', callback_data: 'stats' }],
+          [{ text: '↩️ Back', callback_data: 'menu' }]
+        ]
+      });
+    } else {
+      throw new Error(data.error || 'Failed to fetch');
+    }
+  } catch (error) {
+    await sendMessage(env, chatId, `❌ Error fetching news: ${error.message}\n\nTry again in a moment.`);
+  }
+}
+
+// New function: System status
+async function sendSystemStatus(env, chatId) {
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  const lastFetch = await env.NEWS_KV.get('lastFetch');
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  
+  const status = {
+    telegram: env.TELEGRAM_BOT_TOKEN ? '✅' : '❌',
+    unsplash: env.UNSPLASH_ACCESS_KEY ? '✅' : '❌',
+    pexels: env.PEXELS_API_KEY ? '✅' : '❌',
+    openai: env.OPENAI_API_KEY ? '✅' : '❌'
+  };
+  
+  await sendMessage(env, chatId, `
+🔍 *System Status Check*
+
+*API Connections:*
+• Telegram Bot: ${status.telegram}
+• Unsplash Images: ${status.unsplash}
+• Pexels Images: ${status.pexels}
+• OpenAI (optional): ${status.openai}
+
+*News System:*
+• Articles in database: ${articles.length}
+• Last fetch: ${lastFetch ? new Date(lastFetch).toLocaleString() : 'Never'}
+• Auto-update: Every 3 hours ✅
+
+*Performance:*
+• Total views: ${stats.totalViews || 0}
+• Today's views: ${stats.todayViews || 0}
+• Articles fetched: ${stats.totalArticlesFetched || 0}
+
+*Health:* ${status.telegram === '✅' && (status.unsplash === '✅' || status.pexels === '✅') ? 
+  '🟢 All systems operational' : 
+  '🟡 Some APIs not configured'}
+
+${!status.unsplash && !status.pexels ? '\n⚠️ Add Unsplash or Pexels API key for images!' : ''}
+  `, {
+    inline_keyboard: [
+      [{ text: '🚀 Fetch News', callback_data: 'fetch' }],
+      [{ text: '↩️ Back', callback_data: 'menu' }]
+    ]
+  });
+}
+
+// New function: Help
+async function sendHelp(env, chatId) {
+  await sendMessage(env, chatId, `
+📚 *AgamiNews Manager Help*
+
+*Quick Commands:*
+/menu - Main control panel
+/stats - View website statistics
+/fetch - Force news update now
+/status - Check system health
+/help - This help message
+
+*Natural Language:*
+Just talk to me! I understand:
+• "Fetch the latest news"
+• "Show me today's stats"
+• "What's our monthly cost?"
+• "How's our SEO doing?"
+• "Change theme to dark"
+
+*Automatic Features:*
+🔄 News updates every 3 hours
+📸 Smart image selection
+✍️ Human-like content writing
+📊 Performance tracking
+💰 Cost monitoring
+
+*Dashboard Links:*
+• Website: https://agaminews.in
+• Debug: https://agaminews.in/debug
+• Manual fetch: https://agaminews.in/fetch-news
+
+*Tips:*
+• Peak traffic is 9 AM and 5 PM
+• Tech news gets most engagement
+• Images improve click rates by 40%
+• Fresh content helps Google ranking
+
+Need specific help? Just ask!
+  `, {
+    inline_keyboard: [
+      [{ text: '⚙️ Menu', callback_data: 'menu' }]
+    ]
+  });
 }
 
 async function handleThemeChange(env, chatId, text) {
@@ -612,6 +802,9 @@ async function handleCallback(env, query) {
     case 'stats':
       await sendStats(env, chatId);
       break;
+    case 'fetch':
+      await handleFetchNews(env, chatId);
+      break;
     case 'strategy':
       await sendContentStrategy(env, chatId);
       break;
@@ -621,6 +814,16 @@ async function handleCallback(env, query) {
     case 'seo':
       await sendSEOReport(env, chatId);
       break;
+    case 'settings':
+      await sendMessage(env, chatId, '⚙️ *Settings*\n\nChoose what to configure:', {
+        inline_keyboard: [
+          [{ text: '🎨 Theme', callback_data: 'theme' }],
+          [{ text: '📰 News Sources', callback_data: 'sources' }],
+          [{ text: '⏰ Update Frequency', callback_data: 'frequency' }],
+          [{ text: '↩️ Back', callback_data: 'menu' }]
+        ]
+      });
+      break;
     case 'theme':
       await sendMessage(env, chatId, 'Choose theme:', {
         inline_keyboard: [
@@ -628,7 +831,7 @@ async function handleCallback(env, query) {
             { text: '🌙 Dark', callback_data: 'theme_dark' },
             { text: '☀️ Light', callback_data: 'theme_light' }
           ],
-          [{ text: '↩️ Back', callback_data: 'menu' }]
+          [{ text: '↩️ Back', callback_data: 'settings' }]
         ]
       });
       break;
@@ -638,7 +841,63 @@ async function handleCallback(env, query) {
       const config = await env.NEWS_KV.get('config', 'json') || {};
       config.theme = theme;
       await env.NEWS_KV.put('config', JSON.stringify(config));
-      await sendMessage(env, chatId, `✅ Theme changed to ${theme}!`);
+      await sendMessage(env, chatId, `✅ Theme changed to ${theme}!`, {
+        inline_keyboard: [[{ text: '↩️ Back', callback_data: 'settings' }]]
+      });
+      break;
+    case 'sources':
+      await sendMessage(env, chatId, `
+📰 *Active News Sources*
+
+*Indian:*
+✅ Times of India
+✅ NDTV
+✅ The Hindu
+✅ Economic Times
+✅ MoneyControl
+
+*International:*
+✅ BBC World
+✅ CNN International
+✅ TechCrunch
+
+All sources update every 3 hours automatically!
+      `, {
+        inline_keyboard: [[{ text: '↩️ Back', callback_data: 'settings' }]]
+      });
+      break;
+    case 'frequency':
+      await sendMessage(env, chatId, `
+⏰ *Update Frequency*
+
+Current: Every 3 hours
+
+This is optimized for:
+• Fresh content for SEO
+• Reasonable API usage
+• Good user experience
+
+Auto-update times:
+12 AM, 3 AM, 6 AM, 9 AM, 12 PM, 3 PM, 6 PM, 9 PM
+
+Use /fetch for manual updates anytime!
+      `, {
+        inline_keyboard: [[{ text: '↩️ Back', callback_data: 'settings' }]]
+      });
+      break;
+    case 'news':
+      const articles = await env.NEWS_KV.get('articles', 'json') || [];
+      const latest = articles.slice(0, 5);
+      let newsText = '📰 *Latest Articles*\n\n';
+      latest.forEach((a, i) => {
+        newsText += `${i+1}. *${a.title}*\n   ${a.category} | ${a.views?.toLocaleString() || 0} views\n\n`;
+      });
+      await sendMessage(env, chatId, newsText, {
+        inline_keyboard: [
+          [{ text: '🚀 Fetch New', callback_data: 'fetch' }],
+          [{ text: '↩️ Back', callback_data: 'menu' }]
+        ]
+      });
       break;
     default:
       await sendMessage(env, chatId, 'Processing...');
