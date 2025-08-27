@@ -449,6 +449,47 @@ async function serveWebsite(env, request) {
     <meta name="description" content="Get latest breaking news from India and around the world. Live updates on politics, business, technology, sports, and entertainment. AI-powered news aggregation.">
     <meta name="keywords" content="news, India news, breaking news, latest news, world news, politics, business, technology, sports, entertainment, AgamiNews">
     
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZW77WM2VPG"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-ZW77WM2VPG', {
+        page_path: window.location.pathname,
+        page_title: '${config.siteName} - Homepage',
+        page_location: window.location.href,
+        page_referrer: document.referrer
+      });
+      
+      // Track scroll depth
+      let maxScroll = 0;
+      window.addEventListener('scroll', function() {
+        const scrollPercent = Math.round((window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100);
+        if (scrollPercent > maxScroll) {
+          maxScroll = scrollPercent;
+          if (scrollPercent === 25 || scrollPercent === 50 || scrollPercent === 75 || scrollPercent === 100) {
+            gtag('event', 'scroll', {
+              'event_category': 'Engagement',
+              'event_label': 'Scroll Depth',
+              'value': scrollPercent
+            });
+          }
+        }
+      });
+      
+      // Track time on page
+      let startTime = new Date().getTime();
+      window.addEventListener('beforeunload', function() {
+        const timeSpent = Math.round((new Date().getTime() - startTime) / 1000);
+        gtag('event', 'time_on_page', {
+          'event_category': 'Engagement',
+          'event_label': 'Time Spent',
+          'value': timeSpent
+        });
+      });
+    </script>
+    
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://agaminews.in/">
@@ -3634,6 +3675,90 @@ async function serveArticle(env, request, pathname) {
     <meta property="og:image" content="${article.image?.url || article.image || 'https://agaminews.in/og-image.jpg'}">
     <meta property="og:url" content="https://agaminews.in/article/${articleId}">
     <meta property="twitter:card" content="summary_large_image">
+    
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZW77WM2VPG"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      
+      // Track article page view with enhanced data
+      gtag('config', 'G-ZW77WM2VPG', {
+        page_path: '/article/${articleId}',
+        page_title: '${article.title.replace(/'/g, "\\'")}',
+        page_location: window.location.href,
+        custom_dimensions: {
+          'article_id': '${articleId}',
+          'article_category': '${article.category}',
+          'article_source': '${article.source || 'Unknown'}',
+          'article_published': '${new Date(article.timestamp).toISOString()}'
+        }
+      });
+      
+      // Track article read event
+      gtag('event', 'article_read', {
+        'event_category': 'Article',
+        'event_label': '${article.title.replace(/'/g, "\\'")}',
+        'article_id': '${articleId}',
+        'article_category': '${article.category}'
+      });
+      
+      // Track reading time
+      let readStartTime = new Date().getTime();
+      let hasTracked30s = false;
+      let hasTracked60s = false;
+      
+      setInterval(function() {
+        const timeSpent = Math.round((new Date().getTime() - readStartTime) / 1000);
+        
+        if (timeSpent >= 30 && !hasTracked30s) {
+          hasTracked30s = true;
+          gtag('event', 'read_30_seconds', {
+            'event_category': 'Engagement',
+            'event_label': '${article.title.replace(/'/g, "\\'")}'
+          });
+        }
+        
+        if (timeSpent >= 60 && !hasTracked60s) {
+          hasTracked60s = true;
+          gtag('event', 'read_60_seconds', {
+            'event_category': 'Engagement',
+            'event_label': '${article.title.replace(/'/g, "\\'")}'
+          });
+        }
+      }, 1000);
+      
+      // Track scroll depth for articles
+      let maxScroll = 0;
+      window.addEventListener('scroll', function() {
+        const scrollPercent = Math.round((window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100);
+        if (scrollPercent > maxScroll) {
+          maxScroll = scrollPercent;
+          if (scrollPercent === 100) {
+            gtag('event', 'article_complete', {
+              'event_category': 'Engagement',
+              'event_label': '${article.title.replace(/'/g, "\\'")}'
+            });
+          }
+        }
+      });
+      
+      // Track share button clicks
+      document.addEventListener('DOMContentLoaded', function() {
+        const shareButtons = document.querySelectorAll('.share-btn');
+        shareButtons.forEach(function(button) {
+          button.addEventListener('click', function() {
+            const platform = this.textContent.toLowerCase();
+            gtag('event', 'share', {
+              'event_category': 'Social',
+              'event_label': platform,
+              'article_title': '${article.title.replace(/'/g, "\\'")}'
+            });
+          });
+        });
+      });
+    </script>
     
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
