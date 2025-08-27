@@ -1,24 +1,16 @@
 {
-  "name": "tech-news-bot",
+  "name": "agaminews",
   "version": "1.0.0",
-  "description": "Telegram bot for tech news curation with Astro site generation",
+  "description": "AI-Powered News Website with Telegram Manager",
+  "main": "src/index.js",
   "scripts": {
-    "dev": "concurrently \"npm run dev:worker\" \"npm run dev:site\"",
-    "dev:worker": "wrangler dev",
-    "dev:site": "cd site && npm run dev",
-    "build": "npm run build:worker && npm run build:site",
-    "build:worker": "wrangler deploy",
-    "build:site": "cd site && npm run build",
-    "deploy": "npm run build:worker && npm run build:site",
-    "setup": "npm install && cd site && npm install"
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "tail": "wrangler tail"
   },
+  "author": "AgamiNews",
+  "license": "MIT",
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20241120.0",
-    "concurrently": "^8.2.2",
-    "wrangler": "^3.28.1"
-  },
-  "workspaces": [
-    "worker",
-    "site"
-  ]
+    "wrangler": "^3.0.0"
+  }
 }

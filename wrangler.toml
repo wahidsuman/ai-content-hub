@@ -1,17 +1,14 @@
 name = "agaminews"
-main = "src/index.js"
+main = "index.js"
 compatibility_date = "2024-01-01"
 
 [vars]
-# Add your Telegram bot token in Cloudflare dashboard
+WORKER_URL = "https://agaminews.workers.dev"
 
 [[kv_namespaces]]
 binding = "NEWS_KV"
-id = "YOUR_KV_ID"
-preview_id = "YOUR_KV_ID"
-
-[site]
-bucket = "./public"
+id = "WILL_BE_CREATED"
+preview_id = "WILL_BE_CREATED"
 
 [triggers]
 crons = ["0 */6 * * *"]
