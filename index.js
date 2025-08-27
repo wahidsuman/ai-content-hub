@@ -96,9 +96,130 @@ export default {
   },
   
   async scheduled(event, env) {
-    // Run every 3 hours
-    await fetchLatestNews(env);
-    await runScheduledTasks(env);
+    // AUTOMATIC NEWS PUBLISHING - Runs every 3 hours (24/7)
+    console.log(`⏰ Scheduled run at ${new Date().toISOString()}`);
+    
+    try {
+      // Get admin chat ID for notifications
+      const adminChat = await env.NEWS_KV.get('admin_chat');
+      
+      // Check daily limits before fetching
+      const stats = await env.NEWS_KV.get('stats', 'json') || {};
+      const today = new Date().toDateString();
+      
+      if (stats.lastReset !== today) {
+        // Reset daily counters at midnight
+        stats.dailyArticlesPublished = 0;
+        stats.dailyFetches = 0;
+        stats.tokensUsedToday = 0;
+        stats.lastReset = today;
+      }
+      
+      // Smart scheduling based on time of day (IST)
+      const istTime = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+      const hour = istTime.getHours();
+      
+      let articlesToFetch = 3; // Default 3 articles per run
+      let shouldFetch = true;
+      let priority = 'normal';
+      
+      // Intelligent scheduling based on Indian news patterns
+      if (hour >= 6 && hour < 9) {
+        // Morning rush - more articles
+        articlesToFetch = 4;
+        priority = 'high';
+      } else if (hour >= 9 && hour < 12) {
+        // Market hours - business focus
+        articlesToFetch = 3;
+        priority = 'business';
+      } else if (hour >= 12 && hour < 15) {
+        // Lunch time - entertainment/sports
+        articlesToFetch = 3;
+        priority = 'entertainment';
+      } else if (hour >= 15 && hour < 18) {
+        // Market closing - business updates
+        articlesToFetch = 3;
+        priority = 'business';
+      } else if (hour >= 18 && hour < 21) {
+        // Evening - general news
+        articlesToFetch = 4;
+        priority = 'high';
+      } else if (hour >= 21 && hour < 24) {
+        // Night - less articles
+        articlesToFetch = 2;
+        priority = 'low';
+      } else {
+        // Late night/early morning (0-6 AM) - minimal
+        articlesToFetch = 1;
+        priority = 'minimal';
+      }
+      
+      // Check daily limit (36 articles max to stay under budget)
+      if (stats.dailyArticlesPublished >= 36) {
+        console.log('Daily limit reached, skipping fetch');
+        if (adminChat) {
+          await sendMessage(env, adminChat, 
+            `⚠️ *Daily Limit Reached*\n\n` +
+            `Published: ${stats.dailyArticlesPublished}/36 articles\n` +
+            `Next reset: Midnight IST\n` +
+            `Status: Paused to save costs`
+          );
+        }
+        shouldFetch = false;
+      }
+      
+      if (shouldFetch) {
+        // Send notification that auto-fetch is starting
+        if (adminChat) {
+          await sendMessage(env, adminChat, 
+            `🤖 *Auto-Publishing Started*\n\n` +
+            `⏰ Time: ${hour}:00 IST\n` +
+            `📰 Articles: ${articlesToFetch}\n` +
+            `🎯 Priority: ${priority}\n` +
+            `📊 Today's Total: ${stats.dailyArticlesPublished}/36\n` +
+            `💰 Budget Status: Safe`
+          );
+        }
+        
+        // Fetch news with priority focus
+        const fetchResult = await fetchLatestNewsAuto(env, articlesToFetch, priority);
+        
+        // Update stats
+        stats.dailyArticlesPublished += fetchResult.articlesPublished || 0;
+        stats.dailyFetches += 1;
+        stats.lastAutoFetch = new Date().toISOString();
+        await env.NEWS_KV.put('stats', JSON.stringify(stats));
+        
+        // Send completion notification
+        if (adminChat && fetchResult.articlesPublished > 0) {
+          await sendMessage(env, adminChat, 
+            `✅ *Auto-Publishing Complete*\n\n` +
+            `📰 Published: ${fetchResult.articlesPublished} articles\n` +
+            `📈 Total Today: ${stats.dailyArticlesPublished}/36\n` +
+            `🔗 View: https://agaminews.in\n` +
+            `⏰ Next Run: 3 hours\n\n` +
+            `*Top Article:*\n${fetchResult.topArticle || 'N/A'}`
+          );
+        }
+      }
+      
+      // Run other scheduled tasks (analytics, cleanup, etc.)
+      await runScheduledTasks(env);
+      
+    } catch (error) {
+      console.error('Scheduled task error:', error);
+      
+      // Notify admin of error
+      const adminChat = await env.NEWS_KV.get('admin_chat');
+      if (adminChat) {
+        await sendMessage(env, adminChat, 
+          `❌ *Auto-Publishing Error*\n\n` +
+          `Error: ${error.message}\n` +
+          `Time: ${new Date().toISOString()}\n` +
+          `Action: Will retry in 3 hours`
+        );
+      }
+    }
   }
 };
 
@@ -2075,6 +2196,158 @@ async function sendSEOReport(env, chatId) {
       [{ text: '↩️ Back', callback_data: 'menu' }]
     ]
   });
+}
+
+// Automatic news fetching with priority-based selection
+async function fetchLatestNewsAuto(env, articlesToFetch = 3, priority = 'normal') {
+  console.log(`Auto-fetching ${articlesToFetch} articles with priority: ${priority}`);
+  
+  try {
+    const config = await env.NEWS_KV.get('config', 'json') || {};
+    const stats = await env.NEWS_KV.get('stats', 'json') || {};
+    
+    // Priority-based RSS feeds
+    let rssSources = [];
+    
+    switch(priority) {
+      case 'business':
+        rssSources = [
+          'https://economictimes.indiatimes.com/rssfeedstopstories.cms',
+          'https://www.moneycontrol.com/rss/latestnews.xml',
+          'https://www.business-standard.com/rss/home_page_top_stories.rss',
+          'https://feeds.feedburner.com/ndtvprofit-latest'
+        ];
+        break;
+      
+      case 'entertainment':
+        rssSources = [
+          'https://feeds.feedburner.com/ndtvmovies-latest',
+          'https://www.bollywoodhungama.com/rss/news.xml',
+          'https://www.pinkvilla.com/rss.xml',
+          'https://www.espncricinfo.com/rss/content/story/feeds/0.xml'
+        ];
+        break;
+      
+      case 'high':
+      case 'normal':
+        rssSources = [
+          'https://timesofindia.indiatimes.com/rssfeedstopstories.cms',
+          'https://www.thehindu.com/news/national/feeder/default.rss',
+          'https://feeds.feedburner.com/ndtvnews-top-stories',
+          'https://indianexpress.com/feed/',
+          'https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml'
+        ];
+        break;
+      
+      case 'low':
+      case 'minimal':
+        // Only essential sources for night time
+        rssSources = [
+          'https://timesofindia.indiatimes.com/rssfeedstopstories.cms',
+          'https://feeds.feedburner.com/ndtvnews-top-stories'
+        ];
+        break;
+    }
+    
+    // Fetch from RSS feeds
+    const allArticles = [];
+    const articlesPerFeed = Math.ceil(articlesToFetch / rssSources.length);
+    
+    for (const feedUrl of rssSources) {
+      if (allArticles.length >= articlesToFetch) break;
+      
+      try {
+        const response = await fetch(feedUrl);
+        const text = await response.text();
+        const items = text.match(/<item>([\s\S]*?)<\/item>/g) || [];
+        
+        for (let i = 0; i < Math.min(articlesPerFeed, items.length); i++) {
+          if (allArticles.length >= articlesToFetch) break;
+          
+          const item = items[i];
+          const title = (item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) || 
+                        item.match(/<title>(.*?)<\/title>/))?.[1];
+          const description = (item.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/) || 
+                              item.match(/<description>(.*?)<\/description>/))?.[1];
+          const link = item.match(/<link>(.*?)<\/link>/)?.[1];
+          
+          if (title && description) {
+            // Clean HTML from description
+            const cleanDesc = description.replace(/<[^>]*>/g, '').substring(0, 500);
+            
+            // Determine category based on content
+            let category = 'India';
+            if (priority === 'business' || title.toLowerCase().includes('market') || title.toLowerCase().includes('sensex')) {
+              category = 'Business';
+            } else if (priority === 'entertainment' || title.toLowerCase().includes('bollywood') || title.toLowerCase().includes('cricket')) {
+              category = 'Entertainment';
+            } else if (title.toLowerCase().includes('tech') || title.toLowerCase().includes('ai')) {
+              category = 'Technology';
+            }
+            
+            // Generate full article with GPT-3.5
+            const fullContent = await generateFullArticle(
+              { title, category },
+              cleanDesc,
+              env
+            );
+            
+            // Get article-specific image
+            const imageData = await getArticleImage(title, category, env);
+            
+            allArticles.push({
+              id: `auto-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              title: title,
+              preview: fullContent.substring(0, 500),
+              fullContent: fullContent,
+              category: category,
+              source: feedUrl.includes('timesofindia') ? 'Times of India' :
+                     feedUrl.includes('thehindu') ? 'The Hindu' :
+                     feedUrl.includes('ndtv') ? 'NDTV' :
+                     feedUrl.includes('economictimes') ? 'Economic Times' :
+                     feedUrl.includes('moneycontrol') ? 'Moneycontrol' : 'News Agency',
+              link: link,
+              timestamp: Date.now(),
+              views: 0,
+              image: imageData,
+              autoPublished: true,
+              priority: priority
+            });
+          }
+        }
+      } catch (feedError) {
+        console.error(`Error fetching from ${feedUrl}:`, feedError);
+      }
+    }
+    
+    // Save articles
+    if (allArticles.length > 0) {
+      const existingArticles = await env.NEWS_KV.get('articles', 'json') || [];
+      const combinedArticles = [...allArticles, ...existingArticles].slice(0, 100); // Keep last 100
+      await env.NEWS_KV.put('articles', JSON.stringify(combinedArticles));
+      await env.NEWS_KV.put('articlesTimestamp', Date.now().toString());
+      
+      // Update article count in analytics
+      const analytics = await env.NEWS_KV.get('analytics_overview', 'json') || {};
+      analytics.totalArticles = combinedArticles.length;
+      analytics.lastAutoPublish = new Date().toISOString();
+      await env.NEWS_KV.put('analytics_overview', JSON.stringify(analytics));
+    }
+    
+    return {
+      articlesPublished: allArticles.length,
+      topArticle: allArticles[0]?.title || null,
+      priority: priority,
+      timestamp: new Date().toISOString()
+    };
+    
+  } catch (error) {
+    console.error('Auto fetch error:', error);
+    return {
+      articlesPublished: 0,
+      error: error.message
+    };
+  }
 }
 
 // Enhanced news fetching for premium quality articles
