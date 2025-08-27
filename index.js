@@ -22,9 +22,20 @@ export default {
     } else if (url.pathname === '/debug') {
       return debugInfo(env);
     } else if (url.pathname === '/fetch-news') {
-      // Manual trigger for testing
-      return await fetchLatestNews(env);
-    } else if (url.pathname === '/clear-articles') {
+      // Disabled public endpoint - use Telegram bot instead
+      return new Response('This endpoint is disabled. Use the Telegram bot to manage news.', { 
+        status: 403,
+        headers: { 'Content-Type': 'text/plain' }
+      });
+    } else if (url.pathname.startsWith('/clear-articles/')) {
+      // Protected clear endpoint - requires secret token
+      const token = url.pathname.split('/')[2];
+      const adminToken = await env.NEWS_KV.get('admin_clear_token');
+      
+      if (!adminToken || token !== adminToken) {
+        return new Response('Unauthorized', { status: 403 });
+      }
+      
       // Clear all articles
       await env.NEWS_KV.put('articles', JSON.stringify([]));
       const stats = await env.NEWS_KV.get('stats', 'json') || {};
@@ -712,7 +723,6 @@ async function serveWebsite(env, request) {
     <!-- Mobile Menu -->
     <div id="mobileMenu" style="display: none; background: ${isDark ? '#1A1A1A' : '#F8F8F8'}; padding: 15px; border-bottom: 1px solid ${isDark ? '#333' : '#E0E0E0'};">
         <a href="/" style="display: block; padding: 10px 0; color: inherit; text-decoration: none;">🏠 Home</a>
-        <a href="/fetch-news" style="display: block; padding: 10px 0; color: inherit; text-decoration: none;">🔄 Refresh News</a>
         <a href="#" onclick="shareApp()" style="display: block; padding: 10px 0; color: inherit; text-decoration: none;">📤 Share App</a>
     </div>
     
@@ -796,10 +806,6 @@ async function serveWebsite(env, request) {
             <div class="cta-buttons">
                 <a href="${config.telegramBot || '#'}" class="btn">💬 Join Telegram</a>
                 <a href="/api/stats" class="btn" style="background: transparent; border: 2px solid white; color: white;">📊 View Stats</a>
-                ${articles.length > 0 ? `
-                <a href="#" onclick="if(confirm('Delete all ${articles.length} articles?')) location.href='/clear-articles'" 
-                   class="btn" style="background: #FF4444; border: 2px solid #FF4444; color: white;">🗑️ Clear Articles</a>
-                ` : ''}
             </div>
         </div>
     </div>
@@ -935,6 +941,9 @@ Or just talk to me naturally! Try:
         await sendHelp(env, chatId);
       } else if (text === '/analytics' || text === '/analyse') {
         await sendDetailedAnalytics(env, chatId);
+      } else if (text === '/clear') {
+        // Admin-only clear command
+        await handleClearArticles(env, chatId);
       } else {
         await handleNaturalLanguage(env, chatId, text);
       }
@@ -1578,6 +1587,31 @@ async function handleThemeChange(env, chatId, text) {
   await sendMessage(env, chatId, `✅ Theme changed to ${config.theme}!`);
 }
 
+// Handle clear articles securely (Telegram admin only)
+async function handleClearArticles(env, chatId) {
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  
+  if (articles.length === 0) {
+    await sendMessage(env, chatId, '📭 No articles to delete. The website is already empty.');
+    return;
+  }
+  
+  await sendMessage(env, chatId, `⚠️ *Confirm Article Deletion*
+
+You are about to delete *${articles.length} articles* from the website.
+
+This action cannot be undone!
+
+Are you sure?`, {
+    inline_keyboard: [
+      [
+        { text: '✅ Yes, Delete All', callback_data: 'confirm_clear' },
+        { text: '❌ Cancel', callback_data: 'menu' }
+      ]
+    ]
+  });
+}
+
 async function handleCallback(env, query) {
   const chatId = query.message.chat.id;
   const data = query.data;
@@ -1698,7 +1732,29 @@ Use /fetch for manual updates anytime!
       await sendMessage(env, chatId, newsText, {
         inline_keyboard: [
           [{ text: '🚀 Fetch New', callback_data: 'fetch' }],
+          [{ text: '🗑️ Clear All', callback_data: 'clear' }],
           [{ text: '↩️ Back', callback_data: 'menu' }]
+        ]
+      });
+      break;
+    case 'clear':
+      await handleClearArticles(env, chatId);
+      break;
+    case 'confirm_clear':
+      // Clear all articles - admin only through Telegram
+      await env.NEWS_KV.put('articles', JSON.stringify([]));
+      const stats = await env.NEWS_KV.get('stats', 'json') || {};
+      stats.dailyArticlesPublished = 0;
+      await env.NEWS_KV.put('stats', JSON.stringify(stats));
+      
+      await sendMessage(env, chatId, `✅ *All Articles Deleted*
+
+The website has been cleared successfully.
+
+Use /fetch to add new articles.`, {
+        inline_keyboard: [
+          [{ text: '📰 Fetch New Articles', callback_data: 'fetch' }],
+          [{ text: '↩️ Back to Menu', callback_data: 'menu' }]
         ]
       });
       break;
