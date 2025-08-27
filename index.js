@@ -28,7 +28,7 @@ export default {
       return handleAPI(request, env, url.pathname);
     }
     
-    return serveWebsite(env);
+    return serveWebsite(env, request);
   },
   
   async scheduled(event, env) {
@@ -129,14 +129,76 @@ async function initializeSystem(env) {
 }
 
 // Serve website
-async function serveWebsite(env) {
+async function serveWebsite(env, request) {
   const config = await env.NEWS_KV.get('config', 'json') || {};
   const articles = await env.NEWS_KV.get('articles', 'json') || getDefaultArticles();
   const stats = await env.NEWS_KV.get('stats', 'json') || {};
   
-  // Update stats
+  // Enhanced analytics tracking
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+  const hour = now.getHours();
+  
+  // Initialize analytics if needed
+  if (!stats.analytics) {
+    stats.analytics = {
+      daily: {},
+      hourly: {},
+      pages: {},
+      referrers: {},
+      devices: {},
+      countries: {}
+    };
+  }
+  
+  // Track daily views
+  if (!stats.analytics.daily[today]) {
+    stats.analytics.daily[today] = 0;
+  }
+  stats.analytics.daily[today]++;
+  
+  // Track hourly distribution
+  if (!stats.analytics.hourly[hour]) {
+    stats.analytics.hourly[hour] = 0;
+  }
+  stats.analytics.hourly[hour]++;
+  
+  // Track referrer
+  const referrer = request.headers.get('referer') || 'direct';
+  const referrerDomain = referrer.includes('://') ? new URL(referrer).hostname : referrer;
+  if (!stats.analytics.referrers[referrerDomain]) {
+    stats.analytics.referrers[referrerDomain] = 0;
+  }
+  stats.analytics.referrers[referrerDomain]++;
+  
+  // Track device type
+  const userAgent = request.headers.get('user-agent') || '';
+  const deviceType = userAgent.includes('Mobile') ? 'mobile' : 'desktop';
+  if (!stats.analytics.devices[deviceType]) {
+    stats.analytics.devices[deviceType] = 0;
+  }
+  stats.analytics.devices[deviceType]++;
+  
+  // Track country (using CF-IPCountry header from Cloudflare)
+  const country = request.headers.get('cf-ipcountry') || 'unknown';
+  if (!stats.analytics.countries[country]) {
+    stats.analytics.countries[country] = 0;
+  }
+  stats.analytics.countries[country]++;
+  
+  // Update basic stats
   stats.totalViews = (stats.totalViews || 0) + 1;
-  stats.todayViews = (stats.todayViews || 0) + 1;
+  stats.todayViews = today === stats.lastViewDate ? (stats.todayViews || 0) + 1 : 1;
+  stats.lastViewDate = today;
+  
+  // Track article views
+  const url = new URL(request.url);
+  if (url.pathname.startsWith('/article/')) {
+    const articleId = url.pathname.split('/')[2];
+    if (!stats.articleViews) stats.articleViews = {};
+    stats.articleViews[articleId] = (stats.articleViews[articleId] || 0) + 1;
+  }
+  
   await env.NEWS_KV.put('stats', JSON.stringify(stats));
   
   const isDark = config.theme === 'dark';
@@ -515,6 +577,8 @@ Or just talk to me naturally! Try:
         await sendSystemStatus(env, chatId);
       } else if (text === '/help') {
         await sendHelp(env, chatId);
+      } else if (text === '/analytics' || text === '/analyse') {
+        await sendDetailedAnalytics(env, chatId);
       } else {
         await handleNaturalLanguage(env, chatId, text);
       }
@@ -559,18 +623,19 @@ async function sendMenu(env, chatId) {
     inline_keyboard: [
       [
         { text: '📊 Stats', callback_data: 'stats' },
-        { text: '📰 News', callback_data: 'news' }
+        { text: '📈 Analytics', callback_data: 'analytics' }
       ],
       [
-        { text: '🎨 Theme', callback_data: 'theme' },
+        { text: '📰 News', callback_data: 'news' },
+        { text: '🚀 Fetch', callback_data: 'fetch' }
+      ],
+      [
+        { text: '💵 API Usage', callback_data: 'apiusage' },
+        { text: '🎯 Strategy', callback_data: 'strategy' }
+      ],
+      [
+        { text: '🔍 SEO Report', callback_data: 'seo' },
         { text: '⚙️ Settings', callback_data: 'settings' }
-      ],
-      [
-        { text: '📈 Strategy', callback_data: 'strategy' },
-        { text: '💵 API Usage', callback_data: 'apiusage' }
-      ],
-      [
-        { text: '🚀 SEO Report', callback_data: 'seo' }
       ]
     ]
   });
@@ -621,6 +686,10 @@ async function handleNaturalLanguage(env, chatId, text) {
   // SEO
   else if (lower.includes('seo') || lower.includes('google') || lower.includes('ranking')) {
     await sendSEOReport(env, chatId);
+  }
+  // Analytics
+  else if (lower.includes('analytics') || lower.includes('traffic') || lower.includes('visitors') || lower.includes('analyse')) {
+    await sendDetailedAnalytics(env, chatId);
   }
   // Status check
   else if (lower.includes('status') || lower.includes('health') || lower.includes('working')) {
@@ -728,6 +797,375 @@ ${!status.unsplash && !status.pexels ? '\n⚠️ Add Unsplash or Pexels API key 
   });
 }
 
+// New function: Detailed Analytics
+async function sendDetailedAnalytics(env, chatId) {
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  
+  // Calculate analytics
+  const analytics = stats.analytics || {};
+  const today = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  
+  // Traffic trends
+  const todayViews = analytics.daily?.[today] || 0;
+  const yesterdayViews = analytics.daily?.[yesterday] || 0;
+  const growthRate = yesterdayViews > 0 ? ((todayViews - yesterdayViews) / yesterdayViews * 100).toFixed(1) : 0;
+  const trend = growthRate > 0 ? '📈' : growthRate < 0 ? '📉' : '➡️';
+  
+  // Top referrers
+  const referrers = Object.entries(analytics.referrers || {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
+  
+  // Device breakdown
+  const mobile = analytics.devices?.mobile || 0;
+  const desktop = analytics.devices?.desktop || 0;
+  const totalDevices = mobile + desktop;
+  const mobilePercent = totalDevices > 0 ? (mobile / totalDevices * 100).toFixed(1) : 0;
+  
+  // Top countries
+  const countries = Object.entries(analytics.countries || {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+  
+  // Peak hours
+  const hourlyData = analytics.hourly || {};
+  const peakHour = Object.entries(hourlyData)
+    .sort((a, b) => b[1] - a[1])[0];
+  
+  // Most viewed articles
+  const articleViews = stats.articleViews || {};
+  const topArticles = Object.entries(articleViews)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([id, views]) => {
+      const article = articles[id];
+      return article ? `${article.title.substring(0, 30)}... (${views} views)` : `Article ${id} (${views} views)`;
+    });
+  
+  await sendMessage(env, chatId, `
+📊 *Detailed Analytics Report*
+
+📈 *Traffic Overview*
+• Total Views: ${stats.totalViews || 0}
+• Today: ${todayViews} ${trend}
+• Yesterday: ${yesterdayViews}
+• Growth: ${growthRate}%
+
+📱 *Device Analytics*
+• Mobile: ${mobile} (${mobilePercent}%)
+• Desktop: ${desktop} (${100 - mobilePercent}%)
+• Mobile-first: ${mobilePercent > 50 ? 'Yes ✅' : 'No ⚠️'}
+
+🌍 *Top Countries*
+${countries.map(([code, count], i) => `${i+1}. ${getCountryName(code)}: ${count} visits`).join('\n') || 'No data yet'}
+
+🔗 *Top Referrers*
+${referrers.map(([ref, count], i) => `${i+1}. ${ref}: ${count} visits`).join('\n') || '• Direct traffic only'}
+
+⏰ *Peak Traffic*
+• Best Hour: ${peakHour ? `${peakHour[0]}:00 (${peakHour[1]} views)` : 'No data'}
+• Best Day: ${getBestDay(analytics.daily)}
+
+📰 *Top Articles*
+${topArticles.join('\n') || 'No article data yet'}
+
+💡 *Insights*
+${generateInsights(stats, analytics)}
+
+Use /analytics daily to track growth!
+  `, {
+    inline_keyboard: [
+      [{ text: '📈 7-Day Report', callback_data: 'analytics_week' }],
+      [{ text: '🎯 Audience Insights', callback_data: 'analytics_audience' }],
+      [{ text: '↩️ Back', callback_data: 'menu' }]
+    ]
+  });
+}
+
+// Helper function to get country name
+function getCountryName(code) {
+  const countries = {
+    'IN': '🇮🇳 India',
+    'US': '🇺🇸 USA',
+    'GB': '🇬🇧 UK',
+    'CA': '🇨🇦 Canada',
+    'AU': '🇦🇺 Australia',
+    'AE': '🇦🇪 UAE',
+    'SG': '🇸🇬 Singapore',
+    'MY': '🇲🇾 Malaysia',
+    'unknown': '🌍 Unknown'
+  };
+  return countries[code] || `${code}`;
+}
+
+// Helper function to get best day
+function getBestDay(daily) {
+  if (!daily) return 'No data';
+  const best = Object.entries(daily)
+    .sort((a, b) => b[1] - a[1])[0];
+  return best ? `${best[0]} (${best[1]} views)` : 'No data';
+}
+
+// Generate insights
+function generateInsights(stats, analytics) {
+  const insights = [];
+  
+  // Mobile optimization
+  const mobilePercent = analytics.devices ? 
+    (analytics.devices.mobile / (analytics.devices.mobile + analytics.devices.desktop) * 100) : 0;
+  
+  if (mobilePercent > 60) {
+    insights.push('• Strong mobile traffic (good for SEO!)');
+  } else {
+    insights.push('• Desktop traffic dominates - ensure mobile optimization');
+  }
+  
+  // Traffic source
+  const directTraffic = analytics.referrers?.direct || 0;
+  const totalReferrer = Object.values(analytics.referrers || {}).reduce((a, b) => a + b, 0);
+  
+  if (directTraffic > totalReferrer * 0.5) {
+    insights.push('• High direct traffic - brand recognition growing');
+  } else {
+    insights.push('• Good referral traffic - external sites linking to you');
+  }
+  
+  // Growth
+  const todayViews = stats.todayViews || 0;
+  if (todayViews > 100) {
+    insights.push('• Excellent daily traffic! Keep it up');
+  } else if (todayViews > 50) {
+    insights.push('• Good traffic growth, aim for 100+ daily');
+  } else {
+    insights.push('• Focus on SEO and content to increase traffic');
+  }
+  
+  return insights.join('\n') || '• Keep monitoring for trends';
+}
+
+// Weekly Analytics Report
+async function sendWeeklyAnalytics(env, chatId) {
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  const analytics = stats.analytics || {};
+  
+  // Get last 7 days data
+  const last7Days = [];
+  const dailyData = analytics.daily || {};
+  
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date(Date.now() - i * 86400000).toISOString().split('T')[0];
+    const views = dailyData[date] || 0;
+    last7Days.push({ date, views });
+  }
+  
+  // Calculate weekly stats
+  const totalWeekViews = last7Days.reduce((sum, day) => sum + day.views, 0);
+  const avgDailyViews = (totalWeekViews / 7).toFixed(1);
+  const bestDay = last7Days.reduce((best, day) => day.views > best.views ? day : best);
+  const worstDay = last7Days.reduce((worst, day) => day.views < worst.views ? day : worst);
+  
+  // Create simple chart
+  const maxViews = Math.max(...last7Days.map(d => d.views));
+  const chart = last7Days.map(day => {
+    const barLength = maxViews > 0 ? Math.floor((day.views / maxViews) * 10) : 0;
+    const bar = '█'.repeat(barLength) + '░'.repeat(10 - barLength);
+    return `${day.date.substring(5)}: ${bar} ${day.views}`;
+  }).join('\n');
+  
+  await sendMessage(env, chatId, `
+📈 *7-Day Analytics Report*
+
+📊 *Weekly Performance*
+• Total Views: ${totalWeekViews}
+• Daily Average: ${avgDailyViews}
+• Best Day: ${bestDay.date} (${bestDay.views} views)
+• Worst Day: ${worstDay.date} (${worstDay.views} views)
+
+📉 *Daily Breakdown*
+\`\`\`
+${chart}
+\`\`\`
+
+💡 *Weekly Insights*
+${generateWeeklyInsights(last7Days, stats)}
+
+Track weekly to spot trends!
+  `, {
+    inline_keyboard: [
+      [{ text: '📊 Full Analytics', callback_data: 'analytics' }],
+      [{ text: '↩️ Back', callback_data: 'menu' }]
+    ]
+  });
+}
+
+// Audience Insights
+async function sendAudienceInsights(env, chatId) {
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  const analytics = stats.analytics || {};
+  
+  // Calculate audience metrics
+  const devices = analytics.devices || {};
+  const countries = analytics.countries || {};
+  const referrers = analytics.referrers || {};
+  const hourly = analytics.hourly || {};
+  
+  // Audience profile
+  const totalVisits = Object.values(countries).reduce((a, b) => a + b, 0);
+  const indianTraffic = (countries.IN || 0);
+  const indianPercent = totalVisits > 0 ? (indianTraffic / totalVisits * 100).toFixed(1) : 0;
+  
+  // Behavior patterns
+  const morningTraffic = (hourly[6] || 0) + (hourly[7] || 0) + (hourly[8] || 0) + (hourly[9] || 0);
+  const eveningTraffic = (hourly[17] || 0) + (hourly[18] || 0) + (hourly[19] || 0) + (hourly[20] || 0);
+  const nightTraffic = (hourly[21] || 0) + (hourly[22] || 0) + (hourly[23] || 0);
+  
+  // Social traffic
+  const socialReferrers = ['facebook.com', 'twitter.com', 't.co', 'linkedin.com', 'instagram.com'];
+  const socialTraffic = Object.entries(referrers)
+    .filter(([ref]) => socialReferrers.some(social => ref.includes(social)))
+    .reduce((sum, [, count]) => sum + count, 0);
+  
+  await sendMessage(env, chatId, `
+🎯 *Audience Insights*
+
+👥 *Visitor Profile*
+• Primary Market: ${indianPercent > 50 ? '🇮🇳 India-focused' : '🌍 International'}
+• Indian Traffic: ${indianPercent}%
+• Device Preference: ${devices.mobile > devices.desktop ? '📱 Mobile-first' : '💻 Desktop-heavy'}
+• Engagement: ${stats.totalViews > 1000 ? 'High' : stats.totalViews > 100 ? 'Growing' : 'Building'}
+
+⏰ *Behavior Patterns*
+• Morning (6-10 AM): ${morningTraffic} visits
+• Evening (5-9 PM): ${eveningTraffic} visits
+• Night (9 PM-12 AM): ${nightTraffic} visits
+• Peak Activity: ${getPeakPeriod(hourly)}
+
+🔗 *Traffic Sources*
+• Direct: ${referrers.direct || 0} visits
+• Social Media: ${socialTraffic} visits
+• Search/Other: ${totalVisits - (referrers.direct || 0) - socialTraffic} visits
+
+🎯 *Target Audience Match*
+${getAudienceMatch(analytics, stats)}
+
+📝 *Recommendations*
+${getAudienceRecommendations(analytics)}
+  `, {
+    inline_keyboard: [
+      [{ text: '📊 Full Analytics', callback_data: 'analytics' }],
+      [{ text: '↩️ Back', callback_data: 'menu' }]
+    ]
+  });
+}
+
+// Helper functions
+function generateWeeklyInsights(last7Days, stats) {
+  const insights = [];
+  const trend = last7Days[6].views > last7Days[0].views ? 'growing' : 'declining';
+  
+  insights.push(`• Traffic is ${trend} over the week`);
+  
+  const weekendViews = last7Days.slice(0, 2).reduce((sum, d) => sum + d.views, 0);
+  const weekdayViews = last7Days.slice(2).reduce((sum, d) => sum + d.views, 0);
+  
+  if (weekdayViews > weekendViews * 2) {
+    insights.push('• Weekday traffic stronger (professional audience)');
+  } else {
+    insights.push('• Good weekend engagement');
+  }
+  
+  if (stats.totalViews > 500) {
+    insights.push('• Site gaining traction - keep momentum');
+  }
+  
+  return insights.join('\n');
+}
+
+function getPeakPeriod(hourly) {
+  const periods = {
+    'Morning (6-10 AM)': [6, 7, 8, 9],
+    'Noon (11-2 PM)': [11, 12, 13, 14],
+    'Evening (5-9 PM)': [17, 18, 19, 20],
+    'Night (9 PM+)': [21, 22, 23]
+  };
+  
+  let maxPeriod = '';
+  let maxViews = 0;
+  
+  for (const [name, hours] of Object.entries(periods)) {
+    const views = hours.reduce((sum, h) => sum + (hourly[h] || 0), 0);
+    if (views > maxViews) {
+      maxViews = views;
+      maxPeriod = name;
+    }
+  }
+  
+  return maxPeriod || 'No clear pattern yet';
+}
+
+function getAudienceMatch(analytics, stats) {
+  const matches = [];
+  
+  // Check if Indian focused
+  const indianPercent = analytics.countries?.IN ? 
+    (analytics.countries.IN / Object.values(analytics.countries).reduce((a, b) => a + b, 0) * 100) : 0;
+  
+  if (indianPercent > 60) {
+    matches.push('✅ Strong Indian audience (target achieved)');
+  } else {
+    matches.push('⚠️ Need more Indian traffic focus');
+  }
+  
+  // Check mobile optimization
+  const mobilePercent = analytics.devices?.mobile ? 
+    (analytics.devices.mobile / (analytics.devices.mobile + analytics.devices.desktop) * 100) : 0;
+  
+  if (mobilePercent > 50) {
+    matches.push('✅ Mobile-first audience (good for target)');
+  } else {
+    matches.push('⚠️ Desktop heavy - optimize for mobile');
+  }
+  
+  // Check professional timing
+  const workHours = [9, 10, 11, 14, 15, 16, 17];
+  const workTraffic = workHours.reduce((sum, h) => sum + (analytics.hourly?.[h] || 0), 0);
+  const totalHourly = Object.values(analytics.hourly || {}).reduce((a, b) => a + b, 0);
+  
+  if (totalHourly > 0 && workTraffic / totalHourly > 0.5) {
+    matches.push('✅ Professional timing patterns');
+  }
+  
+  return matches.join('\n') || '• Building audience profile...';
+}
+
+function getAudienceRecommendations(analytics) {
+  const recs = [];
+  
+  // Time-based recommendations
+  const peakHour = Object.entries(analytics.hourly || {})
+    .sort((a, b) => b[1] - a[1])[0];
+  
+  if (peakHour) {
+    recs.push(`• Post new content around ${peakHour[0]}:00`);
+  }
+  
+  // Device recommendations
+  if (analytics.devices?.mobile > analytics.devices?.desktop) {
+    recs.push('• Keep mobile-first design priority');
+  } else {
+    recs.push('• Improve mobile experience');
+  }
+  
+  // Traffic source recommendations
+  if (!analytics.referrers || Object.keys(analytics.referrers).length < 3) {
+    recs.push('• Share on social media for referral traffic');
+  }
+  
+  return recs.join('\n') || '• Keep monitoring for patterns';
+}
+
 // New function: Help
 async function sendHelp(env, chatId) {
   await sendMessage(env, chatId, `
@@ -801,6 +1239,15 @@ async function handleCallback(env, query) {
       break;
     case 'stats':
       await sendStats(env, chatId);
+      break;
+    case 'analytics':
+      await sendDetailedAnalytics(env, chatId);
+      break;
+    case 'analytics_week':
+      await sendWeeklyAnalytics(env, chatId);
+      break;
+    case 'analytics_audience':
+      await sendAudienceInsights(env, chatId);
       break;
     case 'fetch':
       await handleFetchNews(env, chatId);
