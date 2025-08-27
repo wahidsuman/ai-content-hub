@@ -2286,7 +2286,7 @@ async function fetchLatestNews(env) {
     await env.NEWS_KV.put('stats', JSON.stringify(stats));
     
     // Notify admin via Telegram with daily progress
-    const adminChat = await env.NEWS_KV.get('admin_chat');
+    // adminChat already declared above
     if (adminChat && env.TELEGRAM_BOT_TOKEN) {
       const dailyProgress = Math.round((stats.dailyArticlesPublished / dailyTarget) * 100);
       await sendMessage(env, adminChat, `📰 *News Update Complete!*\n\n✅ Published: ${allArticles.length} new articles\n📈 Daily Progress: ${stats.dailyArticlesPublished}/${dailyTarget} (${dailyProgress}%)\n📊 Categories: ${[...new Set(allArticles.map(a => a.category))].join(', ')}\n⏰ Next update: 3 hours\n\n💡 *Quality Focus:* Each article has in-depth research and unique angles`);
