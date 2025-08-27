@@ -791,7 +791,7 @@ async function serveWebsite(env, request) {
                             <div class="news-category">${article.category}</div>
                             ${article.trending ? '<span class="trending">🔥 Trending</span>' : ''}
                             <div class="news-title">${article.title}</div>
-                            <div class="news-summary">${article.summary || article.summary.substring(0, 150)}...</div>
+                            <div class="news-summary">${article.preview || (article.fullContent ? article.fullContent.replace(/<[^>]*>/g, '').substring(0, 500) + '...' : '')}</div>
                             <div class="news-meta">
                                 <span>🕒 ${article.date || 'Today'}</span>
                                 <span>👁️ ${(article.views || 0).toLocaleString()}</span>
@@ -2122,7 +2122,7 @@ async function fetchLatestNews(env) {
             // Create the article object
             const article = {
               title: makeHeadlineHuman(title),
-              summary: '', // Will be filled with article excerpt
+              preview: '', // Will be filled with article beginning
               category: feed.category,
               source: feed.source,
               link: link,
@@ -2139,9 +2139,9 @@ async function fetchLatestNews(env) {
             console.log(`Generated ${fullArticle.length} chars for: ${title}`);
             article.fullContent = fullArticle;
             
-            // Extract first 400 chars of article as substantial preview for homepage
+            // Extract first 500 chars of article as preview for homepage
             const plainText = fullArticle.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-            article.summary = plainText.substring(0, 400) + '...';
+            article.preview = plainText.substring(0, 500) + '...';
             
             allArticles.push(article);
           }
@@ -2275,9 +2275,9 @@ function makeHeadlineHuman(title) {
   return title.trim();
 }
 
-// This function should not be used - articles should be generated in full
-// But keeping it functional for any legacy calls
-async function createHumanSummary(title, description, category, env) {
+// REMOVED - No summaries, only full articles
+// This function is deprecated and should never be called
+async function createHumanSummaryREMOVED(title, description, category, env) {
   // Use GPT-4 for high-quality content if API key is available
   if (env.OPENAI_API_KEY) {
     try {
@@ -3177,9 +3177,9 @@ async function serveArticle(env, request, pathname) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${article.title} - ${config.siteName}</title>
-    <meta name="description" content="${article.summary}">
+    <meta name="description" content="${article.preview || 'Read full article on AgamiNews'}">
     <meta property="og:title" content="${article.title}">
-    <meta property="og:description" content="${article.summary}">
+    <meta property="og:description" content="${article.preview || 'Read full article on AgamiNews'}">
     <meta property="og:image" content="${article.image?.url || article.image || 'https://agaminews.in/og-image.jpg'}">
     <meta property="og:url" content="https://agaminews.in/article/${articleId}">
     <meta property="twitter:card" content="summary_large_image">
@@ -3695,15 +3695,15 @@ Make it so detailed that readers learn something new in every paragraph.`
 
 // Template-based article generation (fallback)
 function generateFullArticleTemplate(article) {
-  const summary = article.summary || '';
+  const preview = article.preview || '';
   const title = article.title || '';
   const category = article.category || 'News';
   
-  // Expand the summary into a full article
+  // Expand into a full article
   const paragraphs = [];
   
-  // Opening paragraph (the summary)
-  paragraphs.push(`<p><strong>${summary}</strong></p>`);
+  // Opening paragraph
+  paragraphs.push(`<p><strong>${preview}</strong></p>`);
   
   // Generate content specific to the news title
   const titleLower = title.toLowerCase();
@@ -3777,7 +3777,7 @@ function generateFullArticleTemplate(article) {
 async function testOpenAI(env) {
   const results = {
     openai_configured: !!env.OPENAI_API_KEY,
-    test_summary: null,
+    test_result: null,
     test_image: null,
     errors: []
   };
@@ -4095,7 +4095,7 @@ function getDefaultArticles() {
     {
       title: "Whoa! India's Digital Economy Could Hit $1 Trillion by 2030",
       category: "India",
-      summary: "Here's the deal - between all the UPI transactions we're doing and startups popping up left and right, experts are saying we're heading for a trillion-dollar digital economy. Even Google and Amazon are doubling down on their India investments. Pretty wild, right?",
+      preview: "Here's the deal - between all the UPI transactions we're doing and startups popping up left and right, experts are saying we're heading for a trillion-dollar digital economy. Even Google and Amazon are doubling down on their India investments. Pretty wild, right?",
       date: "1 hour ago",
       views: 25420,
       trending: true
@@ -4103,7 +4103,7 @@ function getDefaultArticles() {
     {
       title: "ISRO Just Pulled Off Another Satellite Launch - This One's Special",
       category: "Technology",
-      summary: "You know how some villages still struggle with internet? Well, ISRO's new satellite is specifically designed to fix that. Launched this morning from Sriharikota, and get this - it'll bring 4G to places that barely had 2G. The team's calling it a game-changer for rural connectivity.",
+      preview: "You know how some villages still struggle with internet? Well, ISRO's new satellite is specifically designed to fix that. Launched this morning from Sriharikota, and get this - it'll bring 4G to places that barely had 2G. The team's calling it a game-changer for rural connectivity.",
       date: "2 hours ago",
       views: 22350,
       trending: true
@@ -4111,7 +4111,7 @@ function getDefaultArticles() {
     {
       title: "Sensex Hits 75,000! Yes, You Read That Right",
       category: "Business",
-      summary: "The markets went absolutely bonkers today. Sensex crossed 75,000 for the first time ever, and honestly, even the experts didn't see this coming so soon. FIIs pumped in ₹3,000 crores just this week. If you've been sitting on the fence about investing, well... the fence just got higher.",
+      preview: "The markets went absolutely bonkers today. Sensex crossed 75,000 for the first time ever, and honestly, even the experts didn't see this coming so soon. FIIs pumped in ₹3,000 crores just this week. If you've been sitting on the fence about investing, well... the fence just got higher.",
       date: "3 hours ago",
       views: 28900,
       trending: true
@@ -4119,7 +4119,7 @@ function getDefaultArticles() {
     {
       title: "We Actually Beat Australia at MCG! Series is Ours",
       category: "Sports",
-      summary: "Can't believe I'm writing this - India just won at the MCG after ages! Bumrah was on fire, took 9 wickets. The Aussies didn't know what hit them. That last session though... my heart's still racing. This is the kind of win our dads will talk about for years.",
+      preview: "Can't believe I'm writing this - India just won at the MCG after ages! Bumrah was on fire, took 9 wickets. The Aussies didn't know what hit them. That last session though... my heart's still racing. This is the kind of win our dads will talk about for years.",
       date: "4 hours ago",
       views: 32100,
       trending: true
@@ -4127,7 +4127,7 @@ function getDefaultArticles() {
     {
       title: "India Says Net Zero by 2070 - But There's More to the Story",
       category: "World",
-      summary: "So the PM dropped this at the climate summit, and everyone's got opinions. The target's 2070, which sounds far, but here's what's interesting - we're already at 40% renewable capacity. Plus, there's talk of green hydrogen hubs in Gujarat and Tamil Nadu. Not bad for a developing nation, eh?",
+      preview: "So the PM dropped this at the climate summit, and everyone's got opinions. The target's 2070, which sounds far, but here's what's interesting - we're already at 40% renewable capacity. Plus, there's talk of green hydrogen hubs in Gujarat and Tamil Nadu. Not bad for a developing nation, eh?",
       date: "5 hours ago",
       views: 18750,
       trending: false
@@ -4135,7 +4135,7 @@ function getDefaultArticles() {
     {
       title: "Bangalore Startup Cracks the Code - AI That Speaks 22 Indian Languages",
       category: "Technology",
-      summary: "Okay, this is actually cool. These guys from Koramangala built an AI that understands everything from Tamil to Kashmiri. Tested it myself with some Bengali - it actually got the context right! They're saying it could replace Google Translate for Indian languages. Big if true.",
+      preview: "Okay, this is actually cool. These guys from Koramangala built an AI that understands everything from Tamil to Kashmiri. Tested it myself with some Bengali - it actually got the context right! They're saying it could replace Google Translate for Indian languages. Big if true.",
       date: "6 hours ago",
       views: 21200,
       trending: true
@@ -4143,7 +4143,7 @@ function getDefaultArticles() {
     {
       title: "RBI Plays It Safe - Repo Rate Stays at 6.5%",
       category: "Business",
-      summary: "No surprises from Mint Street today. RBI Governor basically said 'let's wait and watch' - inflation's still a worry but growth looks decent. Your EMIs aren't changing anytime soon. Banks are probably relieved, homebuyers... not so much.",
+      preview: "No surprises from Mint Street today. RBI Governor basically said 'let's wait and watch' - inflation's still a worry but growth looks decent. Your EMIs aren't changing anytime soon. Banks are probably relieved, homebuyers... not so much.",
       date: "7 hours ago",
       views: 19800,
       trending: false
@@ -4151,7 +4151,7 @@ function getDefaultArticles() {
     {
       title: "That New Shah Rukh Film? It Just Hit ₹1000 Crores!",
       category: "Entertainment",
-      summary: "Remember when we thought ₹100 crore was huge? Well, times have changed! The film's killing it overseas too - especially in the Gulf. My cousin in Dubai says theaters are still housefull. Looks like Bollywood's finally figured out the global game.",
+      preview: "Remember when we thought ₹100 crore was huge? Well, times have changed! The film's killing it overseas too - especially in the Gulf. My cousin in Dubai says theaters are still housefull. Looks like Bollywood's finally figured out the global game.",
       date: "8 hours ago",
       views: 26500,
       trending: true
@@ -4159,7 +4159,7 @@ function getDefaultArticles() {
     {
       title: "EVs Are Actually Selling Like Crazy Now - 150% Jump!",
       category: "Auto",
-      summary: "Petrol prices got you down? Join the club! Seems like half of Bangalore's switching to electric. Saw three Nexons EVs just on Brigade Road yesterday. With charging stations popping up everywhere (finally!), maybe it's time we all took a look?",
+      preview: "Petrol prices got you down? Join the club! Seems like half of Bangalore's switching to electric. Saw three Nexons EVs just on Brigade Road yesterday. With charging stations popping up everywhere (finally!), maybe it's time we all took a look?",
       date: "9 hours ago",
       views: 17600,
       trending: false
@@ -4167,7 +4167,7 @@ function getDefaultArticles() {
     {
       title: "India's Hosting G20 Tech Ministers Next Week",
       category: "India",
-      summary: "Big tech discussions coming to Delhi. They're talking AI rules, UPI going global, and cybersecurity stuff. Word is, several countries want to copy our digital payments model. About time the world noticed what we've built, no?",
+      preview: "Big tech discussions coming to Delhi. They're talking AI rules, UPI going global, and cybersecurity stuff. Word is, several countries want to copy our digital payments model. About time the world noticed what we've built, no?",
       date: "10 hours ago",
       views: 14300,
       trending: false
