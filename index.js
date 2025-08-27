@@ -101,10 +101,10 @@ async function initializeSystem(env) {
     await env.NEWS_KV.put('aiInstructions', JSON.stringify({
       role: 'AI News Manager',
       dailyArticleTarget: {
-        minimum: 15,
-        target: 18,
-        maximum: 20,
-        strategy: 'Quality over quantity - publish throughout the day'
+        minimum: 10,
+        target: 11,
+        maximum: 12,
+        strategy: 'Premium quality - fewer articles, exceptional content'
       },
       writingStyle: {
         tone: 'Professional journalist with personality - like reading The Ken or Morning Context',
@@ -137,7 +137,7 @@ async function initializeSystem(env) {
         'Provide actionable takeaways for readers'
       ],
       objectives: [
-        'Publish 15-20 high-quality articles daily',
+        'Publish 10-12 premium quality articles daily',
         'Each article must be unique and valuable',
         'Focus on exclusive angles competitors miss',
         'Prioritize: 35% Tech, 25% Finance, 20% India News, 10% International, 10% Trending',
@@ -166,13 +166,13 @@ async function initializeSystem(env) {
         'Connecting the dots', 'Reading between the lines'
       ],
       dailyTasks: [
-        '6 AM: 3 articles - Morning news digest',
-        '9 AM: 3 articles - Market opening analysis',
-        '12 PM: 3 articles - Midday updates',
-        '3 PM: 3 articles - Afternoon developments',
-        '6 PM: 3 articles - Evening roundup',
-        '9 PM: 3 articles - Night edition',
-        'Total: 18 articles spread across the day'
+        '6 AM: 2 articles - Premium morning digest',
+        '9 AM: 2 articles - Market & business deep dive',
+        '12 PM: 2 articles - Exclusive midday stories',
+        '3 PM: 2 articles - Afternoon exclusives',
+        '6 PM: 2 articles - Evening analysis',
+        '9 PM: 2 articles - Night premium stories',
+        'Total: 12 premium articles with in-depth coverage'
       ],
       seoStrategy: [
         'Target featured snippets with question-based content',
@@ -1836,13 +1836,13 @@ async function sendAPIUsage(env, chatId) {
 • Image APIs: $0.00 (free tier)
 
 *Optimization Opportunities:*
-✨ Can publish ${additionalArticlesPossible} more articles/month
-🎯 Target: 15-20 articles daily (450-600/month)
-📸 Image quality: Using real photos for personalities
-🔍 SEO: Optimized for Google ranking
+✨ Premium content strategy activated
+🎯 Target: 10-12 premium articles daily (300-360/month)
+📸 Image quality: GPT-4o + DALL-E 3 + Premium photos
+🔍 SEO: Quality over quantity for better ranking
 
 *Recommendations:*
-• Maintain 15-20 quality articles daily ✅
+• Focus on 10-12 exceptional articles daily ✅
 • Use GPT-4 for premium articles (within budget)
 • Implement image caching to reduce API calls
 • Focus on trending topics for better engagement
@@ -1909,13 +1909,13 @@ async function fetchLatestNews(env) {
     }
     
     // Check if we've hit daily target
-    const dailyTarget = aiInstructions.dailyArticleTarget?.target || 18;
+    const dailyTarget = aiInstructions.dailyArticleTarget?.target || 11;
     const currentArticles = stats.dailyArticlesPublished || 0;
     
-    if (currentArticles >= 20) {
-      console.log('Daily article limit reached (20)');
+    if (currentArticles >= 12) {
+      console.log('Daily article limit reached (12)');
       return new Response(JSON.stringify({ 
-        message: 'Daily article limit reached',
+        message: 'Daily article limit reached - focusing on quality',
         published: currentArticles 
       }), { headers: { 'Content-Type': 'application/json' } });
     }
@@ -1948,7 +1948,7 @@ async function fetchLatestNews(env) {
         // Enhanced RSS parsing
         const items = text.match(/<item>([\s\S]*?)<\/item>/g) || [];
         
-        for (let i = 0; i < Math.min(3, items.length); i++) {
+        for (let i = 0; i < Math.min(2, items.length); i++) { // Fewer articles for quality
           const item = items[i];
           // Extract with more flexible regex that handles multiline
           let title = (item.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '';
@@ -2000,8 +2000,8 @@ async function fetchLatestNews(env) {
     // Sort by relevance and mix categories
     allArticles = shuffleAndBalance(allArticles);
     
-    // Keep 15-20 articles for daily quota
-    allArticles = allArticles.slice(0, Math.min(20, Math.max(15, allArticles.length)));
+    // Keep 10-12 premium articles for daily quota
+    allArticles = allArticles.slice(0, Math.min(12, Math.max(10, allArticles.length)));
     
     // Save to KV
     await env.NEWS_KV.put('articles', JSON.stringify(allArticles));
@@ -2112,7 +2112,7 @@ Write ONLY the article summary, no titles or metadata:`;
           'Authorization': `Bearer ${env.OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-4-turbo-preview', // Using GPT-4 for quality
+          model: 'gpt-4o', // Using latest GPT-4o for best quality
           messages: [
             {
               role: 'system',
@@ -2426,8 +2426,8 @@ async function getArticleImage(title, category, env) {
       }
     }
     
-    // Try DALL-E 3 for custom image generation if no good photos found
-    if (env.OPENAI_API_KEY && Math.random() > 0.7) { // Use for 30% of articles to manage costs
+    // Try DALL-E 3 for custom image generation for premium articles
+    if (env.OPENAI_API_KEY && Math.random() > 0.5) { // Use for 50% of articles for quality
       try {
         const imagePrompt = `Create a professional news photograph for: ${title}. 
         Style: Photojournalistic, realistic, high-quality news photography. 
@@ -3156,7 +3156,7 @@ Write in HTML paragraphs (<p> tags). Make it informative, engaging, and valuable
           'Authorization': `Bearer ${env.OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-4-turbo-preview',
+          model: 'gpt-4o', // Premium GPT-4o for article expansion
           messages: [
             {
               role: 'system',
