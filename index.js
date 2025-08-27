@@ -2802,66 +2802,110 @@ async function getArticleImage(title, category, env) {
       }
     }
     
-    // Try DALL-E 3 for custom image generation - but only for 30% to save costs
-    if (env.OPENAI_API_KEY && Math.random() > 0.7) { // Use for 30% of articles
+    // ALWAYS try DALL-E 3 for article-specific images (no more generic photos!)
+    if (env.OPENAI_API_KEY) {
       try {
-        // Extract key data points from title for specific images
+        // Extract ALL context from the article for perfect image generation
         const hasNumbers = /\d+/.test(title);
         const numbers = title.match(/\d+\.?\d*/g) || [];
         const hasCurrency = /₹|Rs|Crore|Lakh|Billion|Million/i.test(title);
         const hasPercentage = /%/.test(title);
         
+        // Determine if we need a photo-edit style or full generation
+        const needsPhotoEdit = personalityQuery || titleLower.includes('modi') || titleLower.includes('rahul') || 
+                               titleLower.includes('shah') || titleLower.includes('kejriwal') || titleLower.includes('yogi');
+        
         let imagePrompt = '';
         
-        // Create data-specific prompts based on article type
-        if (category.includes('Business') && (hasCurrency || hasPercentage)) {
-          imagePrompt = `Create a professional financial infographic showing: ${title}. 
-          Include visual elements like: charts showing ${numbers.join(', ')} values, 
-          Indian rupee symbols, stock market graphs, business icons. 
-          Style: Modern financial dashboard, data visualization, Bloomberg-style graphics. 
-          Color scheme: Professional blue, green for gains, red for losses. 
-          Make it clear, informative, and visually compelling for Indian business news.`;
-        }
-        else if (category.includes('Politics') || category.includes('India')) {
-          imagePrompt = `Create a photorealistic image for Indian political news: ${title}. 
-          Include: Indian Parliament building or government offices, 
-          Indian flag elements, official government imagery. 
-          If about specific states, include state symbols. 
-          Style: Professional news photography, official government documentation style. 
-          Serious, authoritative, suitable for political news coverage.`;
-        }
-        else if (category.includes('Technology') && hasNumbers) {
-          imagePrompt = `Create a tech product showcase image for: ${title}. 
-          Show: modern smartphone/laptop/gadget with specifications visible, 
-          Display showing ${numbers.join(', ')} prominently (RAM, storage, price). 
-          Style: Product photography, tech review style like GSMArena. 
-          Clean, modern, with spec callouts and comparison elements. 
-          Include Indian pricing if mentioned.`;
-        }
-        else if (category.includes('Auto')) {
-          imagePrompt = `Create an automotive showcase image for: ${title}. 
-          Show: Modern car/vehicle in Indian setting, 
-          Include visual elements showing mileage, price, or specifications if mentioned. 
-          Style: Automotive photography, car magazine quality. 
-          Dynamic angle, Indian roads or cityscape background. 
-          Professional automotive journalism style.`;
-        }
-        else if (category.includes('Sports')) {
-          imagePrompt = `Create a sports action image for: ${title}. 
-          Show: Cricket stadium, players in action, scoreboard with numbers. 
-          Include Indian cricket team colors if relevant. 
-          Style: Sports photography, ESPN-quality action shots. 
-          Dynamic, energetic, capturing the excitement of Indian sports.`;
-        }
-        else {
-          // Default but still specific
-          imagePrompt = `Create a highly relevant news image for: ${title}. 
-          Category: ${category}. 
-          Include specific visual elements that directly relate to the headline. 
-          If numbers are mentioned (${numbers.join(', ')}), show them visually. 
-          Style: Professional photojournalism, Indian news context. 
-          Make it specific to the story, not generic. 
-          The image should clearly convey what the article is about.`;
+        // Create ARTICLE-SPECIFIC prompts (not generic!)
+        if (needsPhotoEdit) {
+          // Photo-editing style for real people
+          imagePrompt = `Professional news photograph: ${personalityQuery || title}. `;
+          if (titleLower.includes('parliament')) imagePrompt += 'Speaking in Indian Parliament, official setting. ';
+          if (titleLower.includes('rally')) imagePrompt += 'At political rally with crowds and banners. ';
+          if (titleLower.includes('meet')) imagePrompt += 'In official meeting room, formal setting. ';
+          if (hasCurrency) imagePrompt += `With visual representation of ₹${numbers[0]} amount. `;
+          imagePrompt += 'Photojournalistic style, sharp focus, news agency quality photo.';
+        } else {
+          // ULTRA-SPECIFIC image generation based on exact article content
+          
+          // Business/Finance specific
+          if (titleLower.includes('ipo')) {
+            imagePrompt = `Stock market IPO bell ringing ceremony at BSE Mumbai for: ${title}. Show executives, confetti, stock ticker with ${numbers[0]} price.`;
+          } else if (titleLower.includes('funding') || titleLower.includes('investment')) {
+            imagePrompt = `Venture funding announcement: ${title}. Show cheque presentation, startup founders, ₹${numbers[0]} amount prominently displayed.`;
+          } else if (titleLower.includes('merger') || titleLower.includes('acquisition')) {
+            imagePrompt = `Corporate merger visualization: ${title}. Two company logos merging, handshake, deal value ₹${numbers[0]} displayed.`;
+          } else if (titleLower.includes('layoff')) {
+            imagePrompt = `Corporate office with empty desks for: ${title}. Show ${numbers[0]} figure, somber but professional tone.`;
+          } else if (titleLower.includes('profit') || titleLower.includes('revenue')) {
+            imagePrompt = `Financial results dashboard: ${title}. Green upward graphs showing ₹${numbers[0]} profit, quarterly comparison charts.`;
+          } else if (titleLower.includes('loss')) {
+            imagePrompt = `Financial crisis visualization: ${title}. Red downward graphs showing ₹${numbers[0]} loss, concerned executives in boardroom.`;
+          }
+          
+          // Technology specific
+          else if (titleLower.includes('5g')) {
+            imagePrompt = `5G network tower installation in Indian city for: ${title}. Show ${numbers[0]}Gbps speed displays, network coverage map.`;
+          } else if (titleLower.includes('cyber') || titleLower.includes('hack')) {
+            imagePrompt = `Cybersecurity incident visualization: ${title}. Show security operations center, threat maps, ${numbers[0]} affected systems.`;
+          } else if (titleLower.includes('app launch')) {
+            imagePrompt = `Mobile app launch event: ${title}. Show phone screens with app, ${numbers[0]} downloads counter, Indian users.`;
+          } else if (titleLower.includes('data center')) {
+            imagePrompt = `Modern data center in India: ${title}. Server racks, ${numbers[0]}MW capacity displays, cooling systems.`;
+          }
+          
+          // Auto/Vehicle specific  
+          else if (titleLower.includes('ev') || titleLower.includes('electric')) {
+            imagePrompt = `Electric vehicle showcase: ${title}. Show charging station, ${numbers[0]}km range display, green energy theme.`;
+          } else if (titleLower.includes('bike')) {
+            imagePrompt = `Motorcycle/bike showcase: ${title}. Indian roads, ${numbers[0]}kmpl mileage display, rider in Indian traffic.`;
+          } else if (titleLower.includes('suv') || titleLower.includes('car')) {
+            imagePrompt = `Car showcase in Indian setting: ${title}. Show ${numbers[0]} price tag, mileage display, Indian family context.`;
+          }
+          
+          // Politics/Government specific
+          else if (titleLower.includes('bill') || titleLower.includes('law')) {
+            imagePrompt = `Parliament passing bill: ${title}. Show Lok Sabha in session, voting display, document with bill number.`;
+          } else if (titleLower.includes('scheme') || titleLower.includes('yojana')) {
+            imagePrompt = `Government scheme launch: ${title}. Show beneficiaries, ₹${numbers[0]} budget allocation, scheme logo.`;
+          } else if (titleLower.includes('protest')) {
+            imagePrompt = `Peaceful protest scene: ${title}. Show protesters with placards, specific demands visible, Indian street setting.`;
+          }
+          
+          // Education specific
+          else if (titleLower.includes('exam') || titleLower.includes('result')) {
+            imagePrompt = `Examination/results scene: ${title}. Show students, ${numbers[0]}% pass rate display, Indian school/college setting.`;
+          } else if (titleLower.includes('admission')) {
+            imagePrompt = `College admission process: ${title}. Show campus, ${numbers[0]} seats available, students in queue.`;
+          }
+          
+          // Health specific
+          else if (titleLower.includes('vaccine') || titleLower.includes('vaccination')) {
+            imagePrompt = `Vaccination drive in India: ${title}. Show health workers, ${numbers[0]} doses administered counter, CoWIN app.`;
+          } else if (titleLower.includes('hospital')) {
+            imagePrompt = `Hospital scene for: ${title}. Show ${numbers[0]} beds, medical equipment, Indian healthcare setting.`;
+          }
+          
+          // Sports specific
+          else if (titleLower.includes('cricket')) {
+            imagePrompt = `Cricket match action: ${title}. Show scoreboard with ${numbers[0]} runs, Indian players celebrating, stadium atmosphere.`;
+          } else if (titleLower.includes('football') || titleLower.includes('isl')) {
+            imagePrompt = `Football/ISL match: ${title}. Show goal celebration, ${numbers[0]}-${numbers[1]} score, Indian football fans.`;
+          }
+          
+          // Default with context extraction
+          else {
+            const contextClues = [];
+            if (hasNumbers) contextClues.push(`prominently showing ${numbers[0]} figure`);
+            if (hasCurrency) contextClues.push(`₹${numbers[0]} amount visible`);
+            if (hasPercentage) contextClues.push(`${numbers[0]}% displayed graphically`);
+            
+            imagePrompt = `Create exact visual representation for this specific news: ${title}. 
+            ${contextClues.length > 0 ? contextClues.join(', ') + '. ' : ''}
+            Show specific elements from the headline, not generic imagery. 
+            Indian context, photojournalistic quality, highly relevant to the exact story.`;
+          }
         }
         
         const response = await fetch('https://api.openai.com/v1/images/generations', {
