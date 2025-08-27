@@ -1719,13 +1719,20 @@ async function fetchLatestNews(env) {
         
         for (let i = 0; i < Math.min(3, items.length); i++) {
           const item = items[i];
-          let title = (item.match(/<title>(.*?)<\/title>/) || [])[1] || '';
-          let description = (item.match(/<description>(.*?)<\/description>/) || [])[1] || '';
-          const link = (item.match(/<link>(.*?)<\/link>/) || [])[1] || '';
+          // Extract with more flexible regex that handles multiline
+          let title = (item.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '';
+          let description = (item.match(/<description>([\s\S]*?)<\/description>/) || [])[1] || '';
+          const link = (item.match(/<link>([\s\S]*?)<\/link>/) || [])[1] || '';
           
           // Clean CDATA and HTML from title and description
           title = cleanRSSContent(title);
           description = cleanRSSContent(description);
+          
+          // Extra safety: ensure no HTML remains
+          if (description.includes('<img') || description.includes('<IMG')) {
+            console.log('HTML still present, cleaning again:', description.substring(0, 100));
+            description = description.replace(/<[^>]+>/g, '').trim();
+          }
           
           if (title && description) {
             // Create human-like summary
@@ -1843,32 +1850,40 @@ async function createHumanSummary(title, description, category) {
     description = `Latest updates and developments in ${category.toLowerCase()} news. This story is currently developing.`;
   }
   
+  // Make sure description doesn't start with problematic content
+  if (description.toLowerCase().startsWith('the implications') || 
+      description.toLowerCase().startsWith('this is developing') ||
+      description.length < 30) {
+    // Generate a better description based on title
+    description = `Latest developments in this ${category.toLowerCase()} story are unfolding rapidly. Sources report significant updates that could impact the sector`;
+  }
+  
   // Human-style templates based on category
   const templates = {
     'Technology': [
-      `Okay, so here's what's happening - ${description} Pretty interesting development if you ask me.`,
-      `Tech folks, listen up! ${description} This could change things.`,
-      `${description} Yeah, this is actually a big deal.`
+      `Okay, so here's what's happening - ${description}. Pretty interesting development if you ask me.`,
+      `Tech folks, listen up! ${description}. This could change things.`,
+      `${description}. Yeah, this is actually a big deal.`
     ],
     'Business': [
-      `Markets are buzzing because ${description} Keep an eye on this one.`,
-      `Money talks - ${description} Investors are definitely watching.`,
-      `Quick market update: ${description} Could affect your portfolio.`
+      `Markets are buzzing because ${description}. Keep an eye on this one.`,
+      `Money talks - ${description}. Investors are definitely watching.`,
+      `Quick market update: ${description}. Could affect your portfolio.`
     ],
     'India': [
-      `Here's what's making headlines - ${description} Affects quite a few of us.`,
-      `Big news from home: ${description} This is developing fast.`,
-      `${description} The implications are pretty significant.`
+      `Here's what's making headlines - ${description}. Affects quite a few of us.`,
+      `Big news from home: ${description}. This is developing fast.`,
+      `${description}. The implications are pretty significant.`
     ],
     'World': [
-      `International update: ${description} Worth keeping tabs on.`,
-      `From across the globe - ${description} This matters more than you think.`,
-      `${description} The world's watching this closely.`
+      `International update: ${description}. Worth keeping tabs on.`,
+      `From across the globe - ${description}. This matters more than you think.`,
+      `${description}. The world's watching this closely.`
     ],
     'Sports': [
-      `Sports fans, check this - ${description} What a game!`,
-      `${description} Can you believe this happened?`,
-      `Big moment in sports: ${description} History in the making.`
+      `Sports fans, check this - ${description}. What a game!`,
+      `${description}. Can you believe this happened?`,
+      `Big moment in sports: ${description}. History in the making.`
     ]
   };
   
