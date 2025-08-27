@@ -16,7 +16,7 @@ export default {
     } else if (url.pathname === '/sitemap.xml') {
       return generateSitemap(env);
     } else if (url.pathname === '/robots.txt') {
-      return new Response(`User-agent: *\nAllow: /\nSitemap: ${url.origin}/sitemap.xml`, {
+      return new Response(`User-agent: *\nAllow: /\nSitemap: https://agaminews.in/sitemap.xml`, {
         headers: { 'Content-Type': 'text/plain' }
       });
     } else if (url.pathname === '/debug') {
@@ -500,7 +500,7 @@ async function generateSitemap(env) {
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://agaminews.workers.dev</loc>
+    <loc>https://agaminews.in/</loc>
     <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
