@@ -3641,11 +3641,22 @@ Write the FULL in-depth article:`;
           'Authorization': `Bearer ${env.OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-4', // Using GPT-4 for premium in-depth articles
+          model: 'gpt-3.5-turbo-16k', // Using GPT-3.5 16K for long comprehensive articles
           messages: [
             {
               role: 'system',
-              content: 'You are a senior journalist writing in-depth articles for educated Indian readers. Create valuable, insightful content with real analysis.'
+              content: `You are a senior investigative journalist at The Hindu. Your articles are known for:
+- Deep research with specific data points, statistics, and real numbers
+- Multiple expert quotes (create realistic ones)
+- Historical context and precedents
+- Ground reports and real examples
+- Balanced perspectives from all stakeholders
+- Data tables and comparative analysis
+- Actionable insights for readers
+
+NEVER write generic statements. ALWAYS include specific names, numbers, dates, locations.
+Write as if you've done actual field reporting, interviews, and data analysis.
+Make it so detailed that readers learn something new in every paragraph.`
             },
             {
               role: 'user',
@@ -3653,26 +3664,33 @@ Write the FULL in-depth article:`;
             }
           ],
           temperature: 0.7, // More factual
-          max_tokens: 2500, // Maximum for comprehensive articles
-          presence_penalty: 0.3,
-          frequency_penalty: 0.3,
-          top_p: 0.9
+          max_tokens: 4000, // Maximum tokens for truly comprehensive articles
+          presence_penalty: 0.4, // Avoid repetition
+          frequency_penalty: 0.4, // More variety
+          top_p: 0.85 // More focused
         })
       });
 
       if (response.ok) {
         const data = await response.json();
         const fullContent = data.choices[0]?.message?.content;
-        if (fullContent && fullContent.length > 100) {
+        if (fullContent && fullContent.length > 500) { // Ensure substantial content
+          console.log(`Generated ${fullContent.length} chars of content for: ${article.title}`);
           return fullContent;
+        } else {
+          console.error('Article too short:', fullContent?.length || 0);
         }
+      } else {
+        const error = await response.text();
+        console.error('OpenAI API error:', error);
       }
     } catch (error) {
-      console.error('GPT-4 article generation error:', error);
+      console.error('Article generation error:', error.message);
     }
   }
   
-  // Fallback to template-based generation
+  // Fallback to template-based generation (should rarely happen)
+  console.warn('FALLING BACK TO TEMPLATE for:', article.title);
   return generateFullArticleTemplate(article);
 }
 
