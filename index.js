@@ -2621,10 +2621,64 @@ async function getArticleImage(title, category, env) {
     // Try DALL-E 3 for custom image generation for premium articles
     if (env.OPENAI_API_KEY && Math.random() > 0.2) { // Use for 80% of articles for maximum quality
       try {
-        const imagePrompt = `Create a professional news photograph for: ${title}. 
-        Style: Photojournalistic, realistic, high-quality news photography. 
-        Context: ${category} news in India. 
-        Make it compelling but appropriate for a news website.`;
+        // Extract key data points from title for infographic-style images
+        const hasNumbers = /\d+/.test(title);
+        const numbers = title.match(/\d+\.?\d*/g) || [];
+        const hasCurrency = /₹|Rs|Crore|Lakh|Billion|Million/i.test(title);
+        const hasPercentage = /%/.test(title);
+        
+        let imagePrompt = '';
+        
+        // Create data-specific prompts based on article type
+        if (category.includes('Business') && (hasCurrency || hasPercentage)) {
+          imagePrompt = `Create a professional financial infographic showing: ${title}. 
+          Include visual elements like: charts showing ${numbers.join(', ')} values, 
+          Indian rupee symbols, stock market graphs, business icons. 
+          Style: Modern financial dashboard, data visualization, Bloomberg-style graphics. 
+          Color scheme: Professional blue, green for gains, red for losses. 
+          Make it clear, informative, and visually compelling for Indian business news.`;
+        }
+        else if (category.includes('Politics') || category.includes('India')) {
+          imagePrompt = `Create a photorealistic image for Indian political news: ${title}. 
+          Include: Indian Parliament building or government offices, 
+          Indian flag elements, official government imagery. 
+          If about specific states, include state symbols. 
+          Style: Professional news photography, official government documentation style. 
+          Serious, authoritative, suitable for political news coverage.`;
+        }
+        else if (category.includes('Technology') && hasNumbers) {
+          imagePrompt = `Create a tech product showcase image for: ${title}. 
+          Show: modern smartphone/laptop/gadget with specifications visible, 
+          Display showing ${numbers.join(', ')} prominently (RAM, storage, price). 
+          Style: Product photography, tech review style like GSMArena. 
+          Clean, modern, with spec callouts and comparison elements. 
+          Include Indian pricing if mentioned.`;
+        }
+        else if (category.includes('Auto')) {
+          imagePrompt = `Create an automotive showcase image for: ${title}. 
+          Show: Modern car/vehicle in Indian setting, 
+          Include visual elements showing mileage, price, or specifications if mentioned. 
+          Style: Automotive photography, car magazine quality. 
+          Dynamic angle, Indian roads or cityscape background. 
+          Professional automotive journalism style.`;
+        }
+        else if (category.includes('Sports')) {
+          imagePrompt = `Create a sports action image for: ${title}. 
+          Show: Cricket stadium, players in action, scoreboard with numbers. 
+          Include Indian cricket team colors if relevant. 
+          Style: Sports photography, ESPN-quality action shots. 
+          Dynamic, energetic, capturing the excitement of Indian sports.`;
+        }
+        else {
+          // Default but still specific
+          imagePrompt = `Create a highly relevant news image for: ${title}. 
+          Category: ${category}. 
+          Include specific visual elements that directly relate to the headline. 
+          If numbers are mentioned (${numbers.join(', ')}), show them visually. 
+          Style: Professional photojournalism, Indian news context. 
+          Make it specific to the story, not generic. 
+          The image should clearly convey what the article is about.`;
+        }
         
         const response = await fetch('https://api.openai.com/v1/images/generations', {
           method: 'POST',
@@ -2721,9 +2775,75 @@ async function getArticleImage(title, category, env) {
   }
 }
 
+// Helper functions for entity extraction
+function extractCompanies(title) {
+  const companies = [
+    'Reliance', 'Tata', 'Infosys', 'TCS', 'Wipro', 'Adani', 'Ambani',
+    'HDFC', 'ICICI', 'SBI', 'Airtel', 'Jio', 'Vodafone', 'BSNL',
+    'Maruti', 'Mahindra', 'Bajaj', 'Hero', 'TVS', 'Hyundai', 'Kia',
+    'Amazon', 'Flipkart', 'Paytm', 'PhonePe', 'Zomato', 'Swiggy',
+    'Google', 'Microsoft', 'Apple', 'Samsung', 'OnePlus', 'Xiaomi',
+    'Tesla', 'Meta', 'Twitter', 'Netflix', 'Disney'
+  ];
+  
+  const found = [];
+  companies.forEach(company => {
+    if (title.includes(company)) {
+      found.push(company.toLowerCase());
+    }
+  });
+  return found;
+}
+
+function extractLocations(title) {
+  const locations = [
+    'Delhi', 'Mumbai', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad',
+    'Pune', 'Ahmedabad', 'Surat', 'Jaipur', 'Lucknow', 'Kanpur',
+    'Maharashtra', 'Gujarat', 'Karnataka', 'Tamil Nadu', 'UP', 'Bihar',
+    'Rajasthan', 'MP', 'Kerala', 'Punjab', 'Haryana', 'Goa',
+    'Parliament', 'Lok Sabha', 'Rajya Sabha', 'Supreme Court', 'High Court'
+  ];
+  
+  const found = [];
+  locations.forEach(location => {
+    if (title.includes(location)) {
+      found.push(location.toLowerCase());
+    }
+  });
+  return found;
+}
+
+function extractProducts(title) {
+  const products = [
+    'iPhone', 'Galaxy', 'Pixel', 'OnePlus', 'Redmi', 'Realme',
+    'iPad', 'MacBook', 'Surface', 'ThinkPad',
+    'Swift', 'i20', 'i10', 'Creta', 'Seltos', 'Fortuner', 'Innova',
+    'Scorpio', 'XUV', 'Thar', 'Nexon', 'Harrier', 'Safari',
+    'Bullet', 'Classic', 'Duke', 'Pulsar', 'Apache'
+  ];
+  
+  const found = [];
+  products.forEach(product => {
+    if (title.toLowerCase().includes(product.toLowerCase())) {
+      found.push(product.toLowerCase());
+    }
+  });
+  return found;
+}
+
 // Extract smart keywords for highly relevant image matching
 function extractSmartKeywords(title, category) {
   const titleLower = title.toLowerCase();
+  
+  // Extract specific entities and numbers from title
+  const extractedData = {
+    numbers: title.match(/\d+\.?\d*/g) || [],
+    currency: title.match(/₹[\d,]+|Rs\.?\s*[\d,]+\s*(crore|lakh|million|billion)?/gi) || [],
+    percentages: title.match(/\d+\.?\d*\s*%/g) || [],
+    companies: extractCompanies(title),
+    locations: extractLocations(title),
+    products: extractProducts(title)
+  };
   
   // SENSITIVE TOPICS - Handle with care
   // Death/Tragedy/Crime news
@@ -2899,12 +3019,48 @@ function extractSmartKeywords(title, category) {
     w.includes('win') || w.includes('lose') || w.includes('record')
   );
   
+  // Build smart keywords using extracted entities
+  let keywords = [];
+  
+  // Add companies if found
+  if (extractedData.companies.length > 0) {
+    keywords.push(...extractedData.companies);
+  }
+  
+  // Add locations if found
+  if (extractedData.locations.length > 0) {
+    keywords.push(...extractedData.locations);
+  }
+  
+  // Add products if found
+  if (extractedData.products.length > 0) {
+    keywords.push(...extractedData.products);
+  }
+  
+  // Add data-specific context
+  if (extractedData.currency.length > 0) {
+    keywords.push('money', 'finance', 'rupee');
+  }
+  if (extractedData.percentages.length > 0) {
+    keywords.push('growth', 'statistics', 'chart');
+  }
+  if (extractedData.numbers.length > 0 && category.includes('Tech')) {
+    keywords.push('specifications', 'features');
+  }
+  
+  // If we have specific entities, use them for precise search
+  if (keywords.length > 0) {
+    keywords.push(category.toLowerCase());
+    return keywords.slice(0, 5).join(' ');
+  }
+  
+  // Otherwise use important words
   if (importantWords.length > 0) {
     return importantWords.concat(words).slice(0, 4).join(' ');
   }
   
-  // Return most relevant words
-  return words.slice(0, 3).join(' ') + ' ' + category.toLowerCase();
+  // Return most relevant words with India context
+  return words.slice(0, 3).join(' ') + ' ' + category.toLowerCase() + ' india';
 }
 
 
