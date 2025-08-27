@@ -2176,10 +2176,42 @@ async function createHumanSummary(title, description, category) {
   return categoryTemplates[Math.floor(Math.random() * categoryTemplates.length)];
 }
 
-// Enhanced image system with personality recognition
+// Enhanced image system with personality recognition and sensitivity
 async function getArticleImage(title, category, env) {
   try {
     const titleLower = title.toLowerCase();
+    
+    // Check if this is sensitive/tragic news
+    const isSensitiveNews = 
+      titleLower.includes('dies') || titleLower.includes('death') || 
+      titleLower.includes('killed') || titleLower.includes('rape') || 
+      titleLower.includes('murder') || titleLower.includes('suicide') ||
+      titleLower.includes('burns') || titleLower.includes('abuse') ||
+      titleLower.includes('assault') || titleLower.includes('tragedy');
+    
+    // For sensitive news, use appropriate generic images
+    if (isSensitiveNews) {
+      const sensitiveImages = {
+        school: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=800', // School building
+        hospital: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800', // Hospital
+        justice: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=800', // Justice scales
+        memorial: 'https://images.unsplash.com/photo-1547483238-f400e65ccd56?w=800', // Candles
+        emergency: 'https://images.unsplash.com/photo-1587745416684-47953f16f02f?w=800' // Ambulance
+      };
+      
+      let imageType = 'memorial';
+      if (titleLower.includes('school') || titleLower.includes('student')) imageType = 'school';
+      else if (titleLower.includes('hospital') || titleLower.includes('medical')) imageType = 'hospital';
+      else if (titleLower.includes('court') || titleLower.includes('justice')) imageType = 'justice';
+      else if (titleLower.includes('accident') || titleLower.includes('emergency')) imageType = 'emergency';
+      
+      return {
+        url: sensitiveImages[imageType],
+        credit: 'Stock Photo',
+        type: 'sensitive',
+        isRelevant: true
+      };
+    }
     
     // Check for specific personalities first
     const personalities = {
@@ -2402,6 +2434,47 @@ async function getArticleImage(title, category, env) {
 // Extract smart keywords for highly relevant image matching
 function extractSmartKeywords(title, category) {
   const titleLower = title.toLowerCase();
+  
+  // SENSITIVE TOPICS - Handle with care
+  // Death/Tragedy/Crime news
+  if (titleLower.includes('dies') || titleLower.includes('death') || titleLower.includes('dead') || 
+      titleLower.includes('killed') || titleLower.includes('murder')) {
+    if (titleLower.includes('student') || titleLower.includes('school') || titleLower.includes('child')) {
+      return 'school building india education memorial';
+    }
+    if (titleLower.includes('accident')) {
+      return 'accident scene emergency ambulance';
+    }
+    return 'memorial candle tribute condolence';
+  }
+  
+  // Crime/Violence
+  if (titleLower.includes('rape') || titleLower.includes('assault') || titleLower.includes('abuse')) {
+    return 'justice law court police india';
+  }
+  
+  if (titleLower.includes('burns') || titleLower.includes('fire') || titleLower.includes('blaze')) {
+    if (titleLower.includes('student') || titleLower.includes('school')) {
+      return 'school building safety education india';
+    }
+    return 'fire emergency rescue safety';
+  }
+  
+  // Accident/Disaster
+  if (titleLower.includes('accident') || titleLower.includes('crash') || titleLower.includes('collision')) {
+    if (titleLower.includes('train')) return 'train railway india safety';
+    if (titleLower.includes('road') || titleLower.includes('car')) return 'road accident emergency ambulance';
+    if (titleLower.includes('plane') || titleLower.includes('flight')) return 'aviation airport safety';
+    return 'accident emergency rescue';
+  }
+  
+  // School/Education incidents
+  if (titleLower.includes('school') || titleLower.includes('student') || titleLower.includes('teacher')) {
+    if (titleLower.includes('patna')) return 'patna school education bihar';
+    if (titleLower.includes('delhi')) return 'delhi school education';
+    if (titleLower.includes('mumbai')) return 'mumbai school education';
+    return 'school building education india students';
+  }
   
   // Topic-specific keyword extraction for maximum relevance
   
