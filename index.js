@@ -1227,6 +1227,8 @@ Or just talk to me naturally! Try:
         await sendMenu(env, chatId);
       } else if (text === '/stats') {
         await sendStats(env, chatId);
+      } else if (text === '/costs' || text === '/cost') {
+        await sendCostReport(env, chatId);
       } else if (text === '/fetch') {
         await handleFetchNews(env, chatId);
       } else if (text === '/status') {
@@ -1238,6 +1240,12 @@ Or just talk to me naturally! Try:
       } else if (text === '/clear') {
         // Admin-only clear command
         await handleClearArticles(env, chatId);
+      } else if (text.startsWith('/delete ')) {
+        // Delete specific article by index or ID
+        await handleDeleteArticle(env, chatId, text);
+      } else if (text.startsWith('/create ')) {
+        // Create article on specific topic
+        await handleCreateArticle(env, chatId, text);
       } else if (text === '/reset') {
         // Reset counter command
         await handleResetCounter(env, chatId);
@@ -1968,6 +1976,229 @@ function getAudienceRecommendations(analytics) {
 }
 
 // New function: Help
+// Handle manual article creation
+async function handleCreateArticle(env, chatId, text) {
+  const topic = text.replace('/create ', '').trim();
+  
+  if (!topic) {
+    await sendMessage(env, chatId, '❌ *Invalid command*\n\nUse: `/create iPhone 16 Pro review`');
+    return;
+  }
+  
+  await sendMessage(env, chatId, `🔄 *Creating article about:*\n"${topic}"\n\n⏳ This will take 30-60 seconds...`);
+  
+  try {
+    // Create source material from topic
+    const sourceMaterial = {
+      originalTitle: topic,
+      description: `User-requested article about ${topic}`,
+      source: 'Manual Request',
+      link: '',
+      category: detectCategory(topic)
+    };
+    
+    // Generate article ID and slug
+    const articleId = generateArticleId();
+    
+    // Generate original article
+    const articleContent = await generateOriginalArticle(sourceMaterial, env);
+    
+    if (!articleContent || !articleContent.title) {
+      throw new Error('Failed to generate article content');
+    }
+    
+    // Create article object
+    const article = {
+      id: articleId,
+      slug: generateSlug(articleContent.title),
+      title: articleContent.title,
+      fullContent: articleContent.content,
+      preview: articleContent.content.replace(/<[^>]*>/g, '').substring(0, 500) + '...',
+      category: sourceMaterial.category,
+      source: 'AgamiNews Research Team',
+      url: `/${sourceMaterial.category.toLowerCase()}-news/${generateSlug(articleContent.title)}-${articleId}`,
+      date: 'Just now',
+      timestamp: Date.now(),
+      views: 0,
+      trending: false,
+      manuallyCreated: true
+    };
+    
+    // Generate image
+    article.image = await getArticleImage(articleContent.title, sourceMaterial.category, env);
+    
+    // Save article
+    const existingArticles = await env.NEWS_KV.get('articles', 'json') || [];
+    const updatedArticles = [article, ...existingArticles].slice(0, 50);
+    await env.NEWS_KV.put('articles', JSON.stringify(updatedArticles));
+    await env.NEWS_KV.put('articlesTimestamp', Date.now().toString());
+    
+    // Update stats
+    const stats = await env.NEWS_KV.get('stats', 'json') || {};
+    stats.manualArticles = (stats.manualArticles || 0) + 1;
+    await env.NEWS_KV.put('stats', JSON.stringify(stats));
+    
+    // Send success message
+    await sendMessage(env, chatId, 
+      `✅ *Article Created Successfully!*\n\n` +
+      `📌 *Title:* ${article.title}\n` +
+      `🏷️ *Category:* ${article.category}\n` +
+      `📸 *Image:* ${article.image?.type === 'generated' ? '🎨 DALL-E 3 HD' : '📷 Stock'}\n` +
+      `📊 *Length:* ${article.fullContent.length} chars\n` +
+      `🔗 *Link:* https://agaminews.in${article.url}\n\n` +
+      `_Article is now live on the website!_`
+    );
+    
+  } catch (error) {
+    console.error('[CREATE] Error:', error);
+    await sendMessage(env, chatId, `❌ *Failed to create article*\n\nError: ${error.message}`);
+  }
+}
+
+// Helper function to detect category from topic
+function detectCategory(topic) {
+  const topicLower = topic.toLowerCase();
+  
+  if (topicLower.includes('tech') || topicLower.includes('phone') || topicLower.includes('ai') || 
+      topicLower.includes('google') || topicLower.includes('apple') || topicLower.includes('software')) {
+    return 'Technology';
+  } else if (topicLower.includes('business') || topicLower.includes('market') || topicLower.includes('stock') ||
+             topicLower.includes('company') || topicLower.includes('profit')) {
+    return 'Business';
+  } else if (topicLower.includes('bollywood') || topicLower.includes('movie') || topicLower.includes('cricket') ||
+             topicLower.includes('sport') || topicLower.includes('entertainment')) {
+    return 'Entertainment';
+  } else if (topicLower.includes('health') || topicLower.includes('covid') || topicLower.includes('medical')) {
+    return 'Health';
+  } else {
+    return 'India'; // Default category
+  }
+}
+
+// Send detailed cost report
+async function sendCostReport(env, chatId) {
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  const today = new Date().toDateString();
+  
+  // Cost calculations
+  const COST_PER_ARTICLE = 0.03; // GPT-4 Turbo
+  const COST_PER_IMAGE = 0.01; // DALL-E 3 HD
+  const COST_PER_UNIT = COST_PER_ARTICLE + COST_PER_IMAGE;
+  
+  // Get monthly stats
+  const currentMonth = new Date().getMonth() + 1;
+  const currentYear = new Date().getFullYear();
+  const monthKey = `${currentYear}-${currentMonth}`;
+  
+  if (!stats.monthlyCosts) stats.monthlyCosts = {};
+  if (!stats.monthlyCosts[monthKey]) {
+    stats.monthlyCosts[monthKey] = {
+      articles: 0,
+      totalCost: 0
+    };
+  }
+  
+  // Today's costs
+  const todayArticles = stats.dailyArticlesPublished || 0;
+  const todayCost = todayArticles * COST_PER_UNIT;
+  
+  // Month-to-date
+  const monthArticles = stats.monthlyCosts[monthKey].articles || 0;
+  const monthCost = monthArticles * COST_PER_UNIT;
+  
+  // Projected monthly (based on daily average)
+  const dayOfMonth = new Date().getDate();
+  const avgDaily = monthArticles / dayOfMonth;
+  const projectedMonthly = avgDaily * 30;
+  const projectedCost = projectedMonthly * COST_PER_UNIT;
+  
+  await sendMessage(env, chatId, `
+💰 *Cost Report*
+
+📅 *Today (${new Date().toLocaleDateString('en-IN')}):*
+• Articles: ${todayArticles}
+• GPT-4: $${(todayArticles * COST_PER_ARTICLE).toFixed(2)}
+• DALL-E: $${(todayArticles * COST_PER_IMAGE).toFixed(2)}
+• Total: $${todayCost.toFixed(2)}
+
+📊 *Month-to-Date:*
+• Articles: ${monthArticles}
+• Total Cost: $${monthCost.toFixed(2)}
+• Daily Average: ${avgDaily.toFixed(1)} articles
+
+📈 *Projected Monthly:*
+• Articles: ~${Math.round(projectedMonthly)}
+• Estimated Cost: $${projectedCost.toFixed(2)}
+• Budget Status: ${projectedCost <= 10 ? '✅ Within budget' : '⚠️ Over budget'}
+
+💡 *Cost Breakdown:*
+• GPT-4 Turbo: $0.03/article
+• DALL-E 3 HD: $0.01/image
+• Total per article: $0.04
+
+🎯 *Budget: $10.00/month*
+• Used: $${monthCost.toFixed(2)} (${Math.round(monthCost/10*100)}%)
+• Remaining: $${(10 - monthCost).toFixed(2)}
+• Days left: ${30 - dayOfMonth}
+
+${projectedCost > 10 ? '⚠️ *Warning:* Reduce daily articles to stay within budget' : '✅ *Status:* On track with budget'}
+  `);
+  
+  // Update monthly tracking
+  stats.monthlyCosts[monthKey].articles = monthArticles + todayArticles;
+  stats.monthlyCosts[monthKey].totalCost = (monthArticles + todayArticles) * COST_PER_UNIT;
+  await env.NEWS_KV.put('stats', JSON.stringify(stats));
+}
+
+// Handle delete specific article
+async function handleDeleteArticle(env, chatId, text) {
+  const adminChat = await env.NEWS_KV.get('admin_chat');
+  if (String(chatId) !== adminChat) {
+    await sendMessage(env, chatId, '❌ *Unauthorized*\n\nOnly the admin can delete articles.');
+    return;
+  }
+  
+  const parts = text.split(' ');
+  const indexOrId = parts[1];
+  
+  if (!indexOrId) {
+    await sendMessage(env, chatId, '❌ *Invalid command*\n\nUse: `/delete 3` (by index) or `/delete 123456` (by ID)');
+    return;
+  }
+  
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  let deletedArticle = null;
+  let newArticles = [];
+  
+  // Check if it's an index (0-based) or an ID
+  if (indexOrId.length <= 2 && !isNaN(indexOrId)) {
+    // It's an index
+    const index = parseInt(indexOrId);
+    if (index >= 0 && index < articles.length) {
+      deletedArticle = articles[index];
+      newArticles = articles.filter((_, i) => i !== index);
+    }
+  } else {
+    // It's an ID
+    deletedArticle = articles.find(a => a.id === indexOrId);
+    newArticles = articles.filter(a => a.id !== indexOrId);
+  }
+  
+  if (deletedArticle) {
+    await env.NEWS_KV.put('articles', JSON.stringify(newArticles));
+    await env.NEWS_KV.put('articlesTimestamp', Date.now().toString());
+    
+    await sendMessage(env, chatId, 
+      `✅ *Article Deleted*\n\n` +
+      `📌 Title: ${deletedArticle.title}\n` +
+      `🏷️ Category: ${deletedArticle.category}\n` +
+      `📊 Remaining articles: ${newArticles.length}`
+    );
+  } else {
+    await sendMessage(env, chatId, '❌ *Article not found*\n\nCheck the index or ID and try again.');
+  }
+}
+
 async function sendHelp(env, chatId) {
   await sendMessage(env, chatId, `
 📚 *AgamiNews Manager Help*
