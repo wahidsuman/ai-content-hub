@@ -25,6 +25,12 @@ export default {
     } else if (url.pathname === '/test-openai') {
       // Test OpenAI integration
       return testOpenAI(env);
+    } else if (url.pathname === '/force-cron') {
+      // Manual trigger for testing cron job
+      console.log('[FORCE-CRON] Manually triggering scheduled job');
+      const fakeEvent = { scheduledTime: Date.now(), cron: '0 */3 * * *' };
+      await this.scheduled(fakeEvent, env);
+      return new Response('Cron job triggered manually', { status: 200 });
     } else if (url.pathname === '/test-article') {
       // Test single article generation
       return testArticleGeneration(env);
@@ -107,11 +113,13 @@ export default {
   
   async scheduled(event, env) {
     // AUTOMATIC NEWS PUBLISHING - Runs every 3 hours (24/7)
-    console.log(`⏰ Scheduled run at ${new Date().toISOString()}`);
+    const runTime = new Date().toISOString();
+    console.log(`[CRON] ⏰ Scheduled run started at ${runTime}`);
     
     try {
       // Get admin chat ID for notifications
       const adminChat = await env.NEWS_KV.get('admin_chat');
+      console.log(`[CRON] Admin chat: ${adminChat || 'not set'}`);
       
       // Check daily limits before fetching
       const stats = await env.NEWS_KV.get('stats', 'json') || {};
@@ -1242,7 +1250,55 @@ Or just talk to me naturally! Try:
         await sendMessage(env, chatId, `🧪 *Testing Notification System*\n\nSending test messages...`);
         const result1 = await sendMessage(env, chatId, `📝 Test Message 1: Basic text`);
         const result2 = await sendMessage(env, chatId, `✅ Test Message 2: If you see this, notifications work!\n\nResult 1: ${result1}`);
-        console.log(`Test results: Message 1=${result1}, Message 2=${result2}`);
+      } else if (text === '/cron' || text === '/trigger-cron') {
+        // Manually trigger the scheduled job
+        await sendMessage(env, chatId, '🔧 *Manually triggering auto-publish...*');
+        
+        try {
+          // Get current IST time and priority
+          const istTime = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+          const hour = istTime.getHours();
+          let priority = 'normal';
+          
+          if (hour >= 6 && hour < 9) priority = 'high';
+          else if (hour >= 9 && hour < 12) priority = 'business';
+          else if (hour >= 12 && hour < 15) priority = 'entertainment';
+          else if (hour >= 15 && hour < 18) priority = 'business';
+          else if (hour >= 18 && hour < 21) priority = 'high';
+          else if (hour >= 21 && hour < 24) priority = 'low';
+          else priority = 'minimal';
+          
+          await sendMessage(env, chatId, `⏰ Time: ${hour}:00 IST\n🎯 Priority: ${priority}\n📰 Fetching 1 article...`);
+          
+          // Call fetchLatestNewsAuto directly
+          const fetchResult = await fetchLatestNewsAuto(env, 1, priority);
+          
+          if (fetchResult && fetchResult.articlesPublished > 0) {
+            await sendMessage(env, chatId, 
+              `✅ *Article Published!*\n\n` +
+              `📌 Title: ${fetchResult.topArticle || 'N/A'}\n` +
+              `📰 Articles: ${fetchResult.articlesPublished}\n` +
+              `🔗 View: https://agaminews.in`
+            );
+            
+            // Send article details if available
+            if (fetchResult.articles && fetchResult.articles[0]) {
+              const article = fetchResult.articles[0];
+              await sendMessage(env, chatId,
+                `📄 *Article Details*\n\n` +
+                `📌 Title: ${article.title}\n` +
+                `🏷️ Category: ${article.category}\n` +
+                `📸 Image: ${article.image?.type === 'generated' ? '🎨 DALL-E 3' : '📷 Stock'}\n` +
+                `🔗 Link: https://agaminews.in${article.url || '/article/0'}`
+              );
+            }
+          } else {
+            await sendMessage(env, chatId, `❌ *Failed to fetch article*\n\nError: ${fetchResult?.error || 'Unknown error'}`);
+          }
+        } catch (error) {
+          console.error('[CRON-MANUAL] Error:', error);
+          await sendMessage(env, chatId, `❌ *Error:* ${error.message}`);
+        }
       } else {
         await handleNaturalLanguage(env, chatId, text);
       }
@@ -3368,6 +3424,7 @@ async function getArticleImage(title, category, env) {
     
     // ALWAYS use DALL-E 3 for 100% relevant images
     if (env.OPENAI_API_KEY) { // Always use DALL-E when available
+      console.log(`[IMAGE] Attempting DALL-E generation for: "${title}"`);
       try {
         // Extract EVERYTHING from the title for perfect image generation
         const hasNumbers = /\d+/.test(title);
@@ -3575,10 +3632,13 @@ async function getArticleImage(title, category, env) {
             };
           }
         } else {
-          console.error(`DALL-E API error: ${response.status} - ${response.statusText}`);
+          const errorText = await response.text();
+          console.error(`[DALL-E] API error: ${response.status} - ${response.statusText}`);
+          console.error(`[DALL-E] Error details: ${errorText}`);
         }
       } catch (error) {
-        console.error('DALL-E generation error:', error);
+        console.error('[DALL-E] Generation error:', error.message);
+        console.error('[DALL-E] Stack:', error.stack);
         // Even on error, return a specific placeholder rather than falling through
         return {
           url: `https://via.placeholder.com/1792x1024/CC0000/FFFFFF?text=${encodeURIComponent(title.substring(0, 50))}`,
