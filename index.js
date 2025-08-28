@@ -25,12 +25,28 @@ export default {
     } else if (url.pathname === '/test-openai') {
       // Test OpenAI integration
       return testOpenAI(env);
-    } else if (url.pathname === '/force-cron') {
-      // Manual trigger for testing cron job
+    } else if (url.pathname === '/force-cron' || url.pathname === '/trigger') {
+      // Manual trigger for testing cron job (can be called by external services)
       console.log('[FORCE-CRON] Manually triggering scheduled job');
-      const fakeEvent = { scheduledTime: Date.now(), cron: '0 */3 * * *' };
+      
+      // Check for secret key if provided
+      const secretKey = url.searchParams.get('key');
+      const expectedKey = env.CRON_SECRET || 'agami2024'; // Set a secret in env vars
+      
+      if (url.pathname === '/trigger' && secretKey !== expectedKey) {
+        return new Response('Unauthorized', { status: 401 });
+      }
+      
+      const fakeEvent = { scheduledTime: Date.now(), cron: 'manual' };
       await this.scheduled(fakeEvent, env);
-      return new Response('Cron job triggered manually', { status: 200 });
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Cron job triggered',
+        time: new Date().toISOString()
+      }), { 
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
     } else if (url.pathname === '/test-article') {
       // Test single article generation
       return testArticleGeneration(env);
@@ -116,10 +132,24 @@ export default {
     const runTime = new Date().toISOString();
     console.log(`[CRON] ⏰ Scheduled run started at ${runTime}`);
     
+    // Log cron execution to KV for debugging
+    const cronLogs = await env.NEWS_KV.get('cron_logs', 'json') || [];
+    cronLogs.unshift({
+      time: runTime,
+      event: 'started',
+      cron: event.cron || 'unknown'
+    });
+    await env.NEWS_KV.put('cron_logs', JSON.stringify(cronLogs.slice(0, 20))); // Keep last 20 logs
+    
     try {
       // Get admin chat ID for notifications
       const adminChat = await env.NEWS_KV.get('admin_chat');
       console.log(`[CRON] Admin chat: ${adminChat || 'not set'}`);
+      
+      // Send notification that cron started
+      if (adminChat && env.TELEGRAM_BOT_TOKEN) {
+        await sendMessage(env, adminChat, `⏰ *Cron Triggered*\n\nTime: ${new Date().toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})}\nStarting auto-publish...`);
+      }
       
       // Check daily limits before fetching
       const stats = await env.NEWS_KV.get('stats', 'json') || {};
@@ -257,11 +287,20 @@ export default {
       await runScheduledTasks(env);
       
     } catch (error) {
-      console.error('Scheduled task error:', error);
+      console.error('[CRON] Scheduled task error:', error);
+      
+      // Log error to KV
+      const cronLogs = await env.NEWS_KV.get('cron_logs', 'json') || [];
+      cronLogs.unshift({
+        time: new Date().toISOString(),
+        event: 'error',
+        error: error.message
+      });
+      await env.NEWS_KV.put('cron_logs', JSON.stringify(cronLogs.slice(0, 20)));
       
       // Notify admin of error
       const adminChat = await env.NEWS_KV.get('admin_chat');
-      if (adminChat) {
+      if (adminChat && env.TELEGRAM_BOT_TOKEN) {
         await sendMessage(env, adminChat, 
           `❌ *Auto-Publishing Error*\n\n` +
           `Error: ${error.message}\n` +
@@ -1258,6 +1297,19 @@ Or just talk to me naturally! Try:
         await sendMessage(env, chatId, `🧪 *Testing Notification System*\n\nSending test messages...`);
         const result1 = await sendMessage(env, chatId, `📝 Test Message 1: Basic text`);
         const result2 = await sendMessage(env, chatId, `✅ Test Message 2: If you see this, notifications work!\n\nResult 1: ${result1}`);
+      } else if (text === '/cron-logs' || text === '/logs') {
+        // Show cron execution logs
+        const cronLogs = await env.NEWS_KV.get('cron_logs', 'json') || [];
+        if (cronLogs.length === 0) {
+          await sendMessage(env, chatId, '📊 *No cron logs found*\n\nThe cron job has not run yet or logs were cleared.');
+        } else {
+          const logText = cronLogs.slice(0, 10).map(log => {
+            const time = new Date(log.time).toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'});
+            return `• ${time}: ${log.event}`;
+          }).join('\n');
+          
+          await sendMessage(env, chatId, `📊 *Recent Cron Executions:*\n\n${logText}\n\n_Showing last 10 runs_`);
+        }
       } else if (text === '/cron' || text === '/trigger-cron') {
         // Manually trigger the scheduled job
         await sendMessage(env, chatId, '🔧 *Manually triggering auto-publish...*');
