@@ -204,16 +204,23 @@ export default {
           
           // Send individual article notifications
           if (fetchResult.articles && fetchResult.articles.length > 0) {
-            for (const article of fetchResult.articles) {
+            for (let i = 0; i < fetchResult.articles.length; i++) {
+              const article = fetchResult.articles[i];
               await sendMessage(env, adminChat,
-                `📰 *New Article Published*\n\n` +
+                `📰 *New Article Auto-Published*\n\n` +
                 `📌 *Title:* ${article.title}\n` +
                 `🏷️ *Category:* ${article.category}\n` +
-                `📸 *Image:* ${article.image?.type === 'generated' ? 'AI Generated' : 'Real Photo'}\n` +
-                `📊 *Quality:* ${article.fullContent.length > 3000 ? '✅ High' : '⚠️ Low'}\n` +
-                `🔗 *Link:* https://agaminews.in/article/${article.id}\n\n` +
+                `📰 *Source:* ${article.source || 'RSS Feed'}\n` +
+                `📸 *Image:* ${article.image?.type === 'generated' ? '🎨 AI Generated' : article.image?.type === 'personality' ? '👤 Real Photo' : '📷 Stock Photo'}\n` +
+                `📊 *Quality:* ${article.fullContent && article.fullContent.length > 3000 ? '✅ High' : '⚠️ Medium'} (${article.fullContent ? article.fullContent.length : 0} chars)\n` +
+                `🔗 *Link:* https://agaminews.in/article/${i}\n\n` +
                 `_Auto-published at ${new Date().toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})}_`
               );
+              
+              // Small delay to avoid rate limits
+              if (i < fetchResult.articles.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+              }
             }
           }
         } else if (adminChat && fetchResult.articlesPublished === 0) {
@@ -2654,6 +2661,45 @@ async function fetchLatestNews(env) {
     // Verify save
     const verifyArticles = await env.NEWS_KV.get('articles', 'json') || [];
     console.log(`Articles saved: ${verifyArticles.length} total (${allArticles.length} new + ${existingArticlesForSave.length} existing)`);
+    
+    // Send individual Telegram notifications for each new article
+    if (adminChat && env.TELEGRAM_BOT_TOKEN && allArticles.length > 0) {
+      console.log(`Sending notifications for ${allArticles.length} new articles...`);
+      
+      // Send summary first
+      await sendMessage(env, adminChat, 
+        `📰 *${allArticles.length} New Articles Published!*\n\n` +
+        `📊 Total articles: ${verifyArticles.length}\n` +
+        `🔗 View: https://agaminews.in\n` +
+        `⏰ Time: ${new Date().toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})}`
+      );
+      
+      // Send individual article notifications
+      for (let i = 0; i < allArticles.length; i++) {
+        const article = allArticles[i];
+        const articleIndex = i; // Position in the combined array
+        
+        try {
+          await sendMessage(env, adminChat,
+            `📄 *Article ${i + 1}/${allArticles.length}*\n\n` +
+            `📌 *Title:* ${article.title}\n` +
+            `🏷️ *Category:* ${article.category}\n` +
+            `📰 *Source:* ${article.source || 'RSS Feed'}\n` +
+            `📸 *Image:* ${article.image?.type === 'generated' ? '🎨 AI Generated' : article.image?.type === 'personality' ? '👤 Real Photo' : '📷 Stock Photo'}\n` +
+            `📊 *Quality:* ${article.fullContent && article.fullContent.length > 3000 ? '✅ High' : article.fullContent && article.fullContent.length > 1500 ? '⚠️ Medium' : '❌ Low'} (${article.fullContent ? article.fullContent.length : 0} chars)\n` +
+            `🔗 *Link:* https://agaminews.in/article/${articleIndex}\n\n` +
+            `_Published via ${article.autoPublished ? 'Auto-fetch' : 'Manual fetch'}_`
+          );
+          
+          // Small delay to avoid Telegram rate limits
+          if (i < allArticles.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        } catch (notifError) {
+          console.error(`Failed to send notification for article ${i + 1}:`, notifError);
+        }
+      }
+    }
     
     // Update stats with daily article tracking
     stats.lastFetchDate = today;
