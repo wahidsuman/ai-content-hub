@@ -129,34 +129,34 @@ export default {
       const istTime = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
       const hour = istTime.getHours();
       
-      let articlesToFetch = 3; // Default 3 articles per run
+      let articlesToFetch = 1; // Only 1 article per fetch (8 per day with 3-hour schedule)
       let shouldFetch = true;
       let priority = 'normal';
       
-      // Intelligent scheduling based on Indian news patterns
+      // Intelligent priority based on Indian news patterns (but always 1 article)
       if (hour >= 6 && hour < 9) {
-        // Morning rush - more articles
-        articlesToFetch = 4;
+        // Morning rush
+        articlesToFetch = 1;
         priority = 'high';
       } else if (hour >= 9 && hour < 12) {
         // Market hours - business focus
-        articlesToFetch = 3;
+        articlesToFetch = 1;
         priority = 'business';
       } else if (hour >= 12 && hour < 15) {
         // Lunch time - entertainment/sports
-        articlesToFetch = 3;
+        articlesToFetch = 1;
         priority = 'entertainment';
       } else if (hour >= 15 && hour < 18) {
         // Market closing - business updates
-        articlesToFetch = 3;
+        articlesToFetch = 1;
         priority = 'business';
       } else if (hour >= 18 && hour < 21) {
         // Evening - general news
-        articlesToFetch = 4;
+        articlesToFetch = 1;
         priority = 'high';
       } else if (hour >= 21 && hour < 24) {
         // Night - less articles
-        articlesToFetch = 2;
+        articlesToFetch = 1;
         priority = 'low';
       } else {
         // Late night/early morning (0-6 AM) - minimal
@@ -164,13 +164,13 @@ export default {
         priority = 'minimal';
       }
       
-      // Check daily limit (36 articles max to stay under budget)
-      if (stats.dailyArticlesPublished >= 36) {
-        console.log('Daily limit reached, skipping fetch');
+      // Check daily limit (8 articles per day with 3-hour schedule)
+      if (stats.dailyArticlesPublished >= 8) {
+        console.log('Daily limit reached (8 articles), skipping fetch');
         if (adminChat) {
           await sendMessage(env, adminChat, 
             `⚠️ *Daily Limit Reached*\n\n` +
-            `Published: ${stats.dailyArticlesPublished}/36 articles\n` +
+            `Published: ${stats.dailyArticlesPublished}/8 articles today\n` +
             `Next reset: Midnight IST\n` +
             `Status: Paused to save costs`
           );
@@ -184,9 +184,9 @@ export default {
           await sendMessage(env, adminChat, 
             `🤖 *Auto-Publishing Started*\n\n` +
             `⏰ Time: ${hour}:00 IST\n` +
-            `📰 Articles: ${articlesToFetch}\n` +
+            `📰 Articles: 1 (single article per fetch)\n` +
             `🎯 Priority: ${priority}\n` +
-            `📊 Today's Total: ${stats.dailyArticlesPublished}/36\n` +
+            `📊 Today's Total: ${stats.dailyArticlesPublished}/8\n` +
             `💰 Budget Status: Safe`
           );
         }
@@ -205,8 +205,8 @@ export default {
           // Send summary first
           await sendMessage(env, adminChat, 
             `✅ *Auto-Publishing Complete*\n\n` +
-            `📰 Published: ${fetchResult.articlesPublished} articles\n` +
-            `📈 Total Today: ${stats.dailyArticlesPublished}/36\n` +
+            `📰 Published: ${fetchResult.articlesPublished} article\n` +
+            `📈 Total Today: ${stats.dailyArticlesPublished}/8\n` +
             `🔗 View: https://agaminews.in\n` +
             `⏰ Next Run: 3 hours`
           );
@@ -2738,9 +2738,9 @@ async function fetchLatestNews(env) {
     // Sort by relevance and mix categories
     allArticles = shuffleAndBalance(allArticles);
     
-    // Keep 10-12 premium articles for daily quota
-    allArticles = allArticles.slice(0, Math.min(12, Math.max(10, allArticles.length)));
-    console.log(`Articles after limiting to quota: ${allArticles.length}`);
+    // Keep only 1 article per fetch
+    allArticles = allArticles.slice(0, 1);
+    console.log(`Articles after limiting to 1: ${allArticles.length}`);
     
     // Save to KV - APPEND to existing articles, don't overwrite
     const existingArticlesForSave = await env.NEWS_KV.get('articles', 'json') || [];
@@ -2762,7 +2762,7 @@ async function fetchLatestNews(env) {
       
       // Send summary first
       const summaryResult = await sendMessage(env, adminChat, 
-        `📰 *${allArticles.length} New Articles Published!*\n\n` +
+        `📰 *New Article Published!*\n\n` +
         `📊 Total articles: ${verifyArticles.length}\n` +
         `🔗 View: https://agaminews.in\n` +
         `⏰ Time: ${new Date().toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})}`
@@ -2782,7 +2782,7 @@ async function fetchLatestNews(env) {
         
         try {
           await sendMessage(env, adminChat,
-            `📄 *Article ${i + 1}/${allArticles.length}*\n\n` +
+            `📄 *New Article Details*\n\n` +
             `📌 *Title:* ${article.title}\n` +
             `🏷️ *Category:* ${article.category}\n` +
             `📰 *Source:* ${article.source || 'RSS Feed'}\n` +
@@ -2810,17 +2810,13 @@ async function fetchLatestNews(env) {
     stats.totalArticlesFetched = (stats.totalArticlesFetched || 0) + allArticles.length;
     await env.NEWS_KV.put('stats', JSON.stringify(stats));
     
-    // Notify admin via Telegram with daily progress
-    // adminChat already declared above
-    if (adminChat && env.TELEGRAM_BOT_TOKEN) {
-      const dailyProgress = Math.round((stats.dailyArticlesPublished / dailyTarget) * 100);
-      await sendMessage(env, adminChat, `📰 *News Update Complete!*\n\n✅ Published: ${allArticles.length} new articles\n📈 Daily Progress: ${stats.dailyArticlesPublished}/${dailyTarget} (${dailyProgress}%)\n📊 Categories: ${[...new Set(allArticles.map(a => a.category))].join(', ')}\n⏰ Next update: 3 hours\n\n💡 *Quality Focus:* Each article has in-depth research and unique angles`);
-    }
+    // No need for duplicate notification since we already sent one above
     
     return new Response(JSON.stringify({ 
       success: true, 
       articles: allArticles.length,
-      dailyPublished: stats.dailyArticlesPublished
+      dailyPublished: stats.dailyArticlesPublished,
+      message: `✅ Published ${allArticles.length} new article!`
     }), {
       headers: { 'Content-Type': 'application/json' }
     });
