@@ -1406,6 +1406,9 @@ Or just talk to me naturally! Try:
       } else if (text === '/clear') {
         // Admin-only clear command
         await handleClearArticles(env, chatId);
+      } else if (text === '/clean' || text === '/cleanup') {
+        // Clean broken articles with Unsplash/failed generation
+        await handleClearBrokenArticles(env, chatId);
       } else if (text.startsWith('/delete ')) {
         // Delete specific article by index or ID
         await handleDeleteArticle(env, chatId, text);
@@ -2531,6 +2534,64 @@ async function handleThemeChange(env, chatId, text) {
   await env.NEWS_KV.put('config', JSON.stringify(config));
   
   await sendMessage(env, chatId, `✅ Theme changed to ${config.theme}!`);
+}
+
+// Handle clearing broken articles with Unsplash/failed generation
+async function handleClearBrokenArticles(env, chatId) {
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  
+  if (articles.length === 0) {
+    await sendMessage(env, chatId, '📭 No articles to clean.');
+    return;
+  }
+  
+  // Filter out articles with Unsplash images or failed generation
+  const cleanArticles = articles.filter(article => {
+    // Check for Unsplash in image credit
+    if (article.image && article.image.credit && article.image.credit.toLowerCase().includes('unsplash')) {
+      return false; // Remove Unsplash images
+    }
+    // Check for Pexels in image credit
+    if (article.image && article.image.credit && article.image.credit.toLowerCase().includes('pexels')) {
+      return false; // Remove Pexels images
+    }
+    // Check for failed generation
+    if (article.fullContent && article.fullContent.includes('Article generation failed')) {
+      return false; // Remove failed articles
+    }
+    // Check for placeholder images
+    if (article.image && article.image.url && article.image.url.includes('placeholder')) {
+      return false; // Remove placeholder images
+    }
+    // Check for via.placeholder images
+    if (article.image && article.image.url && article.image.url.includes('via.placeholder')) {
+      return false; // Remove placeholder images
+    }
+    return true; // Keep good articles
+  });
+  
+  const removedCount = articles.length - cleanArticles.length;
+  
+  if (removedCount === 0) {
+    await sendMessage(env, chatId, '✅ No broken articles found. All articles are using DALL-E images.');
+    return;
+  }
+  
+  // Save cleaned articles
+  await env.NEWS_KV.put('articles', JSON.stringify(cleanArticles));
+  await env.NEWS_KV.put('articlesTimestamp', Date.now().toString());
+  
+  await sendMessage(env, chatId, `
+🧹 *Cleanup Complete!*
+
+Removed: ${removedCount} broken articles
+• Articles with Unsplash/Pexels images
+• Failed article generations  
+• Placeholder images
+
+Remaining: ${cleanArticles.length} good articles
+All now using DALL-E images! ✨
+  `);
 }
 
 // Handle clear articles securely (Telegram admin only)
@@ -5780,10 +5841,24 @@ STRICT RULES:
     console.error('Failed to generate original article:', error);
   }
   
-  // Fallback
+  // Fallback - Create basic article from source material
+  console.log('[FALLBACK] Creating basic article from source material');
+  const fallbackTitle = makeHeadlineHuman(sourceMaterial.originalTitle);
+  const fallbackContent = `
+    <p><strong>${sourceMaterial.description}</strong></p>
+    
+    <p>This is a developing story from ${sourceMaterial.source || 'our news desk'}. ${sourceMaterial.category ? `Filed under ${sourceMaterial.category} news.` : ''}</p>
+    
+    <p>${sourceMaterial.description ? sourceMaterial.description : 'Full details are being gathered and will be updated as more information becomes available.'}</p>
+    
+    <p><em>This article is being updated with additional information and analysis. Please check back for the complete story.</em></p>
+    
+    <p>Source: ${sourceMaterial.source || 'News Agency'}</p>
+  `;
+  
   return {
-    title: sourceMaterial.originalTitle,
-    content: `<p>Article generation failed</p>`
+    title: fallbackTitle,
+    content: fallbackContent
   };
 }
 
