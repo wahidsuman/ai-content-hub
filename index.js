@@ -3826,9 +3826,22 @@ function getTimeAgo(index) {
 
 // Serve individual article page
 async function serveArticle(env, request, pathname) {
-  const articleId = parseInt(pathname.split('/')[2]);
-  const articles = await env.NEWS_KV.get('articles', 'json') || getDefaultArticles();
-  const article = articles[articleId];
+  try {
+    const articleId = parseInt(pathname.split('/')[2]);
+    
+    // Validate articleId
+    if (isNaN(articleId) || articleId < 0) {
+      throw new Error('Invalid article ID');
+    }
+    
+    const articles = await env.NEWS_KV.get('articles', 'json') || getDefaultArticles();
+    
+    // Check if articleId is within bounds
+    if (articleId >= articles.length) {
+      throw new Error('Article ID out of bounds');
+    }
+    
+    const article = articles[articleId];
   
   if (!article) {
     // 404 page with Google Analytics
@@ -4312,10 +4325,12 @@ async function serveArticle(env, request, pathname) {
             <h2 class="related-title">More Stories</h2>
             <div class="related-grid">
                 ${articles
-                  .filter((a, i) => i !== articleId && a.category === article.category)
+                  .map((a, i) => ({ article: a, index: i })) // Keep track of original index
+                  .filter(item => item.index !== articleId && item.article.category === article.category)
                   .slice(0, 4)
-                  .map((related, index) => {
-                    const relatedIndex = articles.indexOf(related);
+                  .map(item => {
+                    const relatedIndex = item.index; // Use the preserved index
+                    const related = item.article;
                     const imageUrl = related.image?.url || related.image || 
                                    `https://via.placeholder.com/160x160/333/999?text=${encodeURIComponent(related.category)}`;
                     return `
@@ -4346,6 +4361,62 @@ async function serveArticle(env, request, pathname) {
       'Expires': '0'
     }
   });
+  
+  } catch (error) {
+    console.error('Error serving article:', error);
+    
+    // Return a proper 404 page for any errors
+    const errorHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error - AgamiNews</title>
+    ${getGoogleAnalyticsCode('Error Page', '/error')}
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background: #f5f5f5;
+      }
+      .error-container {
+        text-align: center;
+        padding: 20px;
+      }
+      h1 { color: #CC0000; font-size: 72px; margin: 0; }
+      h2 { color: #333; margin: 20px 0; }
+      p { color: #666; margin: 20px 0; }
+      a {
+        display: inline-block;
+        margin-top: 20px;
+        padding: 10px 20px;
+        background: #CC0000;
+        color: white;
+        text-decoration: none;
+        border-radius: 5px;
+      }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <h1>Error</h1>
+        <h2>Something went wrong</h2>
+        <p>The article you're looking for cannot be displayed.</p>
+        <p style="font-size: 12px; color: #999;">Error: ${error.message}</p>
+        <a href="/">← Back to Homepage</a>
+    </div>
+</body>
+</html>`;
+    
+    return new Response(errorHtml, { 
+      status: 500,
+      headers: { 'Content-Type': 'text/html; charset=utf-8' }
+    });
+  }
 }
 
 // Generate full article content using GPT for depth
