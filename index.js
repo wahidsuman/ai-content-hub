@@ -1597,7 +1597,7 @@ Or use /menu for all options! 🚀
 // New function: Handle fetch news
 async function handleFetchNews(env, chatId) {
   // Send single initial message
-  await sendMessage(env, chatId, `🔄 *Fetching 2 Articles...*\n\n⏳ This takes 60-90 seconds for quality content...`);
+  await sendMessage(env, chatId, `🔄 *Fetching 1 Article...*\n\n⏳ This takes 30-60 seconds for quality content...`);
   
   try {
     console.log('[FETCH] Starting news fetch from Telegram command...');
@@ -3120,9 +3120,12 @@ async function fetchLatestNews(env) {
     
     // Fetch from comprehensive RSS feeds - All categories with depth
     const feeds = [
-      // Political & National News (Important)
-      { url: 'https://timesofindia.indiatimes.com/rssfeeds/1221656.cms', category: 'Politics', source: 'TOI' },
+      // Most reliable feeds first
+      { url: 'https://timesofindia.indiatimes.com/rssfeedstopstories.cms', category: 'India', source: 'TOI Top Stories' },
       { url: 'https://feeds.feedburner.com/ndtvnews-top-stories', category: 'India', source: 'NDTV' },
+      { url: 'https://economictimes.indiatimes.com/rssfeedstopstories.cms', category: 'Business', source: 'Economic Times' },
+      
+      // Backup feeds
       { url: 'https://www.thehindu.com/news/national/feeder/default.rss', category: 'Politics', source: 'The Hindu' },
       { url: 'https://indianexpress.com/feed/', category: 'Politics', source: 'Indian Express' },
       
@@ -3156,25 +3159,35 @@ async function fetchLatestNews(env) {
     
     // Fetch from each feed - LIMIT TO FIRST 3 FEEDS FOR QUICK RESPONSE
     const feedsToProcess = feeds.slice(0, 3); // Only process first 3 feeds for speed
+    console.log(`[RSS] Processing ${feedsToProcess.length} feeds for manual fetch`);
+    
     for (const feed of feedsToProcess) {
       feedCount++;
-      console.log(`Fetching from ${feed.source}... (${feedCount}/${feedsToProcess.length})`);
-      
-      // Skip progress updates for faster processing
-      // if (feedCount % 3 === 0 && adminChat && env.TELEGRAM_BOT_TOKEN) {
-      //   await sendMessage(env, adminChat, `📡 Progress: Fetched ${feedCount}/${feeds.length} RSS feeds...`);
-      // }
+      console.log(`[RSS] Fetching from ${feed.source} (${feedCount}/${feedsToProcess.length}): ${feed.url}`);
       
       try {
-        const response = await fetch(feed.url);
+        const response = await fetch(feed.url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; AgamiNews/1.0)'
+          }
+        });
+        
         if (!response.ok) {
-          console.error(`Failed to fetch ${feed.source}: ${response.status}`);
+          console.error(`[RSS] Failed to fetch ${feed.source}: Status ${response.status}`);
           continue;
         }
+        
         const text = await response.text();
+        console.log(`[RSS] Received ${text.length} chars from ${feed.source}`);
         
         // Enhanced RSS parsing
         const items = text.match(/<item>([\s\S]*?)<\/item>/g) || [];
+        console.log(`[RSS] Found ${items.length} items in ${feed.source}`);
+        
+        if (items.length === 0) {
+          console.log(`[RSS] No items found in feed ${feed.source}`);
+          continue;
+        }
         
         for (let i = 0; i < Math.min(1, items.length); i++) { // 1 article per feed for faster processing
           const item = items[i];
@@ -3275,25 +3288,68 @@ async function fetchLatestNews(env) {
     
     console.log(`Total articles fetched from RSS: ${allArticles.length}`);
     
+    // If no articles from RSS, try with fallback content
     if (allArticles.length === 0) {
-      console.error('No articles fetched from any RSS feed');
+      console.log('[FALLBACK] No RSS articles, trying fallback generation...');
+      
+      // Generate a trending topic article as fallback
+      try {
+        const fallbackTopic = {
+          originalTitle: "Latest Technology and Business Updates from India",
+          description: "Stay updated with the latest developments in technology, business, and current affairs.",
+          source: "AgamiNews",
+          category: "India",
+          link: ""
+        };
+        
+        const fallbackResult = await generateOriginalArticle(fallbackTopic, env);
+        
+        if (fallbackResult && fallbackResult.title) {
+          const articleId = generateArticleId();
+          const fallbackArticle = {
+            id: articleId,
+            slug: generateSlug(fallbackResult.title),
+            title: fallbackResult.title,
+            preview: fallbackResult.content.substring(0, 500) + '...',
+            category: 'India',
+            source: 'AgamiNews Research',
+            image: await getArticleImage(fallbackResult.title, 'India', env),
+            date: 'Just now',
+            timestamp: Date.now(),
+            views: Math.floor(Math.random() * 5000) + 1000,
+            trending: true,
+            fullContent: fallbackResult.content
+          };
+          
+          fallbackArticle.url = `/${fallbackArticle.category.toLowerCase()}-news/${fallbackArticle.slug}-${fallbackArticle.id}`;
+          allArticles.push(fallbackArticle);
+          console.log('[FALLBACK] Generated fallback article successfully');
+        }
+      } catch (fallbackError) {
+        console.error('[FALLBACK] Failed to generate fallback:', fallbackError);
+      }
+    }
+    
+    // Final check
+    if (allArticles.length === 0) {
+      console.error('No articles fetched from RSS or fallback');
       // Send error notification to admin
       if (adminChat && env.TELEGRAM_BOT_TOKEN) {
         await sendMessage(env, adminChat, 
           `❌ *Fetch Failed*\n\n` +
           `Reason: No articles could be generated\n` +
           `Feeds checked: ${feedsToProcess.length}\n` +
-          `Possible issues:\n` +
-          `• RSS feeds down\n` +
-          `• OpenAI API issues\n` +
-          `• Network timeout\n\n` +
-          `Try: /fetch again or check /health`
+          `Fallback: Also failed\n\n` +
+          `Issues:\n` +
+          `• Check OpenAI API key\n` +
+          `• Check API credits\n` +
+          `• Try /test-openai`
         );
       }
       return new Response(JSON.stringify({ 
         success: false, 
-        error: 'No articles fetched from RSS feeds',
-        message: 'RSS feeds may be down or empty. Try again later.'
+        error: 'No articles could be generated',
+        message: 'Both RSS and fallback generation failed. Check OpenAI API.'
       }), {
         headers: { 'Content-Type': 'application/json' }
       });
@@ -3302,10 +3358,9 @@ async function fetchLatestNews(env) {
     // Sort by relevance and mix categories
     allArticles = shuffleAndBalance(allArticles);
     
-    // Keep only 1 article per fetch
-    // With $20 budget, fetch 2 articles per manual command
-    allArticles = allArticles.slice(0, 2);
-    console.log(`Articles after limiting to 2: ${allArticles.length}`);
+    // Keep only 1 article per manual fetch (auto fetch handles multiple)
+    allArticles = allArticles.slice(0, 1);
+    console.log(`Articles after limiting to 1: ${allArticles.length}`);
     
     // Save to KV - APPEND to existing articles, don't overwrite
     const existingArticlesForSave = await env.NEWS_KV.get('articles', 'json') || [];
