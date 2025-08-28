@@ -2710,11 +2710,11 @@ async function fetchLatestNews(env) {
       
       if (!summaryResult) {
         console.error('Failed to send summary notification, skipping individual notifications');
-        return;
-      }
-      
-      // Send individual article notifications
-      for (let i = 0; i < allArticles.length; i++) {
+        // Don't return here - it exits the entire function!
+        // Just skip the individual notifications
+      } else {
+        // Send individual article notifications only if summary succeeded
+        for (let i = 0; i < allArticles.length; i++) {
         const article = allArticles[i];
         const articleIndex = i; // Position in the combined array
         
@@ -2738,6 +2738,7 @@ async function fetchLatestNews(env) {
           console.error(`Failed to send notification for article ${i + 1}:`, notifError);
         }
       }
+      } // Close the else block for notifications
     }
     
     // Update stats with daily article tracking
