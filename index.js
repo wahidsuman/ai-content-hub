@@ -3411,7 +3411,7 @@ async function fetchLatestNews(env) {
             `📌 *Title:* ${article.title}\n` +
             `🏷️ *Category:* ${article.category}\n` +
             `✨ *Originality:* 100% Unique Content\n` +
-            `📸 *Image:* ${article.image?.type === 'generated' ? '🎨 DALL-E 3 HD' : article.image?.type === 'personality' ? '👤 Real Photo' : '📷 Stock Photo'}\n` +
+            `📸 *Image:* 🎨 DALL-E 3 Optimized (Fast Loading)\n` +
             `📊 *Quality:* ${article.fullContent && article.fullContent.length > 3000 ? '⭐⭐⭐⭐⭐ Premium' : article.fullContent && article.fullContent.length > 1500 ? '⭐⭐⭐⭐ High' : '⭐⭐⭐ Standard'} (${article.fullContent ? article.fullContent.length : 0} chars)\n` +
             `🤖 *AI Model:* GPT-4 Turbo\n` +
             `🔗 *Link:* https://agaminews.in${article.url || `/article/${articleIndex}`}\n\n` +
@@ -3804,9 +3804,9 @@ async function getArticleImage(title, category, env) {
             model: 'dall-e-3',
             prompt: sensitivePrompt,
             n: 1,
-            size: '1792x1024',
+            size: '1024x1024', // Optimized size for faster loading
             quality: 'standard',
-            style: 'natural'
+            style: 'vivid' // More eye-catching style
           })
         });
         
@@ -4036,15 +4036,15 @@ async function getArticleImage(title, category, env) {
         
         // ULTRA-SPECIFIC PROMPTS based on exact news type
         
-        // POLITICAL FIGURES - Photo-realistic editing style
+        // POLITICAL FIGURES - Compelling, clickable visuals
         if (titleLower.includes('modi')) {
-          imagePrompt = `Photorealistic news photo: Narendra Modi in formal attire at ${location || 'PMO Delhi'}. ${action ? `Action: ${action}` : 'Speaking at podium'}. ${hasCurrency ? `Digital display showing ₹${numbers[0]} crore in background.` : ''} Professional Reuters/PTI style photography. Include Indian flag. Shot with 85mm lens, sharp focus on Modi, blurred background.`;
+          imagePrompt = `BREAKING NEWS VISUAL: Narendra Modi in dramatic moment at ${location || 'Parliament'}. ${action ? `Powerful ${action} gesture` : 'Decisive leadership moment'}. ${hasCurrency ? `MASSIVE ₹${numbers[0]} CRORE displayed prominently` : ''} Vibrant colors, dramatic lighting, Indian flag prominent. URGENT NEWS FEEL. High contrast, eye-catching composition that demands attention.`;
         }
         else if (titleLower.includes('rahul') || titleLower.includes('gandhi')) {
-          imagePrompt = `Photorealistic news photo: Rahul Gandhi at ${location || 'Congress headquarters'}. ${action === 'announces' ? 'Making announcement at press conference' : 'Addressing gathering'}. ${numbers.length ? `Banner showing ${numbers[0]} figure` : ''}. News agency quality, professional lighting.`;
+          imagePrompt = `EXPLOSIVE POLITICAL MOMENT: Rahul Gandhi in POWERFUL stance at ${location || 'massive rally'}. ${action === 'announces' ? 'MAJOR ANNOUNCEMENT with dramatic gestures' : 'PASSIONATE speech to THOUSANDS'}. ${numbers.length ? `HUGE ${numbers[0]} displayed on massive screen` : ''}. Dramatic lighting, crowd energy, MUST-WATCH moment.`;
         }
         else if (titleLower.includes('kejriwal')) {
-          imagePrompt = `Photorealistic news photo: Arvind Kejriwal at ${location || 'Delhi Secretariat'}. ${action || 'Speaking'} with Delhi government logo visible. ${hasCurrency ? `Chart showing ₹${numbers[0]} budget` : ''}. Press conference setup, multiple microphones.`;
+          imagePrompt = `DELHI BREAKING NEWS: Arvind Kejriwal in ACTION at ${location || 'packed venue'}. ${action || 'Revolutionary announcement'} with MASSIVE crowd reaction. ${hasCurrency ? `SHOCKING ₹${numbers[0]} figure on giant display` : ''}. Electric atmosphere, dramatic angles, VIRAL moment captured.`;
         }
         
         // SPECIFIC NEWS SCENARIOS - Exact visualization
@@ -4073,16 +4073,16 @@ async function getArticleImage(title, category, env) {
           imagePrompt = `Photorealistic scene: ${title}. Indian students in ${location || 'examination hall'}, ${action || 'writing exam'}. ${numbers.length ? `${numbers[0]} visible on board/banner` : ''}. School/college uniforms, answer sheets visible, invigilator in background. Natural lighting from windows.`;
         }
         else if (titleLower.includes('accident') || titleLower.includes('crash')) {
-          imagePrompt = `Professional news photo: ${title}. Emergency response scene at ${location || 'accident site'}. Ambulance, police vehicles with flashing lights. ${numbers.length ? `${numbers[0]} casualties mentioned on news ticker` : ''}. Serious documentary style, respectful distance, no graphic content.`;
+          imagePrompt = `URGENT BREAKING NEWS: Emergency response in FULL ACTION at ${location || 'incident site'}. Multiple emergency vehicles with BRIGHT flashing lights creating dramatic scene. ${numbers.length ? `Critical ${numbers[0]} update on news banner` : ''}. Powerful but respectful coverage, dramatic lighting from emergency vehicles, compelling without being graphic.`;
         }
         else if (titleLower.includes('market') || titleLower.includes('sensex') || titleLower.includes('nifty')) {
-          imagePrompt = `Financial news visualization: ${title}. BSE/NSE trading floor or digital display showing Sensex at ${numbers[0] || '50000'} points. ${hasPercentage ? `${numbers.find(n => n.includes('%')) || '5%'} change prominently displayed` : ''}. Green arrows for rise, red for fall. Multiple screens, traders visible. Bloomberg terminal style.`;
+          imagePrompt = `MARKET ALERT - URGENT: ${titleLower.includes('crash') || titleLower.includes('fall') ? 'RED ALERT with DRAMATIC downward arrows' : 'GREEN SURGE with EXPLOSIVE upward movement'}. SENSEX ${numbers[0] || '50000'} in MASSIVE digits. ${hasPercentage ? `SHOCKING ${numbers.find(n => n.includes('%')) || '10%'} change` : ''}. Traders in ACTION, screens GLOWING, MUST-SEE market moment. High energy, impossible to ignore.`;
         }
         else if (titleLower.includes('budget') || titleLower.includes('economy')) {
           imagePrompt = `Official government photo: ${title}. Finance Minister holding budget briefcase at North Block steps. ${hasCurrency ? `₹${numbers[0]} lakh crore budget figure on briefcase or backdrop` : ''}. Indian flag, government officials, media photographers. Golden hour lighting.`;
         }
         else if (titleLower.includes('cricket') || titleLower.includes('match')) {
-          imagePrompt = `Sports photography: ${title}. Cricket action at ${location || 'Wankhede Stadium'}. Scoreboard showing ${numbers.length ? `${numbers[0]}/${numbers[1] || '3'}` : 'IND 250/3'}. Players in Indian blue jersey, crowd with Indian flags. Dynamic action shot, ball in motion.`;
+          imagePrompt = `CRICKET SENSATION: ${titleLower.includes('win') ? 'VICTORY CELEBRATION explosion' : 'NAIL-BITING action'} at ${location || 'PACKED stadium'}. ${numbers.length ? `INCREDIBLE ${numbers[0]}/${numbers[1] || '3'} on GIANT screen` : 'THRILLING score'}. Players in MID-ACTION, crowd going WILD, Indian flags EVERYWHERE. EXPLOSIVE moment, maximum drama, MUST-WATCH cricket visual.`;
         }
         else if (titleLower.includes('bollywood') || titleLower.includes('film')) {
           imagePrompt = `Entertainment news photo: ${title}. ${location || 'Mumbai'} film event, red carpet or movie poster launch. ${hasCurrency ? `₹${numbers[0]} crore box office collection displayed` : ''}. Paparazzi, film posters, spotlights. Glamorous but journalistic style.`;
@@ -4197,13 +4197,21 @@ async function getArticleImage(title, category, env) {
           }
         }
         
-        // Add extracted keywords to enhance the prompt
-        if (visualKeywords.length > 0) {
-          imagePrompt = `${imagePrompt}\n\nFocus on these key elements: ${visualKeywords.join(', ')}`;
-        }
+        // ENHANCE ALL PROMPTS FOR MAXIMUM ATTRACTION
+        imagePrompt = `${imagePrompt}\n\nCRITICAL REQUIREMENTS:
+        • Make this image IMPOSSIBLE to ignore
+        • Use VIBRANT, eye-catching colors
+        • Create DRAMATIC composition
+        • Add visual URGENCY and importance
+        • Include BOLD text overlays if relevant
+        • Make viewer WANT to click immediately
+        • Professional but COMPELLING visual
+        • ${visualKeywords.length > 0 ? `HIGHLIGHT: ${visualKeywords.join(', ')}` : ''}
+        
+        STYLE: Trending news thumbnail, viral social media post quality, maximum visual impact.`;
         
         // Log the prompt for debugging
-        console.log(`[DALL-E] Prompt for "${title}":\nKeywords: ${visualKeywords.join(', ')}\nFull prompt:\n${imagePrompt}\n`);
+        console.log(`[DALL-E] Attractive prompt for "${title}"`);
         
         const response = await fetch('https://api.openai.com/v1/images/generations', {
           method: 'POST',
@@ -4215,9 +4223,9 @@ async function getArticleImage(title, category, env) {
             model: 'dall-e-3',
             prompt: imagePrompt,
             n: 1,
-            size: '1792x1024',
-            quality: 'hd', // HD quality for best images
-            style: 'natural'
+            size: '1024x1024', // Optimized for web performance
+            quality: 'standard', // Faster generation and loading
+            style: 'vivid' // More vibrant and eye-catching
           })
         });
         
