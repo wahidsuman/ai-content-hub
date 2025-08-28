@@ -2596,6 +2596,7 @@ async function fetchLatestNews(env) {
               link: link,
               image: image,
               date: getTimeAgo(i),
+              timestamp: Date.now(), // Add timestamp for proper tracking
               views: Math.floor(Math.random() * 50000) + 10000,
               trending: Math.random() > 0.6,
               fullContent: null // Will be filled below
@@ -3225,8 +3226,8 @@ async function getArticleImage(title, category, env) {
       }
     }
     
-    // FORCE DALL-E 3 for ULTRA-SPECIFIC images (80% of articles for quality)
-    if (env.OPENAI_API_KEY && Math.random() > 0.2) { // Use for 80% of articles
+    // ALWAYS use DALL-E 3 for SPECIFIC images (95% of articles)
+    if (env.OPENAI_API_KEY && Math.random() > 0.05) { // Use for 95% of articles
       try {
         // Extract EVERYTHING from the title for perfect image generation
         const hasNumbers = /\d+/.test(title);
@@ -3425,16 +3426,26 @@ async function getArticleImage(title, category, env) {
         if (response.ok) {
           const data = await response.json();
           if (data.data && data.data[0]) {
+            console.log(`DALL-E SUCCESS for: ${title}`);
             return {
               url: data.data[0].url,
               credit: 'AI Generated Image',
-              type: 'dalle',
+              type: 'generated',
               isRelevant: true
             };
           }
+        } else {
+          console.error(`DALL-E API error: ${response.status} - ${response.statusText}`);
         }
       } catch (error) {
         console.error('DALL-E generation error:', error);
+        // Even on error, return a specific placeholder rather than falling through
+        return {
+          url: `https://via.placeholder.com/1792x1024/CC0000/FFFFFF?text=${encodeURIComponent(title.substring(0, 50))}`,
+          credit: 'Placeholder Image',
+          type: 'placeholder',
+          isRelevant: false
+        };
       }
     }
     
@@ -3948,7 +3959,7 @@ async function serveArticle(env, request, pathname) {
           'article_id': '${articleId}',
           'article_category': '${article.category}',
           'article_source': '${article.source || 'Unknown'}',
-          'article_published': '${new Date(article.timestamp).toISOString()}'
+          'article_published': '${article.timestamp ? new Date(article.timestamp).toISOString() : new Date().toISOString()}'
         }
       });
       
