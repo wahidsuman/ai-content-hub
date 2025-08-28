@@ -425,7 +425,10 @@ async function serveWebsite(env, request) {
   
   // Always fetch fresh articles from KV (no caching)
   const articles = await env.NEWS_KV.get('articles', 'json').then(data => {
-    console.log(`Fetched ${data ? data.length : 0} articles from KV (timestamp: ${articlesTimestamp})`);
+    console.log(`[HOMEPAGE] Fetched ${data ? data.length : 0} articles from KV (timestamp: ${articlesTimestamp})`);
+    if (data && data.length > 0) {
+      console.log(`[HOMEPAGE] First article title: ${data[0].title}`);
+    }
     return data || getDefaultArticles();
   });
   
@@ -1147,10 +1150,21 @@ async function handleTelegram(request, env) {
     // Check if token exists
     if (!env.TELEGRAM_BOT_TOKEN) {
       console.error('TELEGRAM_BOT_TOKEN not found in environment variables');
-      return new Response('Token not configured', { status: 500 });
+      return new Response('OK', { status: 200 }); // Return OK to prevent retries
     }
     
     const update = await request.json();
+    
+    // Add update_id to prevent duplicate processing
+    const updateId = update.update_id;
+    if (updateId) {
+      const lastUpdateId = await env.NEWS_KV.get('last_update_id');
+      if (lastUpdateId && parseInt(lastUpdateId) >= updateId) {
+        console.log(`Skipping duplicate update ${updateId}`);
+        return new Response('OK', { status: 200 });
+      }
+      await env.NEWS_KV.put('last_update_id', updateId.toString());
+    }
     
     if (update.message) {
       const chatId = update.message.chat.id;
@@ -1236,10 +1250,10 @@ Or just talk to me naturally! Try:
       await handleCallback(env, update.callback_query);
     }
     
-    return new Response('OK');
+    return new Response('OK', { status: 200 });
   } catch (error) {
     console.error('Telegram error:', error);
-    return new Response('OK');
+    return new Response('OK', { status: 200 }); // Always return OK to prevent retries
   }
 }
 
@@ -1398,19 +1412,16 @@ Or use /menu for all options! 🚀
 
 // New function: Handle fetch news
 async function handleFetchNews(env, chatId) {
-  // Send initial message
-  await sendMessage(env, chatId, `🔄 *Starting Article Generation...*\n\n📊 Checking system status...`);
-  
-  // Quick diagnostic check
-  const hasApiKey = !!env.OPENAI_API_KEY;
-  await sendMessage(env, chatId, `✅ API Key: ${hasApiKey ? 'Configured' : '❌ MISSING'}\n🔄 Fetching RSS feeds...`);
+  // Send single initial message
+  await sendMessage(env, chatId, `🔄 *Fetching 1 Article...*\n\n⏳ This takes 30-60 seconds for quality content...`);
   
   try {
-    console.log('Starting news fetch from Telegram command...');
+    console.log('[FETCH] Starting news fetch from Telegram command...');
+    
     // Call the fetch news function with timeout
     const result = await Promise.race([
       fetchLatestNews(env),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Fetch timeout after 3 minutes')), 180000))
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Fetch timeout')), 60000)) // 60 second timeout
     ]);
     
     if (!result) {
@@ -1421,30 +1432,33 @@ async function handleFetchNews(env, chatId) {
     try {
       data = await result.json();
     } catch (e) {
+      console.error('[FETCH] Invalid response format:', e);
       throw new Error('Invalid response format');
     }
     
     if (data.success) {
       const stats = await env.NEWS_KV.get('stats', 'json') || {};
-      await sendMessage(env, chatId, `
-✅ *Premium News Update Complete!*
+      
+      // Don't send another message here - fetchLatestNews already sends notifications
+      console.log(`[FETCH] Success - ${data.articles} article(s) published`);
+      
+      // Only send a simple completion if notifications failed
+      const adminChat = await env.NEWS_KV.get('admin_chat');
+      if (!adminChat || adminChat !== String(chatId)) {
+        await sendMessage(env, chatId, `
+✅ *Article Published!*
 
-📰 Articles published: ${data.articles}
-✨ Quality: ${env.OPENAI_API_KEY ? 'ULTRA Premium (GPT-4)' : 'Standard'}
-📸 Images: ${env.OPENAI_API_KEY ? 'AI + Photos' : 'Stock Photos'}
-🌍 Sources: Multiple RSS feeds
-📊 Daily Progress: ${stats.dailyArticlesPublished || data.articles}/12
+📊 Daily Progress: ${stats.dailyArticlesPublished || data.articles}/8
+🔗 View: https://agaminews.in
 
-Visit: https://agaminews.in
-
-*Next auto-update:* 3 hours
-*Quality Mode:* 10-12 articles/day
-      `, {
-        inline_keyboard: [
-          [{ text: '📊 View Stats', callback_data: 'stats' }],
-          [{ text: '↩️ Back', callback_data: 'menu' }]
-        ]
-      });
+Use /stats for details
+        `, {
+          inline_keyboard: [
+            [{ text: '📊 View Stats', callback_data: 'stats' }],
+            [{ text: '↩️ Back', callback_data: 'menu' }]
+          ]
+        });
+      }
     } else if (data.message && data.message.includes('limit reached')) {
       await sendMessage(env, chatId, `
 ℹ️ *Daily Quality Limit Reached*
@@ -2746,13 +2760,19 @@ async function fetchLatestNews(env) {
     const existingArticlesForSave = await env.NEWS_KV.get('articles', 'json') || [];
     const combinedArticles = [...allArticles, ...existingArticlesForSave].slice(0, 50); // Keep last 50 articles
     
+    console.log(`[SAVE] Saving articles: ${allArticles.length} new + ${existingArticlesForSave.length} existing = ${combinedArticles.length} total`);
+    
     await env.NEWS_KV.put('articles', JSON.stringify(combinedArticles));
     await env.NEWS_KV.put('lastFetch', new Date().toISOString());
     await env.NEWS_KV.put('articlesTimestamp', Date.now().toString());
     
     // Verify save
     const verifyArticles = await env.NEWS_KV.get('articles', 'json') || [];
-    console.log(`Articles saved: ${verifyArticles.length} total (${allArticles.length} new + ${existingArticlesForSave.length} existing)`);
+    console.log(`[VERIFY] Articles in KV after save: ${verifyArticles.length}`);
+    
+    if (verifyArticles.length === 0) {
+      console.error('[ERROR] Articles not saved properly!');
+    }
     
     // Send individual Telegram notifications for each new article
     console.log(`Notification check: adminChat=${adminChat}, token=${!!env.TELEGRAM_BOT_TOKEN}, articles=${allArticles.length}`);
