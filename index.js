@@ -87,8 +87,17 @@ export default {
         }
       });
     } else if (url.pathname.startsWith('/article/')) {
-      // Individual article pages
+      // Legacy URL format - try to redirect to new format
+      const articleId = parseInt(url.pathname.split('/')[2]);
+      const articles = await env.NEWS_KV.get('articles', 'json') || [];
+      if (articles[articleId] && articles[articleId].url) {
+        return Response.redirect(new URL(articles[articleId].url, request.url).toString(), 301);
+      }
+      // Fallback to old handler
       return await serveArticle(env, request, url.pathname);
+    } else if (url.pathname.includes('-news/') && url.pathname.match(/-\d{6}$/)) {
+      // New SEO-friendly URL format: /category-news/slug-123456
+      return await serveArticleBySlug(env, request, url.pathname);
     } else if (url.pathname.startsWith('/api/')) {
       return handleAPI(request, env, url.pathname);
     }
@@ -1008,7 +1017,7 @@ async function serveWebsite(env, request) {
         
         <div class="news-grid">
             ${articles.map((article, index) => `
-                <a href="/article/${index}" class="news-card-link">
+                <a href="${article.url || `/article/${index}`}" class="news-card-link">
                     <div class="news-card">
                         ${article.image ? `
                             <div class="news-image">
@@ -2628,11 +2637,13 @@ async function fetchLatestNews(env) {
             // Don't create article yet - will create after research
             const article = {
               sourceMaterial: sourceMaterial, // Keep for research
+              id: generateArticleId(), // Unique 6-digit ID
+              slug: '', // Will be generated from final title
               title: '', // Will be created by AI
               preview: '', // Will be filled with article beginning
               category: feed.category,
               source: 'AgamiNews Research Team', // Original content
-              link: link,
+              originalSourceLink: link,
               image: image,
               date: getTimeAgo(i),
               timestamp: Date.now(),
@@ -2659,6 +2670,8 @@ async function fetchLatestNews(env) {
               console.log(`Created original article: "${originalTitle}" (${fullArticle.length} chars)`);
               article.fullContent = fullArticle;
               article.title = originalTitle; // Use AI-generated original title
+              article.slug = generateSlug(originalTitle); // Generate SEO-friendly slug
+              article.url = `/${article.category.toLowerCase()}-news/${article.slug}-${article.id}`; // Full URL path
               
               // Now get image based on the ORIGINAL title
               article.image = await getArticleImage(originalTitle, feed.category, env);
@@ -2747,7 +2760,7 @@ async function fetchLatestNews(env) {
             `📰 *Source:* ${article.source || 'RSS Feed'}\n` +
             `📸 *Image:* ${article.image?.type === 'generated' ? '🎨 AI Generated' : article.image?.type === 'personality' ? '👤 Real Photo' : '📷 Stock Photo'}\n` +
             `📊 *Quality:* ${article.fullContent && article.fullContent.length > 3000 ? '✅ High' : article.fullContent && article.fullContent.length > 1500 ? '⚠️ Medium' : '❌ Low'} (${article.fullContent ? article.fullContent.length : 0} chars)\n` +
-            `🔗 *Link:* https://agaminews.in/article/${articleIndex}\n\n` +
+            `🔗 *Link:* https://agaminews.in${article.url || `/article/${articleIndex}`}\n\n` +
             `_Published via ${article.autoPublished ? 'Auto-fetch' : 'Manual fetch'}_`
           );
           
@@ -2795,6 +2808,23 @@ async function fetchLatestNews(env) {
       headers: { 'Content-Type': 'application/json' }
     });
   }
+}
+
+// Generate SEO-friendly URL slug from title
+function generateSlug(title) {
+  return title
+    .toLowerCase()
+    .replace(/[₹$€£¥]/g, '') // Remove currency symbols
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single
+    .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+    .substring(0, 80); // Limit length for clean URLs
+}
+
+// Generate unique article ID (6-digit like NDTV)
+function generateArticleId() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 // Clean RSS content from HTML and CDATA
@@ -3895,7 +3925,264 @@ function getTimeAgo(index) {
   return times[Math.min(index, times.length - 1)];
 }
 
-// Serve individual article page
+// Serve 404 page
+function serve404Page(env, message = 'Page not found') {
+  const html404 = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - Not Found - AgamiNews</title>
+    ${getGoogleAnalyticsCode('404 Page', '/404')}
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background: #f5f5f5;
+      }
+      .error-container {
+        text-align: center;
+        padding: 20px;
+      }
+      h1 { color: #CC0000; font-size: 72px; margin: 0; }
+      h2 { color: #333; margin: 20px 0; }
+      p { color: #666; }
+      a {
+        display: inline-block;
+        margin-top: 20px;
+        padding: 10px 20px;
+        background: #CC0000;
+        color: white;
+        text-decoration: none;
+        border-radius: 5px;
+      }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <h1>404</h1>
+        <h2>${message}</h2>
+        <p>The page you're looking for doesn't exist.</p>
+        <a href="/">← Back to Homepage</a>
+    </div>
+</body>
+</html>`;
+  
+  return new Response(html404, { 
+    status: 404,
+    headers: { 'Content-Type': 'text/html; charset=utf-8' }
+  });
+}
+
+// Render article page (shared logic)
+async function renderArticlePage(env, article, allArticles, request) {
+  const config = await env.NEWS_KV.get('config', 'json') || {};
+  
+  // Track article view
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  if (!stats.articleViews) stats.articleViews = {};
+  stats.articleViews[article.id] = (stats.articleViews[article.id] || 0) + 1;
+  await env.NEWS_KV.put('stats', JSON.stringify(stats));
+  
+  // Get article index for navigation
+  const articleIndex = allArticles.findIndex(a => a.id === article.id);
+  
+  // Use existing article rendering logic
+  const fullContent = article.fullContent || await generateFullArticle(article, article.sourceMaterial?.description || '', env);
+  
+  // Generate the HTML using existing article rendering
+  const isDark = config.theme === 'dark';
+  
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${article.title} - ${config.siteName}</title>
+    <meta name="description" content="${article.preview || 'Read full article on AgamiNews'}">
+    
+    <!-- SEO Meta Tags -->
+    <link rel="canonical" href="https://agaminews.in${article.url}" />
+    <meta property="og:title" content="${article.title}">
+    <meta property="og:description" content="${article.preview || 'Read full article on AgamiNews'}">
+    <meta property="og:image" content="${article.image?.url || article.image || 'https://agaminews.in/og-image.jpg'}">
+    <meta property="og:url" content="https://agaminews.in${article.url}">
+    <meta property="og:type" content="article">
+    <meta property="article:published_time" content="${new Date(article.timestamp).toISOString()}">
+    <meta property="article:section" content="${article.category}">
+    <meta property="twitter:card" content="summary_large_image">
+    
+    ${getGoogleAnalyticsCode(article.title, article.url)}
+    
+    <style>
+        /* Article page styles */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: ${isDark ? '#000' : '#fff'};
+            color: ${isDark ? '#fff' : '#000'};
+            line-height: 1.6;
+        }
+        .article-header {
+            background: ${isDark ? '#1a1a1a' : '#f8f8f8'};
+            padding: 20px;
+            border-bottom: 2px solid ${config.primaryColor};
+        }
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .article-title {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 20px 0;
+            line-height: 1.3;
+        }
+        .article-meta {
+            color: ${isDark ? '#999' : '#666'};
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        .article-image {
+            width: 100%;
+            margin: 20px 0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .article-image img {
+            width: 100%;
+            height: auto;
+        }
+        .article-content {
+            font-size: 18px;
+            line-height: 1.8;
+            margin: 30px 0;
+        }
+        .article-content p {
+            margin-bottom: 20px;
+        }
+        .back-btn {
+            display: inline-block;
+            margin: 20px 0;
+            padding: 10px 20px;
+            background: ${config.primaryColor};
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .share-buttons {
+            margin: 30px 0;
+            padding: 20px 0;
+            border-top: 1px solid ${isDark ? '#333' : '#e0e0e0'};
+        }
+        .share-btn {
+            display: inline-block;
+            margin-right: 10px;
+            padding: 8px 15px;
+            background: ${isDark ? '#333' : '#f0f0f0'};
+            color: ${isDark ? '#fff' : '#333'};
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="article-header">
+        <div class="article-container">
+            <a href="/" class="back-btn">← Back to Homepage</a>
+        </div>
+    </div>
+    
+    <div class="article-container">
+        <h1 class="article-title">${article.title}</h1>
+        
+        <div class="article-meta">
+            <span>📅 ${new Date(article.timestamp).toLocaleDateString('en-IN')}</span>
+            <span> • </span>
+            <span>📰 ${article.source}</span>
+            <span> • </span>
+            <span>🏷️ ${article.category}</span>
+            <span> • </span>
+            <span>👁️ ${stats.articleViews[article.id] || 1} views</span>
+        </div>
+        
+        ${article.image ? `
+        <div class="article-image">
+            <img src="${article.image.url || article.image}" alt="${article.title}">
+            ${article.image.credit ? `<div style="text-align: center; font-size: 12px; color: #999; margin-top: 5px;">${article.image.credit}</div>` : ''}
+        </div>
+        ` : ''}
+        
+        <div class="article-content">
+            ${fullContent}
+        </div>
+        
+        <div class="share-buttons">
+            <h3 style="margin-bottom: 15px;">Share this article</h3>
+            <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${encodeURIComponent('https://agaminews.in' + article.url)}" 
+               target="_blank" class="share-btn">Twitter</a>
+            <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent('https://agaminews.in' + article.url)}" 
+               target="_blank" class="share-btn">Facebook</a>
+            <a href="https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent('https://agaminews.in' + article.url)}" 
+               target="_blank" class="share-btn">LinkedIn</a>
+            <a href="https://wa.me/?text=${encodeURIComponent(article.title + ' https://agaminews.in' + article.url)}" 
+               target="_blank" class="share-btn">WhatsApp</a>
+        </div>
+    </div>
+</body>
+</html>`;
+
+  return new Response(html, {
+    headers: { 
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    }
+  });
+}
+
+// Serve article by SEO-friendly slug URL
+async function serveArticleBySlug(env, request, pathname) {
+  try {
+    // Extract article ID from URL (last 6 digits)
+    const matches = pathname.match(/-(\d{6})$/);
+    if (!matches) {
+      throw new Error('Invalid article URL format');
+    }
+    
+    const articleId = matches[1];
+    const articles = await env.NEWS_KV.get('articles', 'json') || [];
+    
+    // Find article by ID
+    const article = articles.find(a => a.id === articleId);
+    
+    if (!article) {
+      throw new Error('Article not found');
+    }
+    
+    // Verify URL matches (for security/SEO)
+    const expectedUrl = `/${article.category.toLowerCase()}-news/${article.slug}-${article.id}`;
+    if (pathname !== expectedUrl) {
+      // Redirect to canonical URL
+      return Response.redirect(new URL(expectedUrl, request.url).toString(), 301);
+    }
+    
+    // Render the article (reuse existing rendering logic)
+    return renderArticlePage(env, article, articles, request);
+  } catch (error) {
+    console.error('Error serving article by slug:', error);
+    return serve404Page(env, error.message);
+  }
+}
+
+// Serve individual article page (legacy)
 async function serveArticle(env, request, pathname) {
   try {
     const articleId = parseInt(pathname.split('/')[2]);
@@ -4405,7 +4692,7 @@ async function serveArticle(env, request, pathname) {
                     const imageUrl = related.image?.url || related.image || 
                                    `https://via.placeholder.com/160x160/333/999?text=${encodeURIComponent(related.category)}`;
                     return `
-                    <a href="/article/${relatedIndex}" class="related-card">
+                    <a href="${related.url || `/article/${relatedIndex}`}" class="related-card">
                         <div class="related-card-image">
                             <img src="${imageUrl}" alt="${related.title}" loading="lazy">
                         </div>
