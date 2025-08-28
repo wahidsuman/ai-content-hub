@@ -5013,11 +5013,62 @@ async function serveArticle(env, request, pathname) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${article.title} - ${config.siteName}</title>
     <meta name="description" content="${article.preview || 'Read full article on AgamiNews'}">
+    
+    <!-- Google Indexing & SEO Tags -->
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+    <meta name="googlebot" content="index, follow">
+    <meta name="google" content="notranslate">
+    <meta name="news_keywords" content="${article.title.split(' ').slice(0, 10).join(', ')}">
+    <link rel="canonical" href="https://agaminews.in${article.url || `/article/${articleId}`}">
+    
+    <!-- Open Graph Tags -->
+    <meta property="og:type" content="article">
     <meta property="og:title" content="${article.title}">
     <meta property="og:description" content="${article.preview || 'Read full article on AgamiNews'}">
     <meta property="og:image" content="${article.image?.url || article.image || 'https://agaminews.in/og-image.jpg'}">
-    <meta property="og:url" content="https://agaminews.in/article/${articleId}">
+    <meta property="og:url" content="https://agaminews.in${article.url || `/article/${articleId}`}">
+    <meta property="og:site_name" content="AgamiNews">
+    <meta property="article:published_time" content="${new Date(article.timestamp || Date.now()).toISOString()}">
+    <meta property="article:author" content="AgamiNews">
+    <meta property="article:section" content="${article.category}">
+    
+    <!-- Twitter Card Tags -->
     <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:title" content="${article.title}">
+    <meta property="twitter:description" content="${article.preview || 'Read full article on AgamiNews'}">
+    <meta property="twitter:image" content="${article.image?.url || article.image || 'https://agaminews.in/og-image.jpg'}">
+    
+    <!-- Structured Data for Google Rich Results -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "NewsArticle",
+      "headline": "${article.title.replace(/"/g, '\\"')}",
+      "description": "${(article.preview || '').replace(/"/g, '\\"')}",
+      "image": "${article.image?.url || article.image || 'https://agaminews.in/og-image.jpg'}",
+      "datePublished": "${new Date(article.timestamp || Date.now()).toISOString()}",
+      "dateModified": "${new Date(article.timestamp || Date.now()).toISOString()}",
+      "author": {
+        "@type": "Organization",
+        "name": "AgamiNews",
+        "url": "https://agaminews.in"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "AgamiNews",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://agaminews.in/logo.png"
+        }
+      },
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://agaminews.in${article.url || `/article/${articleId}`}"
+      },
+      "articleSection": "${article.category}",
+      "keywords": "${article.title.split(' ').slice(0, 10).join(', ')}"
+    }
+    </script>
     
     <!-- Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZW77WM2VPG"></script>
