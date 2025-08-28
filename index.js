@@ -202,48 +202,48 @@ export default {
       const istTime = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
       const hour = istTime.getHours();
       
-      let articlesToFetch = 1; // Only 1 article per fetch (8 per day with 3-hour schedule)
+      let articlesToFetch = 2; // 2 articles per fetch (15-16 per day with 3-hour schedule)
       let shouldFetch = true;
       let priority = 'normal';
       
-      // Intelligent priority based on Indian news patterns (but always 1 article)
+      // Intelligent priority based on Indian news patterns (15 articles/day)
       if (hour >= 6 && hour < 9) {
-        // Morning rush
-        articlesToFetch = 1;
+        // Morning rush - 2 articles
+        articlesToFetch = 2;
         priority = 'high';
       } else if (hour >= 9 && hour < 12) {
-        // Market hours - business focus
-        articlesToFetch = 1;
+        // Market hours - business focus - 2 articles
+        articlesToFetch = 2;
         priority = 'business';
       } else if (hour >= 12 && hour < 15) {
-        // Lunch time - entertainment/sports
-        articlesToFetch = 1;
+        // Lunch time - entertainment/sports - 2 articles
+        articlesToFetch = 2;
         priority = 'entertainment';
       } else if (hour >= 15 && hour < 18) {
-        // Market closing - business updates
-        articlesToFetch = 1;
+        // Market closing - business updates - 2 articles
+        articlesToFetch = 2;
         priority = 'business';
       } else if (hour >= 18 && hour < 21) {
-        // Evening - general news
-        articlesToFetch = 1;
+        // Evening - general news - 2 articles
+        articlesToFetch = 2;
         priority = 'high';
       } else if (hour >= 21 && hour < 24) {
-        // Night - less articles
-        articlesToFetch = 1;
+        // Night - 2 articles
+        articlesToFetch = 2;
         priority = 'low';
       } else {
-        // Late night/early morning (0-6 AM) - minimal
+        // Late night/early morning (0-6 AM) - 1 article each at 0:00 and 3:00
         articlesToFetch = 1;
         priority = 'minimal';
       }
       
-      // Check daily limit (8 articles per day with 3-hour schedule)
-      if (stats.dailyArticlesPublished >= 8) {
-        console.log('Daily limit reached (8 articles), skipping fetch');
+      // Check daily limit (15 articles per day with $20 budget)
+      if (stats.dailyArticlesPublished >= 15) {
+        console.log('Daily limit reached (15 articles), skipping fetch');
         if (adminChat) {
           await sendMessage(env, adminChat, 
             `⚠️ *Daily Limit Reached*\n\n` +
-            `Published: ${stats.dailyArticlesPublished}/8 articles today\n` +
+            `Published: ${stats.dailyArticlesPublished}/15 articles today\n` +
             `Next reset: Midnight IST\n` +
             `Status: Paused to save costs`
           );
@@ -1273,7 +1273,7 @@ I'm your intelligent news manager powered by AI. I handle everything automatical
 
 💰 *Current Status:*
 • API Cost: ~$1.50/month
-• Budget: $10/month (plenty left!)
+• Budget: $20/month (plenty left!)
 • News Sources: Active ✅
 • Image APIs: ${env.UNSPLASH_ACCESS_KEY ? 'Connected ✅' : 'Not set ❌'}
 
@@ -1473,10 +1473,10 @@ async function sendMenu(env, chatId) {
   await sendMessage(env, chatId, `🎯 *AgamiNews Premium Dashboard*
   
 📊 *Live Statistics:*
-• Articles Today: ${todayArticles}/8 
+• Articles Today: ${todayArticles}/15 
 • Total Articles: ${articles.length}
 • Today's Cost: $${todayCost.toFixed(2)}
-• Budget Used: ${Math.round(todayCost/10*100)}%
+• Budget Used: ${Math.round(todayCost/20*100)}%
 
 ⚡ *System Status:*
 • AI Model: GPT-4 Turbo
@@ -2322,19 +2322,19 @@ async function sendCostReport(env, chatId) {
 📈 *Projected Monthly:*
 • Articles: ~${Math.round(projectedMonthly)}
 • Estimated Cost: $${projectedCost.toFixed(2)}
-• Budget Status: ${projectedCost <= 10 ? '✅ Within budget' : '⚠️ Over budget'}
+• Budget Status: ${projectedCost <= 20 ? '✅ Within budget' : '⚠️ Over budget'}
 
 💡 *Cost Breakdown:*
 • GPT-4 Turbo: $0.03/article
 • DALL-E 3 HD: $0.01/image
 • Total per article: $0.04
 
-🎯 *Budget: $10.00/month*
-• Used: $${monthCost.toFixed(2)} (${Math.round(monthCost/10*100)}%)
-• Remaining: $${(10 - monthCost).toFixed(2)}
+🎯 *Budget: $20.00/month*
+• Used: $${monthCost.toFixed(2)} (${Math.round(monthCost/20*100)}%)
+• Remaining: $${(20 - monthCost).toFixed(2)}
 • Days left: ${30 - dayOfMonth}
 
-${projectedCost > 10 ? '⚠️ *Warning:* Reduce daily articles to stay within budget' : '✅ *Status:* On track with budget'}
+${projectedCost > 20 ? '⚠️ *Warning:* Reduce daily articles to stay within budget' : '✅ *Status:* On track with budget'}
   `);
   
   // Update monthly tracking
@@ -2799,13 +2799,13 @@ async function sendAPIUsage(env, chatId) {
   const imageAPICostMonthly = 0; // Free tier for Unsplash/Pexels
   
   // Recommended optimizations
-  const budgetRemaining = 10.00 - costMonthly;
-  const additionalArticlesPossible = Math.floor(budgetRemaining / 0.15); // ~$0.15 per article
+  const budgetRemaining = 20.00 - costMonthly;
+  const additionalArticlesPossible = Math.floor(budgetRemaining / 0.04); // ~$0.04 per article
   
   await sendMessage(env, chatId, `💵 *API Usage & Optimization Report*
 
 *Budget Allocation:*
-💰 Monthly Budget: $10.00
+💰 Monthly Budget: $20.00
 📊 Current Usage: ~$${costMonthly.toFixed(2)}/month
 💚 Budget Available: $${budgetRemaining.toFixed(2)}
 
@@ -2820,7 +2820,7 @@ async function sendAPIUsage(env, chatId) {
 • GPT-4 Articles (10-12/day): ~$4.50/month
 • DALL-E 3 HD Images (80%): ~$2.00/month
 • Bot Interactions: ~$0.50/month
-• Total Premium Cost: ~$10.50/month
+• Total Premium Cost: ~$18.00/month
 
 *Optimization Opportunities:*
 ✨ Premium content strategy activated
@@ -2834,7 +2834,7 @@ async function sendAPIUsage(env, chatId) {
 • Implement image caching to reduce API calls
 • Focus on trending topics for better engagement
 
-💡 *Status:* Only using ${Math.round(costMonthly / 10 * 100)}% of budget!
+💡 *Status:* Only using ${Math.round(costMonthly / 20 * 100)}% of budget!
 🚀 *Action:* Scaling up quality and quantity`, {
     inline_keyboard: [
       [{ text: '↩️ Back', callback_data: 'menu' }]
@@ -3289,8 +3289,9 @@ async function fetchLatestNews(env) {
     allArticles = shuffleAndBalance(allArticles);
     
     // Keep only 1 article per fetch
-    allArticles = allArticles.slice(0, 1);
-    console.log(`Articles after limiting to 1: ${allArticles.length}`);
+    // With $20 budget, fetch 2 articles per manual command
+    allArticles = allArticles.slice(0, 2);
+    console.log(`Articles after limiting to 2: ${allArticles.length}`);
     
     // Save to KV - APPEND to existing articles, don't overwrite
     const existingArticlesForSave = await env.NEWS_KV.get('articles', 'json') || [];
@@ -3318,11 +3319,11 @@ async function fetchLatestNews(env) {
       
       // Calculate approximate cost
       const articleCost = 0.04; // GPT-4 Turbo ~$0.03 + DALL-E HD ~$0.01
-      const monthlyCost = articleCost * 8 * 30; // 8 articles/day * 30 days
+      const monthlyCost = articleCost * 15 * 30; // 15 articles/day * 30 days
       
       // Send summary first
-      const summaryResult = await sendMessage(env, adminChat, 
-        `📰 *New Article Published!*\n\n` +
+      const summaryResult =       await sendMessage(env, adminChat, 
+        `📰 *New Articles Published!*\n\n` +
         `📊 Total articles: ${verifyArticles.length}\n` +
         `💰 Est. cost: $${articleCost.toFixed(2)}/article (~$${monthlyCost.toFixed(2)}/month)\n` +
         `🔗 View: https://agaminews.in\n` +

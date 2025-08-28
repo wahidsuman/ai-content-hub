@@ -81,28 +81,28 @@
 - DALL-E 3 HD: $0.01
 - **Total: $0.04**
 
-### Daily (8 articles)
-- Cost: $0.32
-- Articles: 8
+### Daily (15 articles)
+- Cost: $0.60
+- Articles: 15
 
 ### Monthly
-- Articles: 240
-- Cost: $9.60
-- Budget: $10.00
+- Articles: 450
+- Cost: $18.00
+- Budget: $20.00
 
 ---
 
 ## ⏰ Schedule
 
 ### Automatic Publishing (IST)
-- 00:00 - Midnight (minimal)
-- 03:00 - Early morning (minimal)
-- 06:00 - Morning (high)
-- 09:00 - Business hours (business)
-- 12:00 - Noon (entertainment)
-- 15:00 - Afternoon (business)
-- 18:00 - Evening (high)
-- 21:00 - Night (low)
+- 00:00 - Midnight (1 article)
+- 03:00 - Early morning (1 article)
+- 06:00 - Morning (2 articles, high priority)
+- 09:00 - Business hours (2 articles, business)
+- 12:00 - Noon (2 articles, entertainment)
+- 15:00 - Afternoon (2 articles, business)
+- 18:00 - Evening (2 articles, high priority)
+- 21:00 - Night (2 articles, low priority)
 
 ### Priority Categories
 - **High**: Breaking news, major events
@@ -183,8 +183,8 @@
 ## 📈 Performance Optimization
 
 ### Current Settings
-- 1 article per fetch
-- 8 articles per day
+- 2 articles per fetch (1 at night)
+- 15 articles per day
 - 3-hour intervals
 - GPT-4 Turbo model
 - DALL-E 3 HD quality
