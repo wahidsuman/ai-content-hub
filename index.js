@@ -1417,29 +1417,60 @@ async function sendMessage(env, chatId, text, keyboard = null) {
 }
 
 async function sendMenu(env, chatId) {
-  await sendMessage(env, chatId, `🎯 *AgamiNews AI Manager*
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  const cronLogs = await env.NEWS_KV.get('cron_logs', 'json') || [];
   
-📍 *Focus:* Tech + Finance News for India
-💰 *API Cost:* ~$0.60/month (Under budget!)
-🎯 *Target:* Working professionals
+  // Calculate today's cost
+  const todayArticles = stats.dailyArticlesPublished || 0;
+  const todayCost = todayArticles * 0.04; // $0.04 per article
+  
+  // Get last cron run time
+  const lastCron = cronLogs[0] ? new Date(cronLogs[0].time).toLocaleTimeString('en-IN', {timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit'}) : 'Never';
+  
+  // Next cron in
+  const now = new Date();
+  const nextHour = Math.ceil(now.getHours() / 3) * 3;
+  const nextCronHour = nextHour === 24 ? 0 : nextHour;
+  
+  await sendMessage(env, chatId, `🎯 *AgamiNews Premium Dashboard*
+  
+📊 *Live Statistics:*
+• Articles Today: ${todayArticles}/8 
+• Total Articles: ${articles.length}
+• Today's Cost: $${todayCost.toFixed(2)}
+• Budget Used: ${Math.round(todayCost/10*100)}%
 
-*Select an option:*`, {
+⚡ *System Status:*
+• AI Model: GPT-4 Turbo
+• Images: DALL-E 3 HD
+• Last Auto-Run: ${lastCron}
+• Next Run: ${nextCronHour}:00
+
+🎯 *Quick Commands:*`, {
     inline_keyboard: [
       [
-        { text: '📊 Stats', callback_data: 'stats' },
-        { text: '📈 Analytics', callback_data: 'analytics' }
+        { text: '📰 Fetch Article', callback_data: 'fetch' },
+        { text: '✏️ Create Custom', callback_data: 'create_prompt' }
       ],
       [
-        { text: '📰 News', callback_data: 'news' },
-        { text: '🚀 Fetch', callback_data: 'fetch' }
+        { text: '📊 Full Stats', callback_data: 'stats' },
+        { text: '💰 Cost Report', callback_data: 'costs' }
       ],
       [
-        { text: '💵 API Usage', callback_data: 'apiusage' },
-        { text: '🎯 Strategy', callback_data: 'strategy' }
+        { text: '📈 Analytics', callback_data: 'analytics' },
+        { text: '🗑️ Delete Article', callback_data: 'delete_prompt' }
+      ],
+      [
+        { text: '⏰ Cron History', callback_data: 'cron_logs' },
+        { text: '🔧 Force Run', callback_data: 'trigger_cron' }
       ],
       [
         { text: '🔍 SEO Report', callback_data: 'seo' },
-        { text: '⚙️ Settings', callback_data: 'settings' }
+        { text: '💡 All Commands', callback_data: 'help' }
+      ],
+      [
+        { text: '🌐 Open Website', url: 'https://agaminews.in' }
       ]
     ]
   });
@@ -2360,6 +2391,62 @@ async function handleCallback(env, query) {
       break;
     case 'fetch':
       await handleFetchNews(env, chatId);
+      break;
+    case 'costs':
+      await sendCostReport(env, chatId);
+      break;
+    case 'create_prompt':
+      await sendMessage(env, chatId, '✏️ *Create Custom Article*\n\nSend the topic you want:\n\nExample: `/create iPhone 16 Pro review`\n\nOr just type: /create <your topic>');
+      break;
+    case 'delete_prompt':
+      const articles = await env.NEWS_KV.get('articles', 'json') || [];
+      const articleList = articles.slice(0, 5).map((a, i) => `${i}. ${a.title.substring(0, 50)}...`).join('\n');
+      await sendMessage(env, chatId, `🗑️ *Delete Article*\n\nCurrent articles:\n${articleList}\n\nUse: \`/delete 0\` to delete first article`);
+      break;
+    case 'cron_logs':
+      const cronLogs = await env.NEWS_KV.get('cron_logs', 'json') || [];
+      if (cronLogs.length === 0) {
+        await sendMessage(env, chatId, '⏰ *No cron logs found*\n\nCron hasn\'t run yet or logs were cleared.');
+      } else {
+        const logText = cronLogs.slice(0, 5).map(log => {
+          const time = new Date(log.time).toLocaleString('en-IN', {timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short'});
+          return `• ${time}: ${log.event}`;
+        }).join('\n');
+        await sendMessage(env, chatId, `⏰ *Recent Cron Runs:*\n\n${logText}\n\n_Showing last 5 executions_`);
+      }
+      break;
+    case 'trigger_cron':
+      await sendMessage(env, chatId, '🔧 *Manually triggering cron...*\n\n⏳ This will take 30-60 seconds...');
+      try {
+        // Call fetchLatestNewsAuto directly
+        const istTime = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+        const hour = istTime.getHours();
+        let priority = 'normal';
+        
+        if (hour >= 6 && hour < 9) priority = 'high';
+        else if (hour >= 9 && hour < 12) priority = 'business';
+        else if (hour >= 12 && hour < 15) priority = 'entertainment';
+        else if (hour >= 15 && hour < 18) priority = 'business';
+        else if (hour >= 18 && hour < 21) priority = 'high';
+        else if (hour >= 21 && hour < 24) priority = 'low';
+        else priority = 'minimal';
+        
+        const fetchResult = await fetchLatestNewsAuto(env, 1, priority);
+        
+        if (fetchResult && fetchResult.articlesPublished > 0) {
+          await sendMessage(env, chatId, 
+            `✅ *Cron Run Successful!*\n\n` +
+            `📰 Articles: ${fetchResult.articlesPublished}\n` +
+            `🎯 Priority: ${priority}\n` +
+            `📌 Title: ${fetchResult.topArticle || 'N/A'}\n\n` +
+            `View: https://agaminews.in`
+          );
+        } else {
+          await sendMessage(env, chatId, `❌ *No articles fetched*\n\nReason: ${fetchResult?.error || 'Unknown'}`);
+        }
+      } catch (error) {
+        await sendMessage(env, chatId, `❌ *Error:* ${error.message}`);
+      }
       break;
     case 'strategy':
       await sendContentStrategy(env, chatId);
