@@ -70,9 +70,7 @@ export default {
         apis: {
           openai: !!env.OPENAI_API_KEY,
           telegram: !!env.TELEGRAM_BOT_TOKEN,
-          github: !!env.GITHUB_TOKEN,
-          unsplash: !!env.UNSPLASH_ACCESS_KEY,
-          pexels: !!env.PEXELS_API_KEY
+          github: !!env.GITHUB_TOKEN
         },
         cron: {
           lastRun: lastCron ? lastCron.toISOString() : 'never',
@@ -1275,7 +1273,7 @@ I'm your intelligent news manager powered by AI. I handle everything automatical
 • API Cost: ~$1.50/month
 • Budget: $20/month (plenty left!)
 • News Sources: Active ✅
-• Image APIs: ${env.UNSPLASH_ACCESS_KEY ? 'Connected ✅' : 'Not set ❌'}
+• Image System: DALL-E 3 HD ${env.OPENAI_API_KEY ? '✅' : '❌'}
 
 📍 *Focus:* Tech + Finance for Indian professionals
 
@@ -1689,8 +1687,6 @@ async function sendSystemStatus(env, chatId) {
   
   const status = {
     telegram: env.TELEGRAM_BOT_TOKEN ? '✅' : '❌',
-    unsplash: env.UNSPLASH_ACCESS_KEY ? '✅' : '❌',
-    pexels: env.PEXELS_API_KEY ? '✅' : '❌',
     openai: env.OPENAI_API_KEY ? '✅' : '❌'
   };
   
@@ -1699,9 +1695,7 @@ async function sendSystemStatus(env, chatId) {
 
 *API Connections:*
 • Telegram Bot: ${status.telegram}
-• Unsplash Images: ${status.unsplash}
-• Pexels Images: ${status.pexels}
-• OpenAI (optional): ${status.openai}
+• OpenAI (DALL-E): ${status.openai}
 
 *News System:*
 • Articles in database: ${articles.length}
@@ -1713,11 +1707,11 @@ async function sendSystemStatus(env, chatId) {
 • Today's views: ${stats.todayViews || 0}
 • Articles fetched: ${stats.totalArticlesFetched || 0}
 
-*Health:* ${status.telegram === '✅' && (status.unsplash === '✅' || status.pexels === '✅') ? 
+*Health:* ${status.telegram === '✅' && status.openai === '✅' ? 
   '🟢 All systems operational' : 
   '🟡 Some APIs not configured'}
 
-${!status.unsplash && !status.pexels ? '\n⚠️ Add Unsplash or Pexels API key for images!' : ''}
+${!status.openai ? '\n⚠️ Add OpenAI API key for DALL-E images!' : ''}
   `, {
     inline_keyboard: [
       [{ text: '🚀 Fetch News', callback_data: 'fetch' }],
@@ -3795,30 +3789,44 @@ async function getArticleImage(title, category, env) {
       titleLower.includes('burns') || titleLower.includes('abuse') ||
       titleLower.includes('assault') || titleLower.includes('tragedy');
     
-    // For sensitive news, use appropriate generic images
-    if (isSensitiveNews) {
-      const sensitiveImages = {
-        school: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=800', // School building
-        hospital: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800', // Hospital
-        justice: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=800', // Justice scales
-        memorial: 'https://images.unsplash.com/photo-1547483238-f400e65ccd56?w=800', // Candles
-        emergency: 'https://images.unsplash.com/photo-1587745416684-47953f16f02f?w=800' // Ambulance
-      };
+    // For sensitive news, generate appropriate respectful images
+    if (isSensitiveNews && env.OPENAI_API_KEY) {
+      const sensitivePrompt = `Create a respectful, non-graphic news image for sensitive content. Show: ${titleLower.includes('school') ? 'School building exterior with flag at half-mast' : titleLower.includes('hospital') ? 'Hospital entrance with ambulance' : titleLower.includes('court') ? 'Justice scales and gavel' : 'Memorial candles and flowers'}. Somber, respectful tone. No people, no graphic content. Professional news photography style.`;
       
-      let imageType = 'memorial';
-      if (titleLower.includes('school') || titleLower.includes('student')) imageType = 'school';
-      else if (titleLower.includes('hospital') || titleLower.includes('medical')) imageType = 'hospital';
-      else if (titleLower.includes('court') || titleLower.includes('justice')) imageType = 'justice';
-      else if (titleLower.includes('accident') || titleLower.includes('emergency')) imageType = 'emergency';
-      
-      return {
-        url: sensitiveImages[imageType],
-        credit: 'Stock Photo',
-        type: 'sensitive',
-        isRelevant: true
-      };
+      try {
+        const response = await fetch('https://api.openai.com/v1/images/generations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${env.OPENAI_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: 'dall-e-3',
+            prompt: sensitivePrompt,
+            n: 1,
+            size: '1792x1024',
+            quality: 'standard',
+            style: 'natural'
+          })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.data && data.data[0]) {
+            return {
+              url: data.data[0].url,
+              credit: 'AI Generated - Respectful Coverage',
+              type: 'sensitive-generated',
+              isRelevant: true
+            };
+          }
+        }
+      } catch (error) {
+        console.error('[DALL-E] Sensitive image generation failed:', error);
+      }
     }
     
+    // REMOVED: Personality checks - will generate all with DALL-E
     // Check for specific personalities first
     const personalities = {
       // Political figures
@@ -3869,10 +3877,10 @@ async function getArticleImage(title, category, env) {
       }
     }
     
-    // If personality found, prioritize their real photos
-    if (personalityQuery) {
-      // Try Unsplash for personality photos
-      if (env.UNSPLASH_ACCESS_KEY) {
+    // If personality found, generate with DALL-E
+    if (personalityQuery && env.OPENAI_API_KEY) {
+      // Generate personality image with DALL-E
+      if (false) { // Disabled Unsplash
         const unsplashUrl = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(personalityQuery)}&per_page=3&client_id=${env.UNSPLASH_ACCESS_KEY}`;
         const response = await fetch(unsplashUrl);
         
@@ -3947,9 +3955,10 @@ async function getArticleImage(title, category, env) {
       ];
     }
     
-    // First, try to use real photos for news
-    for (const query of searchQueries) {
-      if (env.UNSPLASH_ACCESS_KEY) {
+    // REMOVED: All stock photo APIs - only using DALL-E
+    // Skip stock photos completely
+    if (false) { // Disabled all stock photos
+      if (false) { // Was UNSPLASH_ACCESS_KEY
         const unsplashUrl = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=10&orientation=landscape&client_id=${env.UNSPLASH_ACCESS_KEY}`;
         const response = await fetch(unsplashUrl);
         
@@ -3999,10 +4008,20 @@ async function getArticleImage(title, category, env) {
       }
     }
     
-    // ALWAYS use DALL-E 3 for 100% relevant images
-    if (env.OPENAI_API_KEY) { // Always use DALL-E when available
-      console.log(`[IMAGE] Attempting DALL-E generation for: "${title}"`);
-      try {
+    // ALWAYS use DALL-E 3 for 100% relevant images - NO FALLBACKS
+    if (!env.OPENAI_API_KEY) {
+      console.error('[IMAGE] OpenAI API key not configured - cannot generate images');
+      return {
+        url: `https://via.placeholder.com/1792x1024/0066CC/FFFFFF?text=${encodeURIComponent('Configure OpenAI API')}`,
+        credit: 'No API Key',
+        type: 'error',
+        isRelevant: false
+      };
+    }
+    
+    // Generate with DALL-E 3 - ALWAYS
+    console.log(`[IMAGE] Generating DALL-E image for: "${title}"`);
+    try {
         // Extract EVERYTHING from the title for perfect image generation
         const hasNumbers = /\d+/.test(title);
         const numbers = title.match(/\d+\.?\d*/g) || [];
@@ -4231,8 +4250,18 @@ async function getArticleImage(title, category, env) {
       }
     }
     
-    // Last resort: High-quality, specific default images
-    // These are carefully selected for visual appeal and relevance
+    // NO FALLBACK IMAGES - Always return DALL-E or error
+    console.log('[IMAGE] DALL-E generation completed or failed, no fallbacks used');
+    
+    // Return error if we reached here
+    return {
+      url: `https://via.placeholder.com/1792x1024/FF0000/FFFFFF?text=${encodeURIComponent('Image Generation Failed')}`,
+      credit: 'Generation Error',
+      type: 'error',
+      isRelevant: false
+    };
+    
+    // REMOVED ALL FALLBACK CODE BELOW
     const defaultImages = {
       'Technology': [
         'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800', // Tech desk setup
@@ -5989,16 +6018,15 @@ async function debugInfo(env) {
   const hasToken = !!env.TELEGRAM_BOT_TOKEN;
   const tokenLength = env.TELEGRAM_BOT_TOKEN ? env.TELEGRAM_BOT_TOKEN.length : 0;
   const hasKV = !!env.NEWS_KV;
-  const hasUnsplash = !!env.UNSPLASH_ACCESS_KEY;
-  const hasPexels = !!env.PEXELS_API_KEY;
+  const hasOpenAI = !!env.OPENAI_API_KEY;
   
   return new Response(JSON.stringify({
     status: 'debug',
     telegram_token_configured: hasToken,
     token_length: tokenLength,
     kv_configured: hasKV,
-    unsplash_configured: hasUnsplash,
-    pexels_configured: hasPexels,
+    openai_configured: hasOpenAI,
+    dalle_ready: hasOpenAI,
     environment: {
       worker_url: env.WORKER_URL || 'not set'
     }
