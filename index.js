@@ -2509,8 +2509,8 @@ async function handleCallback(env, query) {
       await sendMessage(env, chatId, '✏️ *Create Custom Article*\n\nSend the topic you want:\n\nExample: `/create iPhone 16 Pro review`\n\nOr just type: /create <your topic>');
       break;
     case 'delete_prompt':
-      const articles = await env.NEWS_KV.get('articles', 'json') || [];
-      const articleList = articles.slice(0, 5).map((a, i) => `${i}. ${a.title.substring(0, 50)}...`).join('\n');
+      const articlesForDelete = await env.NEWS_KV.get('articles', 'json') || [];
+      const articleList = articlesForDelete.slice(0, 5).map((a, i) => `${i}. ${a.title.substring(0, 50)}...`).join('\n');
       await sendMessage(env, chatId, `🗑️ *Delete Article*\n\nCurrent articles:\n${articleList}\n\nUse: \`/delete 0\` to delete first article`);
       break;
     case 'cron_logs':
@@ -2639,8 +2639,8 @@ Use /fetch for manual updates anytime!
       });
       break;
     case 'news':
-      const articles = await env.NEWS_KV.get('articles', 'json') || [];
-      const latest = articles.slice(0, 5);
+      const newsArticles = await env.NEWS_KV.get('articles', 'json') || [];
+      const latest = newsArticles.slice(0, 5);
       let newsText = '📰 *Latest Articles*\n\n';
       latest.forEach((a, i) => {
         newsText += `${i+1}. *${a.title}*\n   ${a.category} | ${a.views?.toLocaleString() || 0} views\n\n`;
