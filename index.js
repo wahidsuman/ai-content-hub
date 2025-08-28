@@ -1356,7 +1356,7 @@ I'm your intelligent news manager powered by AI. I handle everything automatical
 
 🤖 *What I Do:*
 • Fetch real news every 3 hours from 9 sources
-• Select best images (Unsplash/Pexels)
+• Generate custom images with DALL-E 3
 • Write human-like summaries
 • Track performance & costs
 • Optimize for Google ranking
@@ -2898,8 +2898,8 @@ async function sendAPIUsage(env, chatId) {
 *Current Performance:*
 📰 Articles Today: ${articlesToday}
 📈 Monthly Projection: ${articlesToday * 30} articles
-🤖 Model: GPT-3.5 Turbo (optimal for news)
-🖼️ Images: Unsplash + Pexels (free tier)
+🤖 Model: GPT-4 Turbo (premium quality)
+🖼️ Images: DALL-E 3 (custom generated)
 
 *Cost Breakdown (GPT-4 + DALL-E 3):*
 • GPT-4 Summaries (10-12/day): ~$3.50/month
@@ -3971,45 +3971,7 @@ async function getArticleImage(title, category, env) {
     
     // If personality found, generate with DALL-E
     if (personalityQuery && env.OPENAI_API_KEY) {
-      // Generate personality image with DALL-E
-      if (false) { // Disabled Unsplash
-        const unsplashUrl = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(personalityQuery)}&per_page=3&client_id=${env.UNSPLASH_ACCESS_KEY}`;
-        const response = await fetch(unsplashUrl);
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.results && data.results.length > 0) {
-            // Pick the best quality image
-            const bestImage = data.results[0];
-            return {
-              url: bestImage.urls.regular,
-              credit: `Photo by ${bestImage.user.name} on Unsplash`,
-              type: 'personality',
-              isRelevant: true
-            };
-          }
-        }
-      }
-      
-      // Try Pexels for personality photos
-      if (env.PEXELS_API_KEY) {
-        const pexelsUrl = `https://api.pexels.com/v1/search?query=${encodeURIComponent(personalityQuery)}&per_page=3`;
-        const response = await fetch(pexelsUrl, {
-          headers: { 'Authorization': env.PEXELS_API_KEY }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.photos && data.photos.length > 0) {
-            return {
-              url: data.photos[0].src.large,
-              credit: `Photo by ${data.photos[0].photographer} on Pexels`,
-              type: 'personality',
-              isRelevant: true
-            };
-          }
-        }
-      }
+      // REMOVED ALL STOCK PHOTO CODE - ONLY DALL-E
     }
     
     // Extract better keywords for non-personality searches
@@ -4048,57 +4010,7 @@ async function getArticleImage(title, category, env) {
     }
     
     // REMOVED: All stock photo APIs - only using DALL-E
-    // Skip stock photos completely
-    if (false) { // Disabled all stock photos
-      if (false) { // Was UNSPLASH_ACCESS_KEY
-        const unsplashUrl = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=10&orientation=landscape&client_id=${env.UNSPLASH_ACCESS_KEY}`;
-        const response = await fetch(unsplashUrl);
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.results && data.results.length > 0) {
-            // Sort by relevance and quality (likes)
-            const sortedImages = data.results.sort((a, b) => b.likes - a.likes);
-            
-            // Pick from top 3 best images
-            const topImages = sortedImages.slice(0, 3);
-            const selectedImage = topImages[Math.floor(Math.random() * topImages.length)];
-            
-            return {
-              url: selectedImage.urls.regular,
-              credit: `Photo by ${selectedImage.user.name} on Unsplash`,
-              type: 'unsplash',
-              isRelevant: true,
-              description: selectedImage.description || selectedImage.alt_description
-            };
-          }
-        }
-      }
-      
-      if (env.PEXELS_API_KEY) {
-        const pexelsUrl = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=10&orientation=landscape`;
-        const response = await fetch(pexelsUrl, {
-          headers: { 'Authorization': env.PEXELS_API_KEY }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.photos && data.photos.length > 0) {
-            // Pick from top images (Pexels returns relevance-sorted)
-            const topImages = data.photos.slice(0, 3);
-            const selectedImage = topImages[Math.floor(Math.random() * topImages.length)];
-            
-            return {
-              url: selectedImage.src.large,
-              credit: `Photo by ${selectedImage.photographer} on Pexels`,
-              type: 'pexels',
-              isRelevant: true,
-              description: selectedImage.alt
-            };
-          }
-        }
-      }
-    }
+    // ALL STOCK PHOTO CODE PERMANENTLY REMOVED - ONLY DALL-E 3
     
     // ALWAYS use DALL-E 3 for 100% relevant images - NO FALLBACKS
     if (!env.OPENAI_API_KEY) {
@@ -4361,63 +4273,97 @@ async function getArticleImage(title, category, env) {
       isRelevant: false
     };
     
-    // REMOVED ALL FALLBACK CODE BELOW
-    const defaultImages = {
-      'Technology': [
-        'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800', // Tech desk setup
-        'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=800', // Futuristic tech
-        'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800'  // Code matrix
-      ],
-      'Business': [
-        'https://images.unsplash.com/photo-1559526324-593bc073d938?w=800', // Business meeting
-        'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=800', // Office workers
-        'https://images.unsplash.com/photo-1553729459-efe14ef6055d?w=800'  // Money growth
-      ],
-      'India': [
-        'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=800', // India Gate
-        'https://images.unsplash.com/photo-1587474260584-136574528ed5?w=800', // Delhi skyline
-        'https://images.unsplash.com/photo-1609609830354-8f615d61b9c8?w=800'  // Mumbai cityscape
-      ],
-      'World': [
-        'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800', // Globe technology
-        'https://images.unsplash.com/photo-1529655683826-aba9b3e77383?w=800', // London Tower Bridge
-        'https://images.unsplash.com/photo-1508433957232-3107f5fd5995?w=800'  // NYC skyline
-      ],
-      'Sports': [
-        'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?w=800', // Cricket stadium
-        'https://images.unsplash.com/photo-1594736797933-d0501ba2fe65?w=800', // Cricket action
-        'https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=800'  // Stadium crowd
-      ],
-      'Entertainment': [
-        'https://images.unsplash.com/photo-1598899134739-24c46f58b8c0?w=800', // Cinema
-        'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=800', // Movie theater
-        'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800'  // Concert crowd
-      ]
+    // ONLY DALL-E - NO STOCK PHOTOS
+    console.log('[IMAGE] Attempting emergency DALL-E generation for category:', category);
+    
+    const emergencyPrompts = {
+      'Technology': 'BREAKING TECH NEWS: Futuristic AI visualization, glowing circuit boards, holographic displays, quantum computing, digital transformation, neon tech elements, urgent innovation update',
+      'Business': 'MARKET ALERT: Stock market surge, financial graphs shooting upward, business success story, corporate breakthrough, economic boom visualization, money flow dynamics',
+      'India': 'INDIA BREAKING NEWS: Modern Indian cityscape, vibrant colors, technological progress, cultural landmarks, developing nation success, urgent India update',
+      'World': 'WORLD NEWS ALERT: Global breaking news, earth visualization, international crisis or breakthrough, world map with hotspots, urgent global update',
+      'Sports': 'SPORTS SENSATION: Dramatic sports moment, victory celebration, stadium excitement, athletic achievement, record-breaking performance, urgent sports update',
+      'Entertainment': 'ENTERTAINMENT EXCLUSIVE: Celebrity news, red carpet moment, movie premiere excitement, music industry breakthrough, entertainment spotlight'
     };
     
-    // If no category match, use a breaking news style image
-    const breakingNewsImages = [
-      'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=800', // News broadcast
-      'https://images.unsplash.com/photo-1572949645841-094f3a9c4c94?w=800', // Breaking news
-      'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800'  // News desk
-    ];
+    const emergencyPrompt = emergencyPrompts[category] || 'URGENT BREAKING NEWS: Major news development, dramatic news graphics, "BREAKING" text overlay, urgent update visualization';
     
-    const categoryImages = defaultImages[category] || breakingNewsImages;
-    const selectedDefault = categoryImages[Math.floor(Math.random() * categoryImages.length)];
+    try {
+      const emergencyResponse = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'dall-e-3',
+          prompt: `${emergencyPrompt}, maximum visual impact, eye-catching thumbnail, vivid colors, professional news graphics, trending style, must attract viewers`,
+          n: 1,
+          size: '1024x1024',
+          quality: 'standard',
+          style: 'vivid'
+        })
+      });
+      
+      if (emergencyResponse.ok) {
+        const emergencyData = await emergencyResponse.json();
+        console.log('[IMAGE] Emergency DALL-E generation successful');
+        return {
+          url: emergencyData.data[0].url,
+          credit: '🎨 DALL-E 3 Optimized',
+          type: 'dalle-emergency',
+          isRelevant: true
+        };
+      }
+    } catch (emergencyError) {
+      console.error('[IMAGE] Emergency DALL-E failed:', emergencyError);
+    }
     
+    // Absolute last resort - SVG placeholder
     return {
-      url: selectedDefault,
-      credit: 'Stock Photo',
-      type: 'default',
+      url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjQ1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjQ1MCIgZmlsbD0iI2ZmMDAwMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iNDgiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjZmZmIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj5CUkVBS0lORyBORVdTPC90ZXh0Pjwvc3ZnPg==',
+      credit: 'Loading...',
+      type: 'placeholder',
       isRelevant: false
     };
     
   } catch (error) {
     console.error('Image fetch error:', error);
+    // Always generate with DALL-E as last resort
+    try {
+      const fallbackResponse = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'dall-e-3',
+          prompt: 'BREAKING NEWS banner with dramatic lighting, modern news graphics, "LATEST UPDATE" text overlay, professional broadcast style, vibrant red and blue color scheme, urgent news aesthetic',
+          n: 1,
+          size: '1024x1024',
+          quality: 'standard',
+          style: 'vivid'
+        })
+      });
+      
+      if (fallbackResponse.ok) {
+        const fallbackData = await fallbackResponse.json();
+        return {
+          url: fallbackData.data[0].url,
+          credit: '🎨 DALL-E 3 Generated',
+          type: 'dalle-fallback',
+          isRelevant: true
+        };
+      }
+    } catch (fallbackError) {
+      console.error('DALL-E fallback also failed:', fallbackError);
+    }
+    
+    // Absolute last resort - a data URL placeholder
     return {
-      url: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800',
+      url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjQ1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjQ1MCIgZmlsbD0iIzFhMWExYSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IiNmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPkJSRUFLSU5HIE5FV1M8L3RleHQ+PC9zdmc+',
       credit: 'AgamiNews',
-      type: 'fallback',
+      type: 'placeholder',
       isRelevant: false
     };
   }
