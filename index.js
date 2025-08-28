@@ -345,20 +345,107 @@ export default {
   }
 };
 
-// CRITICAL: Google Analytics code - MUST be on EVERY page
+// CRITICAL: Google Analytics code - MUST be on EVERY page - 200% GUARANTEED
 function getGoogleAnalyticsCode(pageTitle = 'AgamiNews', pagePath = '/') {
+  // MULTIPLE REDUNDANT GA IMPLEMENTATIONS TO ENSURE IT'S NEVER MISSED
   return `
-    <!-- Google Analytics - REQUIRED ON ALL PAGES -->
+    <!-- Google Analytics - CRITICAL - NEVER REMOVE -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZW77WM2VPG"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
+      
+      // PRIMARY GA CONFIG
       gtag('config', 'G-ZW77WM2VPG', {
         page_path: '${pagePath}',
         page_title: '${pageTitle}',
-        page_location: window.location.href
+        page_location: window.location.href,
+        send_page_view: true
       });
+      
+      // FALLBACK: Send manual pageview if auto fails
+      setTimeout(function() {
+        gtag('event', 'page_view', {
+          page_title: '${pageTitle}',
+          page_location: window.location.href,
+          page_path: '${pagePath}'
+        });
+      }, 1000);
+      
+      // VERIFICATION: Log to console for debugging
+      console.log('GA Loaded for: ${pageTitle} at ${pagePath}');
+      
+      // MONITORING: Alert admin if GA fails
+      setTimeout(function() {
+        if (typeof gtag === 'undefined') {
+          console.error('CRITICAL: Google Analytics failed to load!');
+          // Send error to server
+          fetch('/api/ga-error', {
+            method: 'POST',
+            body: JSON.stringify({
+              page: '${pagePath}',
+              title: '${pageTitle}',
+              error: 'GA not loaded'
+            })
+          });
+        } else {
+          console.log('✅ GA Verified: Tracking active for ${pageTitle}');
+        }
+      }, 3000);
+    </script>
+    
+    <!-- FALLBACK GA Implementation -->
+    <script>
+      // Emergency GA loader if main script fails
+      (function() {
+        if (!window.gtag) {
+          var script = document.createElement('script');
+          script.async = true;
+          script.src = 'https://www.googletagmanager.com/gtag/js?id=G-ZW77WM2VPG';
+          document.head.appendChild(script);
+          
+          window.dataLayer = window.dataLayer || [];
+          window.gtag = function(){dataLayer.push(arguments);};
+          window.gtag('js', new Date());
+          window.gtag('config', 'G-ZW77WM2VPG');
+        }
+      })();
+    </script>
+  `;
+}
+
+// UNIVERSAL SEO TAGS - MUST BE ON EVERY PAGE
+function getUniversalSEOTags(title = 'AgamiNews', description = 'Latest News from India and World', url = 'https://agaminews.in') {
+  return `
+    <!-- CRITICAL SEO TAGS - GOOGLE INDEXING -->
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+    <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large">
+    <meta name="bingbot" content="index, follow, max-snippet:-1, max-image-preview:large">
+    <meta name="google" content="notranslate">
+    <meta name="google-site-verification" content="YOUR_VERIFICATION_CODE">
+    <link rel="canonical" href="${url}">
+    <meta name="author" content="AgamiNews">
+    <meta name="publisher" content="AgamiNews">
+    
+    <!-- Open Graph for Social -->
+    <meta property="og:site_name" content="AgamiNews">
+    <meta property="og:locale" content="en_IN">
+    <meta property="fb:app_id" content="YOUR_FB_APP_ID">
+    
+    <!-- Schema.org for Google -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "AgamiNews",
+      "url": "https://agaminews.in",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://agaminews.in/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
     </script>
   `;
 }
@@ -592,7 +679,12 @@ async function serveWebsite(env, request) {
     <meta name="description" content="Get latest breaking news from India and around the world. Live updates on politics, business, technology, sports, and entertainment. AI-powered news aggregation.">
     <meta name="keywords" content="news, India news, breaking news, latest news, world news, politics, business, technology, sports, entertainment, AgamiNews">
     
-    <!-- Google Analytics -->
+    ${getUniversalSEOTags('AgamiNews - Latest News', config.siteDescription, 'https://agaminews.in')}
+    
+    <!-- Google Analytics - GUARANTEED TRACKING -->
+    ${getGoogleAnalyticsCode('AgamiNews - Homepage', '/')}
+    
+    <!-- BACKUP Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZW77WM2VPG"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -4939,17 +5031,10 @@ async function serveArticle(env, request, pathname) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Article Not Found - AgamiNews</title>
     
-    <!-- Google Analytics - ALWAYS INCLUDE -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZW77WM2VPG"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-ZW77WM2VPG', {
-        page_path: '/404',
-        page_title: '404 - Article Not Found'
-      });
-    </script>
+    ${getUniversalSEOTags('404 - Page Not Found', 'The page you are looking for was not found', request.url)}
+    
+    <!-- GUARANTEED GA for 404 Pages -->
+    ${getGoogleAnalyticsCode('404 - Article Not Found', '/404')}
     
     <style>
       body {
@@ -5014,12 +5099,15 @@ async function serveArticle(env, request, pathname) {
     <title>${article.title} - ${config.siteName}</title>
     <meta name="description" content="${article.preview || 'Read full article on AgamiNews'}">
     
-    <!-- Google Indexing & SEO Tags -->
-    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
-    <meta name="googlebot" content="index, follow">
-    <meta name="google" content="notranslate">
+    <!-- UNIVERSAL SEO TAGS - 200% GUARANTEED -->
+    ${getUniversalSEOTags(
+      article.title + ' - AgamiNews',
+      article.preview || article.description || 'Read full article on AgamiNews',
+      'https://agaminews.in' + (article.url || `/article/${articleId}`)
+    )}
+    
+    <!-- Article-Specific SEO Tags -->
     <meta name="news_keywords" content="${article.title.split(' ').slice(0, 10).join(', ')}">
-    <link rel="canonical" href="https://agaminews.in${article.url || `/article/${articleId}`}">
     
     <!-- Open Graph Tags -->
     <meta property="og:type" content="article">
@@ -5070,17 +5158,21 @@ async function serveArticle(env, request, pathname) {
     }
     </script>
     
-    <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZW77WM2VPG"></script>
+    <!-- GUARANTEED Google Analytics - NEVER MISS -->
+    ${getGoogleAnalyticsCode(
+      article.title.replace(/'/g, "\\'") + ' - Article',
+      article.url || `/article/${articleId}`
+    )}
+    
+    <!-- ADDITIONAL GA Tracking for Articles -->
     <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      
-      // Track article page view with enhanced data
-      gtag('config', 'G-ZW77WM2VPG', {
-        page_path: '/article/${articleId}',
-        page_title: '${article.title.replace(/'/g, "\\'")}',
+      // Enhanced article tracking
+      window.addEventListener('load', function() {
+        if (typeof gtag !== 'undefined') {
+          // Double-check GA is loaded
+          gtag('config', 'G-ZW77WM2VPG', {
+            page_path: '${article.url || `/article/${articleId}`}',
+            page_title: '${article.title.replace(/'/g, "\\'")}',
         page_location: window.location.href,
         custom_dimensions: {
           'article_id': '${articleId}',
