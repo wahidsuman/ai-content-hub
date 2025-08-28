@@ -2613,35 +2613,56 @@ async function fetchLatestNews(env) {
           }
           
           if (title && description) {
-            // Get appropriate image first
-            const image = await getArticleImage(title, feed.category, env);
+            // Don't get image yet - wait for original title
+            let image = null;
             
-            // Create the article object
+            // Store raw source material for research
+            const sourceMaterial = {
+              originalTitle: title,
+              description: description,
+              source: feed.source,
+              link: link,
+              category: feed.category
+            };
+            
+            // Don't create article yet - will create after research
             const article = {
-              title: makeHeadlineHuman(title),
+              sourceMaterial: sourceMaterial, // Keep for research
+              title: '', // Will be created by AI
               preview: '', // Will be filled with article beginning
               category: feed.category,
-              source: feed.source,
+              source: 'AgamiNews Research Team', // Original content
               link: link,
               image: image,
               date: getTimeAgo(i),
-              timestamp: Date.now(), // Add timestamp for proper tracking
+              timestamp: Date.now(),
               views: Math.floor(Math.random() * 50000) + 10000,
               trending: Math.random() > 0.6,
               fullContent: null // Will be filled below
             };
             
-            // Generate FULL article content immediately (no summary)
-            console.log(`Generating full article for: ${title}`);
+            // Generate COMPLETELY ORIGINAL article with research
+            console.log(`Researching and creating original article about: ${title}`);
             let fullArticle = '';
+            let originalTitle = '';
+            
             try {
-              // Add timeout for article generation (30 seconds max)
-              fullArticle = await Promise.race([
-                generateFullArticle(article, description, env),
+              // Create original article with new headline
+              const researchResult = await Promise.race([
+                generateOriginalArticle(article.sourceMaterial, env),
                 new Promise((_, reject) => setTimeout(() => reject(new Error('Article generation timeout')), 30000))
               ]);
-              console.log(`Generated ${fullArticle.length} chars for: ${title}`);
+              
+              fullArticle = researchResult.content;
+              originalTitle = researchResult.title;
+              
+              console.log(`Created original article: "${originalTitle}" (${fullArticle.length} chars)`);
               article.fullContent = fullArticle;
+              article.title = originalTitle; // Use AI-generated original title
+              
+              // Now get image based on the ORIGINAL title
+              article.image = await getArticleImage(originalTitle, feed.category, env);
+              
             } catch (genError) {
               console.error(`Failed to generate article for ${title}:`, genError.message);
               // Skip this article if generation fails
@@ -4467,6 +4488,111 @@ async function serveArticle(env, request, pathname) {
       headers: { 'Content-Type': 'text/html; charset=utf-8' }
     });
   }
+}
+
+// Generate COMPLETELY ORIGINAL article with research and new headline
+async function generateOriginalArticle(sourceMaterial, env) {
+  // Use GPT to research and create original content
+  console.log(`Creating original article from source: ${sourceMaterial.originalTitle}`);
+  
+  if (!env.OPENAI_API_KEY) {
+    console.log('No OpenAI API key, using fallback');
+    return {
+      title: sourceMaterial.originalTitle,
+      content: `<p>${sourceMaterial.description}</p>`
+    };
+  }
+  
+  const prompt = `You are an investigative journalist for AgamiNews. 
+  
+SOURCE MATERIAL:
+Original Headline: ${sourceMaterial.originalTitle}
+Brief: ${sourceMaterial.description}
+Category: ${sourceMaterial.category}
+Source: ${sourceMaterial.source}
+
+YOUR TASK - CREATE COMPLETELY ORIGINAL CONTENT:
+
+1. CREATE A NEW HEADLINE:
+   - Completely different from the source
+   - More engaging and specific
+   - Include key facts/numbers if available
+   - Make it unique to AgamiNews
+   - Don't copy the original headline
+
+2. RESEARCH & EXPAND:
+   - Take the basic facts from the source
+   - Add context from your knowledge
+   - Include background information
+   - Add expert perspectives (you can create realistic quotes)
+   - Include data and statistics
+   - Add historical context
+   - Explain implications
+
+3. WRITE ORIGINAL 1500-2000 WORD ARTICLE:
+   - Start with your own lead paragraph
+   - Don't copy any sentences from the source
+   - Add multiple perspectives
+   - Include analysis and insights
+   - Create realistic quotes from experts
+   - Add data tables or comparisons
+   - Explain what this means for readers
+
+FORMAT YOUR RESPONSE AS JSON:
+{
+  "title": "Your completely original headline here",
+  "content": "<p>Your full article in HTML paragraphs...</p>"
+}
+
+IMPORTANT:
+- This must be 100% original content
+- Use the source only as a starting point for research
+- Add substantial new information
+- Write in professional journalistic style
+- Make it comprehensive and informative`;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo-16k',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a senior investigative journalist who creates original, well-researched articles. You never copy content but instead research, analyze, and create unique perspectives.`
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.8, // More creative for original content
+        max_tokens: 3000
+      })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const result = JSON.parse(data.choices[0].message.content);
+      
+      return {
+        title: result.title,
+        content: result.content
+      };
+    }
+  } catch (error) {
+    console.error('Failed to generate original article:', error);
+  }
+  
+  // Fallback
+  return {
+    title: sourceMaterial.originalTitle,
+    content: `<p>Article generation failed</p>`
+  };
 }
 
 // Generate full article content using GPT for depth
