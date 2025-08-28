@@ -50,17 +50,52 @@ export default {
     } else if (url.pathname === '/test-article') {
       // Test single article generation
       return testArticleGeneration(env);
-    } else if (url.pathname === '/status-check') {
-      // Simple status check that doesn't need OpenAI
-      return new Response(JSON.stringify({
-        status: 'alive',
+    } else if (url.pathname === '/health' || url.pathname === '/status-check') {
+      // Comprehensive health check
+      const articles = await env.NEWS_KV.get('articles', 'json') || [];
+      const stats = await env.NEWS_KV.get('stats', 'json') || {};
+      const cronLogs = await env.NEWS_KV.get('cron_logs', 'json') || [];
+      const lastCron = cronLogs[0] ? new Date(cronLogs[0].time) : null;
+      const hoursSinceLastCron = lastCron ? (Date.now() - lastCron) / (1000 * 60 * 60) : 999;
+      
+      const health = {
+        status: 'healthy',
         timestamp: new Date().toISOString(),
-        apiKeyConfigured: !!env.OPENAI_API_KEY,
-        apiKeyLength: env.OPENAI_API_KEY ? env.OPENAI_API_KEY.length : 0,
-        telegramConfigured: !!env.TELEGRAM_BOT_TOKEN,
-        workerUrl: env.WORKER_URL || 'not set',
-        kvNamespace: !!env.NEWS_KV
-      }), {
+        system: {
+          worker: 'active',
+          kv: 'connected',
+          articles: articles.length,
+          todayArticles: stats.dailyArticlesPublished || 0
+        },
+        apis: {
+          openai: !!env.OPENAI_API_KEY,
+          telegram: !!env.TELEGRAM_BOT_TOKEN,
+          github: !!env.GITHUB_TOKEN,
+          unsplash: !!env.UNSPLASH_ACCESS_KEY,
+          pexels: !!env.PEXELS_API_KEY
+        },
+        cron: {
+          lastRun: lastCron ? lastCron.toISOString() : 'never',
+          hoursSinceLastRun: hoursSinceLastCron.toFixed(1),
+          status: hoursSinceLastCron < 4 ? 'healthy' : hoursSinceLastCron < 8 ? 'warning' : 'critical',
+          nextRun: new Date(Math.ceil(Date.now() / (3 * 60 * 60 * 1000)) * 3 * 60 * 60 * 1000).toISOString()
+        },
+        costs: {
+          todaySpent: (stats.dailyArticlesPublished || 0) * 0.04,
+          monthlyProjected: ((stats.dailyArticlesPublished || 0) / new Date().getHours() * 24 * 30 * 0.04) || 0,
+          budgetStatus: 'within_limit'
+        }
+      };
+      
+      // Set overall health status
+      if (!env.OPENAI_API_KEY || !env.TELEGRAM_BOT_TOKEN) {
+        health.status = 'critical';
+      } else if (hoursSinceLastCron > 8) {
+        health.status = 'warning';
+      }
+      
+      return new Response(JSON.stringify(health, null, 2), {
+        status: health.status === 'healthy' ? 200 : health.status === 'warning' ? 503 : 500,
         headers: { 'Content-Type': 'application/json' }
       });
     } else if (url.pathname === '/force-refresh') {
@@ -1266,6 +1301,8 @@ Or just talk to me naturally! Try:
         await sendMenu(env, chatId);
       } else if (text === '/stats') {
         await sendStats(env, chatId);
+      } else if (text === '/top' || text === '/popular') {
+        await sendTopArticles(env, chatId);
       } else if (text === '/costs' || text === '/cost') {
         await sendCostReport(env, chatId);
       } else if (text === '/fetch') {
@@ -2156,6 +2193,79 @@ function detectCategory(topic) {
   } else {
     return 'India'; // Default category
   }
+}
+
+// Send top performing articles
+async function sendTopArticles(env, chatId) {
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  
+  // Sort articles by views
+  const sortedArticles = articles
+    .map((article, index) => ({
+      ...article,
+      index,
+      views: article.views || 0
+    }))
+    .sort((a, b) => b.views - a.views)
+    .slice(0, 10);
+  
+  if (sortedArticles.length === 0) {
+    await sendMessage(env, chatId, '📊 *No articles to show*\n\nPublish some articles first!');
+    return;
+  }
+  
+  const topList = sortedArticles.map((article, i) => {
+    const emoji = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
+    return `${emoji} *${article.title.substring(0, 40)}...*\n   👁 ${article.views.toLocaleString()} views | ${article.category}`;
+  }).join('\n\n');
+  
+  // Calculate insights
+  const totalViews = sortedArticles.reduce((sum, a) => sum + a.views, 0);
+  const avgViews = Math.round(totalViews / sortedArticles.length);
+  const topCategory = sortedArticles.reduce((acc, article) => {
+    acc[article.category] = (acc[article.category] || 0) + article.views;
+    return acc;
+  }, {});
+  const bestCategory = Object.entries(topCategory).sort((a, b) => b[1] - a[1])[0];
+  
+  await sendMessage(env, chatId, `
+🏆 *Top Performing Articles*
+
+${topList}
+
+📈 *Performance Insights:*
+• Total Views: ${totalViews.toLocaleString()}
+• Average Views: ${avgViews.toLocaleString()}
+• Best Category: ${bestCategory ? bestCategory[0] : 'N/A'}
+• Top Article CTR: ${sortedArticles[0] ? Math.round(sortedArticles[0].views / totalViews * 100) : 0}%
+
+💡 *Recommendations:*
+${getPerformanceRecommendations(sortedArticles, topCategory)}
+
+_Updated: ${new Date().toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})}_
+  `);
+}
+
+// Get performance-based recommendations
+function getPerformanceRecommendations(articles, categoryViews) {
+  const recs = [];
+  
+  if (articles[0] && articles[0].views > articles[1]?.views * 2) {
+    recs.push(`• "${articles[0].title.substring(0, 30)}..." is viral - create similar content`);
+  }
+  
+  const bestCat = Object.entries(categoryViews).sort((a, b) => b[1] - a[1])[0];
+  if (bestCat) {
+    recs.push(`• Focus more on ${bestCat[0]} category (highest engagement)`);
+  }
+  
+  const lowPerformers = articles.filter(a => a.views < 100);
+  if (lowPerformers.length > articles.length / 2) {
+    recs.push(`• Consider different content strategy - many articles underperforming`);
+  }
+  
+  return recs.join('\n') || '• Keep current strategy - good overall performance';
 }
 
 // Send detailed cost report
@@ -3576,9 +3686,36 @@ Write a COMPREHENSIVE, WELL-RESEARCHED summary that readers would find in premiu
 }
 
 // Enhanced image system with personality recognition and sensitivity
+// Extract visual keywords from title for better image generation
+function extractVisualKeywords(title) {
+  const keywords = [];
+  
+  // Extract key entities
+  const entities = {
+    people: title.match(/([A-Z][a-z]+ [A-Z][a-z]+)/g) || [],
+    numbers: title.match(/\d+\.?\d*/g) || [],
+    places: title.match(/(Delhi|Mumbai|Bangalore|India|US|China|Pakistan)/gi) || [],
+    companies: title.match(/(Google|Apple|Microsoft|Amazon|Reliance|Tata|Infosys)/gi) || [],
+    events: title.match(/(IPL|World Cup|Olympics|Summit|Conference|Budget)/gi) || []
+  };
+  
+  // Priority keywords for visual representation
+  if (entities.people.length > 0) keywords.push(entities.people[0]);
+  if (entities.places.length > 0) keywords.push(entities.places[0]);
+  if (entities.companies.length > 0) keywords.push(entities.companies[0]);
+  if (entities.events.length > 0) keywords.push(entities.events[0]);
+  
+  // Action words that define the scene
+  const actions = title.match(/(launches?|announces?|wins?|loses?|crashes?|rises?|falls?|meets?|visits?|opens?|closes?)/gi) || [];
+  if (actions.length > 0) keywords.push(actions[0]);
+  
+  return keywords;
+}
+
 async function getArticleImage(title, category, env) {
   try {
     const titleLower = title.toLowerCase();
+    const visualKeywords = extractVisualKeywords(title);
     
     // Check if this is sensitive/tragic news
     const isSensitiveNews = 
@@ -3971,8 +4108,13 @@ async function getArticleImage(title, category, env) {
           }
         }
         
+        // Add extracted keywords to enhance the prompt
+        if (visualKeywords.length > 0) {
+          imagePrompt = `${imagePrompt}\n\nFocus on these key elements: ${visualKeywords.join(', ')}`;
+        }
+        
         // Log the prompt for debugging
-        console.log(`DALL-E Prompt for "${title}":\n${imagePrompt}\n`);
+        console.log(`[DALL-E] Prompt for "${title}":\nKeywords: ${visualKeywords.join(', ')}\nFull prompt:\n${imagePrompt}\n`);
         
         const response = await fetch('https://api.openai.com/v1/images/generations', {
           method: 'POST',
