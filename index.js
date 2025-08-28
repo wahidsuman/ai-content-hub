@@ -5221,13 +5221,25 @@ async function serveArticle(env, request, pathname) {
         }
         .related-articles {
             margin-top: 60px;
-            padding-top: 40px;
-            border-top: 2px solid ${isDark ? '#333' : '#E0E0E0'};
+            padding: 40px 20px;
+            background: ${isDark ? 'linear-gradient(to bottom, #1a1a1a, #000)' : 'linear-gradient(to bottom, #f8f9fa, #ffffff)'};
+            border-radius: 12px;
+            border-top: 3px solid #0066cc;
         }
         .related-title {
-            font-size: 24px;
+            font-size: 28px;
             font-weight: 700;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
+            text-align: center;
+            position: relative;
+        }
+        .related-title:after {
+            content: '';
+            display: block;
+            width: 60px;
+            height: 3px;
+            background: #0066cc;
+            margin: 15px auto;
         }
         .related-grid {
             display: grid;
@@ -5394,6 +5406,28 @@ async function serveArticle(env, request, pathname) {
         
         <div class="article-content">
             ${fullContent}
+            
+            <!-- Internal Links for SEO -->
+            <div style="margin: 40px 0; padding: 20px; background: ${isDark ? '#1a1a1a' : '#f0f8ff'}; border-left: 4px solid #0066cc; border-radius: 8px;">
+                <h3 style="margin-top: 0; color: #0066cc;">📚 Continue Reading</h3>
+                <p style="margin: 10px 0; color: ${isDark ? '#ccc' : '#666'};">Discover more exclusive stories:</p>
+                <ul style="list-style: none; padding: 0;">
+                    ${articles
+                      .filter((a, i) => i !== articleId)
+                      .slice(0, 3)
+                      .map((related, idx) => `
+                        <li style="margin: 10px 0;">
+                            <a href="${related.url || `/article/${articles.indexOf(related)}`}" 
+                               style="color: #0066cc; text-decoration: none; font-weight: 500; display: block; padding: 5px 0;">
+                               → ${related.title}
+                            </a>
+                        </li>
+                      `).join('')}
+                </ul>
+                <a href="/" style="display: inline-block; margin-top: 15px; color: #0066cc; font-weight: bold;">
+                    View All Stories →
+                </a>
+            </div>
         </div>
         
         <div class="share-buttons">
@@ -5413,8 +5447,14 @@ async function serveArticle(env, request, pathname) {
             <div class="related-grid">
                 ${articles
                   .map((a, i) => ({ article: a, index: i })) // Keep track of original index
-                  .filter(item => item.index !== articleId && item.article.category === article.category)
-                  .slice(0, 4)
+                  .filter(item => item.index !== articleId)
+                  .sort((a, b) => {
+                    // Prioritize same category, then mix others
+                    if (a.article.category === article.category && b.article.category !== article.category) return -1;
+                    if (a.article.category !== article.category && b.article.category === article.category) return 1;
+                    return b.article.views - a.article.views; // Then by views
+                  })
+                  .slice(0, 6)
                   .map(item => {
                     const relatedIndex = item.index; // Use the preserved index
                     const related = item.article;
