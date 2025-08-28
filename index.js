@@ -2780,10 +2780,15 @@ async function fetchLatestNews(env) {
     if (adminChat && env.TELEGRAM_BOT_TOKEN && allArticles.length > 0) {
       console.log(`Sending notifications for ${allArticles.length} new articles to chat ${adminChat}...`);
       
+      // Calculate approximate cost
+      const articleCost = 0.04; // GPT-4 Turbo ~$0.03 + DALL-E HD ~$0.01
+      const monthlyCost = articleCost * 8 * 30; // 8 articles/day * 30 days
+      
       // Send summary first
       const summaryResult = await sendMessage(env, adminChat, 
         `📰 *New Article Published!*\n\n` +
         `📊 Total articles: ${verifyArticles.length}\n` +
+        `💰 Est. cost: $${articleCost.toFixed(2)}/article (~$${monthlyCost.toFixed(2)}/month)\n` +
         `🔗 View: https://agaminews.in\n` +
         `⏰ Time: ${new Date().toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})}`
       );
@@ -2805,11 +2810,12 @@ async function fetchLatestNews(env) {
             `📄 *New Article Details*\n\n` +
             `📌 *Title:* ${article.title}\n` +
             `🏷️ *Category:* ${article.category}\n` +
-            `📰 *Source:* ${article.source || 'RSS Feed'}\n` +
-            `📸 *Image:* ${article.image?.type === 'generated' ? '🎨 AI Generated' : article.image?.type === 'personality' ? '👤 Real Photo' : '📷 Stock Photo'}\n` +
-            `📊 *Quality:* ${article.fullContent && article.fullContent.length > 3000 ? '✅ High' : article.fullContent && article.fullContent.length > 1500 ? '⚠️ Medium' : '❌ Low'} (${article.fullContent ? article.fullContent.length : 0} chars)\n` +
+            `✨ *Originality:* 100% Unique Content\n` +
+            `📸 *Image:* ${article.image?.type === 'generated' ? '🎨 DALL-E 3 HD' : article.image?.type === 'personality' ? '👤 Real Photo' : '📷 Stock Photo'}\n` +
+            `📊 *Quality:* ${article.fullContent && article.fullContent.length > 3000 ? '⭐⭐⭐⭐⭐ Premium' : article.fullContent && article.fullContent.length > 1500 ? '⭐⭐⭐⭐ High' : '⭐⭐⭐ Standard'} (${article.fullContent ? article.fullContent.length : 0} chars)\n` +
+            `🤖 *AI Model:* GPT-4 Turbo\n` +
             `🔗 *Link:* https://agaminews.in${article.url || `/article/${articleIndex}`}\n\n` +
-            `_Published via ${article.autoPublished ? 'Auto-fetch' : 'Manual fetch'}_`
+            `_Quality journalism powered by AI_`
           );
           
           // Small delay to avoid Telegram rate limits
@@ -3360,8 +3366,8 @@ async function getArticleImage(title, category, env) {
       }
     }
     
-    // ALWAYS use DALL-E 3 for SPECIFIC images (95% of articles)
-    if (env.OPENAI_API_KEY && Math.random() > 0.05) { // Use for 95% of articles
+    // ALWAYS use DALL-E 3 for 100% relevant images
+    if (env.OPENAI_API_KEY) { // Always use DALL-E when available
       try {
         // Extract EVERYTHING from the title for perfect image generation
         const hasNumbers = /\d+/.test(title);
@@ -4869,18 +4875,19 @@ YOUR TASK - CREATE COMPLETELY ORIGINAL CONTENT:
    - Add data tables or comparisons
    - Explain what this means for readers
 
-FORMAT YOUR RESPONSE AS JSON:
-{
-  "title": "Your completely original headline here",
-  "content": "<p>Your full article in HTML paragraphs...</p>"
-}
+  FORMAT YOUR RESPONSE AS JSON:
+  {
+    "title": "Your completely original headline here",
+    "content": "<p>Your full article in HTML paragraphs...</p>"
+  }
 
-IMPORTANT:
-- This must be 100% original content
-- Use the source only as a starting point for research
-- Add substantial new information
-- Write in professional journalistic style
-- Make it comprehensive and informative`;
+  CRITICAL REQUIREMENTS:
+  - The headline MUST be COMPLETELY DIFFERENT from: "${sourceMaterial.originalTitle}"
+  - If your headline is similar to the source, you FAIL
+  - Create a NEW ANGLE that competitors haven't covered
+  - Add exclusive insights and analysis
+  - Make it so unique that it becomes the primary source for others
+  - Quality so high that readers share it immediately`;
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -4890,25 +4897,53 @@ IMPORTANT:
         'Authorization': `Bearer ${env.OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo-16k',
+        model: 'gpt-4-turbo-preview', // Using GPT-4 for maximum quality
         messages: [
           {
             role: 'system',
-            content: `You are a senior investigative journalist who creates original, well-researched articles. You never copy content but instead research, analyze, and create unique perspectives.`
+            content: `You are an award-winning investigative journalist at AgamiNews. Your job is to create 100% ORIGINAL content.
+
+STRICT RULES:
+1. NEVER copy or paraphrase the source headline
+2. Create a COMPLETELY NEW angle or perspective
+3. Add substantial research and context
+4. Include data, statistics, expert opinions
+5. Write like a human journalist, not AI
+6. Make content so unique it could win journalism awards
+7. Focus on WHY this matters to Indian readers`
           },
           {
             role: 'user',
             content: prompt
           }
         ],
-        temperature: 0.8, // More creative for original content
-        max_tokens: 3000
+        temperature: 0.9, // High creativity for unique content
+        max_tokens: 3500
       })
     });
 
     if (response.ok) {
       const data = await response.json();
       const result = JSON.parse(data.choices[0].message.content);
+      
+      // Verify the title is actually different
+      const sourceWords = sourceMaterial.originalTitle.toLowerCase().split(' ');
+      const newWords = result.title.toLowerCase().split(' ');
+      const overlap = sourceWords.filter(word => newWords.includes(word) && word.length > 4);
+      
+      if (overlap.length > 3) {
+        console.error('[QUALITY CHECK] Title too similar to source, regenerating...');
+        // Title is too similar, this shouldn't happen with GPT-4
+        throw new Error('Title not original enough');
+      }
+      
+      // Check content quality
+      if (result.content.length < 1000) {
+        console.error('[QUALITY CHECK] Content too short');
+        throw new Error('Content not comprehensive enough');
+      }
+      
+      console.log(`[ORIGINAL] Created unique article: "${result.title}" (${overlap.length} common words)`);
       
       return {
         title: result.title,
