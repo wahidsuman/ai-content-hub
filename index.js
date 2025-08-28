@@ -1407,7 +1407,7 @@ Or just talk to me naturally! Try:
         // Admin-only clear command
         await handleClearArticles(env, chatId);
       } else if (text === '/clean' || text === '/cleanup') {
-        // Clean broken articles with Unsplash/failed generation
+        // Clean broken articles with non-DALL-E images or failed generation
         await handleClearBrokenArticles(env, chatId);
       } else if (text.startsWith('/delete ')) {
         // Delete specific article by index or ID
@@ -2536,7 +2536,7 @@ async function handleThemeChange(env, chatId, text) {
   await sendMessage(env, chatId, `✅ Theme changed to ${config.theme}!`);
 }
 
-// Handle clearing broken articles with Unsplash/failed generation
+// Handle clearing broken articles with non-DALL-E images or failed generation
 async function handleClearBrokenArticles(env, chatId) {
   const articles = await env.NEWS_KV.get('articles', 'json') || [];
   
@@ -2545,15 +2545,15 @@ async function handleClearBrokenArticles(env, chatId) {
     return;
   }
   
-  // Filter out articles with Unsplash images or failed generation
+  // Filter out articles with non-DALL-E images or failed generation
   const cleanArticles = articles.filter(article => {
-    // Check for Unsplash in image credit
+    // Check for Unsplash in image credit (old images)
     if (article.image && article.image.credit && article.image.credit.toLowerCase().includes('unsplash')) {
-      return false; // Remove Unsplash images
+      return false; // Remove old Unsplash images
     }
-    // Check for Pexels in image credit
+    // Check for Pexels in image credit (old images)
     if (article.image && article.image.credit && article.image.credit.toLowerCase().includes('pexels')) {
-      return false; // Remove Pexels images
+      return false; // Remove old Pexels images
     }
     // Check for failed generation
     if (article.fullContent && article.fullContent.includes('Article generation failed')) {
@@ -2585,7 +2585,7 @@ async function handleClearBrokenArticles(env, chatId) {
 🧹 *Cleanup Complete!*
 
 Removed: ${removedCount} broken articles
-• Articles with Unsplash/Pexels images
+• Articles with old stock images (Unsplash/Pexels)
 • Failed article generations  
 • Placeholder images
 
@@ -2943,7 +2943,7 @@ async function sendAPIUsage(env, chatId) {
   
   // Image API usage
   const imageAPICallsToday = articlesToday * 2; // Assuming 2 API calls per article
-  const imageAPICostMonthly = 0; // Free tier for Unsplash/Pexels
+  const imageAPICostMonthly = articlesToday * 0.01 * 30; // DALL-E 3 HD costs $0.01 per image
   
   // Recommended optimizations
   const budgetRemaining = 20.00 - costMonthly;

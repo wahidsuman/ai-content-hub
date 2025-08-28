@@ -415,7 +415,7 @@ Your FULL capabilities:
     ✅ CONTENT MANAGEMENT:
     - Fetch and summarize news from various sources
     - Create and publish SEO-optimized articles
-    - Generate images with Unsplash/Pexels
+    - Generate HD images with DALL-E 3
     - Schedule posts and manage content calendar
     
     ✅ UI/UX CONTROL:
@@ -572,7 +572,7 @@ async function sendStatusMessage(env, chatId) {
 • Cloudflare Worker: ✅ Active
 • OpenAI API: ✅ Connected
 • Telegram Bot: ✅ Running
-• Unsplash Images: ✅ Configured
+• DALL-E 3 HD: ✅ Configured
 • KV Storage: ✅ Connected
 
 *Next Actions:*
@@ -930,24 +930,22 @@ async function serveWebsite(env) {
       let imageHtml = `<div class="img" style="background:var(--g${(index % 4) + 1})"></div>`;
       
       if (article.image && article.image.url) {
-        if (article.image.source === 'unsplash') {
-          imageHtml = `
-            <div class="img" style="background-image:url('${article.image.url}');background-size:cover;background-position:center;position:relative;">
-              <div style="position:absolute;bottom:2px;right:4px;font-size:9px;background:rgba(0,0,0,0.7);color:#fff;padding:2px 4px;border-radius:4px;">
-                <a href="${article.image.photographerUrl}" target="_blank" style="color:#fff;text-decoration:none;">${article.image.photographer}</a> / 
-                <a href="https://unsplash.com?utm_source=agaminews&utm_medium=referral" target="_blank" style="color:#fff;text-decoration:none;">Unsplash</a>
-              </div>
+              if (article.image.source === 'dalle') {
+        imageHtml = `
+          <div class="img" style="background-image:url('${article.image.url}');background-size:cover;background-position:center;position:relative;">
+            <div style="position:absolute;bottom:2px;right:4px;font-size:9px;background:rgba(0,0,0,0.7);color:#fff;padding:2px 4px;border-radius:4px;">
+              🎨 DALL-E 3 HD
             </div>
-          `;
-        } else if (article.image.source === 'pexels') {
-          imageHtml = `
-            <div class="img" style="background-image:url('${article.image.url}');background-size:cover;background-position:center;position:relative;">
-              <div style="position:absolute;bottom:2px;right:4px;font-size:9px;background:rgba(0,0,0,0.7);color:#fff;padding:2px 4px;border-radius:4px;">
-                <a href="${article.image.photographerUrl}" target="_blank" style="color:#fff;text-decoration:none;">${article.image.photographer}</a> / 
-                <a href="https://www.pexels.com" target="_blank" style="color:#fff;text-decoration:none;">Pexels</a>
-              </div>
+          </div>
+        `;
+      } else if (article.image.source === 'placeholder') {
+        imageHtml = `
+          <div class="img" style="background-image:url('${article.image.url}');background-size:cover;background-position:center;position:relative;">
+            <div style="position:absolute;bottom:2px;right:4px;font-size:9px;background:rgba(0,0,0,0.7);color:#fff;padding:2px 4px;border-radius:4px;">
+              Placeholder
             </div>
-          `;
+          </div>
+        `;
         } else if (article.image.url) {
           // Has image but no attribution needed (placeholder)
           imageHtml = `<div class="img" style="background-image:url('${article.image.url}');background-size:cover;background-position:center;"></div>`;
