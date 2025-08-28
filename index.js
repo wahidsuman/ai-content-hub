@@ -1213,6 +1213,13 @@ Or just talk to me naturally! Try:
       } else if (text === '/test') {
         // Test article generation
         await handleTestGeneration(env, chatId);
+      } else if (text === '/test-notify') {
+        // Test notification system
+        console.log('Testing notification system...');
+        await sendMessage(env, chatId, `🧪 *Testing Notification System*\n\nSending test messages...`);
+        const result1 = await sendMessage(env, chatId, `📝 Test Message 1: Basic text`);
+        const result2 = await sendMessage(env, chatId, `✅ Test Message 2: If you see this, notifications work!\n\nResult 1: ${result1}`);
+        console.log(`Test results: Message 1=${result1}, Message 2=${result2}`);
       } else {
         await handleNaturalLanguage(env, chatId, text);
       }
@@ -1229,7 +1236,15 @@ Or just talk to me naturally! Try:
 
 async function sendMessage(env, chatId, text, keyboard = null) {
   const token = env.TELEGRAM_BOT_TOKEN;
-  if (!token) return;
+  if (!token) {
+    console.error('TELEGRAM_BOT_TOKEN not set, cannot send message');
+    return;
+  }
+  
+  if (!chatId) {
+    console.error('No chatId provided, cannot send message');
+    return;
+  }
   
   const url = `https://api.telegram.org/bot${token}/sendMessage`;
   const body = {
@@ -1239,11 +1254,25 @@ async function sendMessage(env, chatId, text, keyboard = null) {
     reply_markup: keyboard ? { inline_keyboard: keyboard.inline_keyboard } : undefined
   };
   
-  await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    
+    if (!response.ok) {
+      const error = await response.text();
+      console.error(`Telegram API error: ${response.status} - ${error}`);
+      throw new Error(`Telegram API error: ${response.status}`);
+    }
+    
+    console.log(`Message sent successfully to ${chatId}`);
+    return true;
+  } catch (error) {
+    console.error(`Failed to send Telegram message: ${error.message}`);
+    return false;
+  }
 }
 
 async function sendMenu(env, chatId) {
@@ -2664,16 +2693,25 @@ async function fetchLatestNews(env) {
     console.log(`Articles saved: ${verifyArticles.length} total (${allArticles.length} new + ${existingArticlesForSave.length} existing)`);
     
     // Send individual Telegram notifications for each new article
+    console.log(`Notification check: adminChat=${adminChat}, token=${!!env.TELEGRAM_BOT_TOKEN}, articles=${allArticles.length}`);
+    
     if (adminChat && env.TELEGRAM_BOT_TOKEN && allArticles.length > 0) {
-      console.log(`Sending notifications for ${allArticles.length} new articles...`);
+      console.log(`Sending notifications for ${allArticles.length} new articles to chat ${adminChat}...`);
       
       // Send summary first
-      await sendMessage(env, adminChat, 
+      const summaryResult = await sendMessage(env, adminChat, 
         `📰 *${allArticles.length} New Articles Published!*\n\n` +
         `📊 Total articles: ${verifyArticles.length}\n` +
         `🔗 View: https://agaminews.in\n` +
         `⏰ Time: ${new Date().toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})}`
       );
+      
+      console.log(`Summary notification sent: ${summaryResult}`);
+      
+      if (!summaryResult) {
+        console.error('Failed to send summary notification, skipping individual notifications');
+        return;
+      }
       
       // Send individual article notifications
       for (let i = 0; i < allArticles.length; i++) {
