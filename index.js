@@ -3017,11 +3017,15 @@ async function fetchLatestNewsAuto(env, articlesToFetch = 3, priority = 'normal'
         break;
     }
     
-    // Fetch from RSS feeds
+    // Fetch from RSS feeds with topic diversity
     const allArticles = [];
+    const processedTitles = new Set(); // Track processed topics to avoid duplicates
     const articlesPerFeed = Math.ceil(articlesToFetch / rssSources.length);
     
-    for (const feedUrl of rssSources) {
+    // Shuffle RSS sources for variety
+    const shuffledSources = [...rssSources].sort(() => Math.random() - 0.5);
+    
+    for (const feedUrl of shuffledSources) {
       if (allArticles.length >= articlesToFetch) break;
       
       try {
@@ -3029,15 +3033,28 @@ async function fetchLatestNewsAuto(env, articlesToFetch = 3, priority = 'normal'
         const text = await response.text();
         const items = text.match(/<item>([\s\S]*?)<\/item>/g) || [];
         
-        for (let i = 0; i < Math.min(articlesPerFeed, items.length); i++) {
+        // Shuffle items for variety
+        const shuffledItems = [...items].sort(() => Math.random() - 0.5);
+        
+        for (let i = 0; i < Math.min(articlesPerFeed * 2, shuffledItems.length); i++) {
           if (allArticles.length >= articlesToFetch) break;
           
-          const item = items[i];
+          const item = shuffledItems[i];
           const title = (item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) || 
                         item.match(/<title>(.*?)<\/title>/))?.[1];
           const description = (item.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/) || 
                               item.match(/<description>(.*?)<\/description>/))?.[1];
           const link = item.match(/<link>(.*?)<\/link>/)?.[1];
+          
+          // Check for duplicate topics
+          if (title) {
+            const titleWords = title.toLowerCase().split(' ').slice(0, 5).join(' ');
+            if (processedTitles.has(titleWords)) {
+              console.log(`[AUTO] Skipping duplicate topic: ${title}`);
+              continue; // Skip similar titles
+            }
+            processedTitles.add(titleWords);
+          }
           
           if (title && description) {
             // Clean HTML from description
@@ -3238,6 +3255,7 @@ async function fetchLatestNews(env) {
     ];
     
     let allArticles = [];
+    const processedTopics = new Set(); // Track topics to avoid duplicates
     
     // Notify progress
     const adminChat = await env.NEWS_KV.get('admin_chat');
@@ -3245,9 +3263,12 @@ async function fetchLatestNews(env) {
     
     // Fetch from each feed - LIMIT TO FIRST 3 FEEDS FOR QUICK RESPONSE
     const feedsToProcess = feeds.slice(0, 3); // Only process first 3 feeds for speed
-    console.log(`[RSS] Processing ${feedsToProcess.length} feeds for manual fetch`);
     
-    for (const feed of feedsToProcess) {
+    // Shuffle feeds for variety
+    const shuffledFeeds = [...feedsToProcess].sort(() => Math.random() - 0.5);
+    console.log(`[RSS] Processing ${shuffledFeeds.length} feeds with topic diversity`);
+    
+    for (const feed of shuffledFeeds) {
       feedCount++;
       console.log(`[RSS] Fetching from ${feed.source} (${feedCount}/${feedsToProcess.length}): ${feed.url}`);
       
@@ -3300,6 +3321,14 @@ async function fetchLatestNews(env) {
           }
           
           if (title && description) {
+            // Check for duplicate topics
+            const titleWords = title.toLowerCase().split(' ').slice(0, 5).join(' ');
+            if (processedTopics.has(titleWords)) {
+              console.log(`[RSS] Skipping duplicate topic: ${title}`);
+              continue;
+            }
+            processedTopics.add(titleWords);
+            
             // Don't get image yet - wait for original title
             let image = null;
             
@@ -4262,19 +4291,8 @@ async function getArticleImage(title, category, env) {
       }
     }
     
-    // NO FALLBACK IMAGES - Always return DALL-E or error
-    console.log('[IMAGE] DALL-E generation completed or failed, no fallbacks used');
-    
-    // Return error if we reached here
-    return {
-      url: `https://via.placeholder.com/1792x1024/FF0000/FFFFFF?text=${encodeURIComponent('Image Generation Failed')}`,
-      credit: 'Generation Error',
-      type: 'error',
-      isRelevant: false
-    };
-    
-    // ONLY DALL-E - NO STOCK PHOTOS
-    console.log('[IMAGE] Attempting emergency DALL-E generation for category:', category);
+    // NO FALLBACK IMAGES - Try emergency DALL-E generation
+    console.log('[IMAGE] Primary DALL-E failed, attempting emergency generation for category:', category);
     
     const emergencyPrompts = {
       'Technology': 'BREAKING TECH NEWS: Futuristic AI visualization, glowing circuit boards, holographic displays, quantum computing, digital transformation, neon tech elements, urgent innovation update',
