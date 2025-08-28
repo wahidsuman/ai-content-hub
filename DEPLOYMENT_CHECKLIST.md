@@ -109,8 +109,8 @@ https://agaminews.in/force-cron - Force cron
 
 ## 📊 Success Metrics
 
-- ✅ 8 articles published daily
-- ✅ Cost under $10/month
+- ✅ 15 articles published daily
+- ✅ Cost under $20/month
 - ✅ 100% original content
 - ✅ Relevant images for each article
 - ✅ SEO-friendly URLs
@@ -131,8 +131,8 @@ https://agaminews.in/force-cron - Force cron
 ## 💡 Final Notes
 
 1. **Budget**: $0.04 per article (GPT-4 + DALL-E)
-2. **Daily Limit**: 8 articles (3-hourly schedule)
-3. **Monthly Cost**: ~$9.60 (240 articles)
+2. **Daily Limit**: 15 articles (3-hourly schedule)
+3. **Monthly Cost**: ~$18.00 (450 articles)
 4. **Cron Schedule**: 00:00, 03:00, 06:00, 09:00, 12:00, 15:00, 18:00, 21:00 IST
 
 **System is production-ready when all checks pass!** ✅
