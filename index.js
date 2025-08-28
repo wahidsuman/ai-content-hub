@@ -3179,31 +3179,84 @@ async function getArticleImage(title, category, env) {
       }
     }
     
-    // ALWAYS try DALL-E 3 for article-specific images (no more generic photos!)
-    if (env.OPENAI_API_KEY) {
+    // FORCE DALL-E 3 for ULTRA-SPECIFIC images (80% of articles for quality)
+    if (env.OPENAI_API_KEY && Math.random() > 0.2) { // Use for 80% of articles
       try {
-        // Extract ALL context from the article for perfect image generation
+        // Extract EVERYTHING from the title for perfect image generation
         const hasNumbers = /\d+/.test(title);
         const numbers = title.match(/\d+\.?\d*/g) || [];
         const hasCurrency = /₹|Rs|Crore|Lakh|Billion|Million/i.test(title);
         const hasPercentage = /%/.test(title);
         
-        // Determine if we need a photo-edit style or full generation
-        const needsPhotoEdit = personalityQuery || titleLower.includes('modi') || titleLower.includes('rahul') || 
-                               titleLower.includes('shah') || titleLower.includes('kejriwal') || titleLower.includes('yogi');
+        // Extract key entities and actions
+        const action = title.match(/(announces?|launches?|meets?|visits?|opens?|closes?|rises?|falls?|crashes?|surges?|bans?|approves?)/i)?.[0] || '';
+        const location = title.match(/(Delhi|Mumbai|Bangalore|Chennai|Kolkata|India|Pakistan|US|China|Parliament|Court|Airport|Hospital|School)/i)?.[0] || '';
         
         let imagePrompt = '';
         
-        // Create ARTICLE-SPECIFIC prompts (not generic!)
-        if (needsPhotoEdit) {
-          // Photo-editing style for real people
-          imagePrompt = `Professional news photograph: ${personalityQuery || title}. `;
-          if (titleLower.includes('parliament')) imagePrompt += 'Speaking in Indian Parliament, official setting. ';
-          if (titleLower.includes('rally')) imagePrompt += 'At political rally with crowds and banners. ';
-          if (titleLower.includes('meet')) imagePrompt += 'In official meeting room, formal setting. ';
-          if (hasCurrency) imagePrompt += `With visual representation of ₹${numbers[0]} amount. `;
-          imagePrompt += 'Photojournalistic style, sharp focus, news agency quality photo.';
-        } else {
+        // ULTRA-SPECIFIC PROMPTS based on exact news type
+        
+        // POLITICAL FIGURES - Photo-realistic editing style
+        if (titleLower.includes('modi')) {
+          imagePrompt = `Photorealistic news photo: Narendra Modi in formal attire at ${location || 'PMO Delhi'}. ${action ? `Action: ${action}` : 'Speaking at podium'}. ${hasCurrency ? `Digital display showing ₹${numbers[0]} crore in background.` : ''} Professional Reuters/PTI style photography. Include Indian flag. Shot with 85mm lens, sharp focus on Modi, blurred background.`;
+        }
+        else if (titleLower.includes('rahul') || titleLower.includes('gandhi')) {
+          imagePrompt = `Photorealistic news photo: Rahul Gandhi at ${location || 'Congress headquarters'}. ${action === 'announces' ? 'Making announcement at press conference' : 'Addressing gathering'}. ${numbers.length ? `Banner showing ${numbers[0]} figure` : ''}. News agency quality, professional lighting.`;
+        }
+        else if (titleLower.includes('kejriwal')) {
+          imagePrompt = `Photorealistic news photo: Arvind Kejriwal at ${location || 'Delhi Secretariat'}. ${action || 'Speaking'} with Delhi government logo visible. ${hasCurrency ? `Chart showing ₹${numbers[0]} budget` : ''}. Press conference setup, multiple microphones.`;
+        }
+        
+        // SPECIFIC NEWS SCENARIOS - Exact visualization
+        else if (titleLower.includes('visa') || titleLower.includes('passport')) {
+          imagePrompt = `Photorealistic image: ${title}. Show: Indian passport with ${location || 'US'} visa stamp, visa application form partially visible, embassy building in background. ${numbers.length ? `Processing time ${numbers[0]} days shown on document` : ''}. Official stamps, holographic security features visible. Shot on desk with pen.`;
+        }
+        else if (titleLower.includes('railway') || titleLower.includes('train')) {
+          imagePrompt = `Indian Railways news photo: ${title}. ${location || 'New Delhi Railway Station'}, ${titleLower.includes('vande bharat') ? 'Vande Bharat Express train' : 'Indian Railways train'}. ${numbers.length ? `Platform ${numbers[0]} visible, speed/fare display showing ${numbers[1] || '160kmph'}` : ''}. Passengers, railway officials, platform scene. Professional railway journalism photography.`;
+        }
+        else if (titleLower.includes('airport') || titleLower.includes('flight')) {
+          imagePrompt = `Aviation news photo: ${title}. ${location || 'IGI Airport Delhi'} terminal, ${action || 'departure board'}. ${numbers.length ? `Flight number ${numbers[0]} on display` : ''}. Aircraft visible through windows, passengers with luggage, airline counters. Airport documentary style.`;
+        }
+        else if (titleLower.includes('court') || titleLower.includes('verdict') || titleLower.includes('judge')) {
+          imagePrompt = `Legal news photo: ${title}. ${location || 'Supreme Court of India'} building exterior or courtroom. Lady Justice statue, lawyers in black robes. ${numbers.length ? `Case number ${numbers[0]} on document` : ''}. Serious judicial atmosphere, no faces if sensitive case.`;
+        }
+        else if (titleLower.includes('farmer') || titleLower.includes('agriculture') || titleLower.includes('crop')) {
+          imagePrompt = `Agricultural news photo: ${title}. ${location || 'Punjab/Haryana'} farmland, ${action || 'farmers working'}. ${numbers.length ? `${numbers[0]} quintal yield display or MSP ₹${numbers[1]} on banner` : ''}. Tractors, crops, rural Indian setting. Documentary photography style.`;
+        }
+        else if (titleLower.includes('election') || titleLower.includes('voting') || titleLower.includes('poll')) {
+          imagePrompt = `Election news photo: ${title}. ${location || 'polling booth'}, EVM machines, voters in queue. ${numbers.length ? `${numbers[0]}% turnout on display board` : ''}. Ink-marked fingers, election officials, democracy in action. Photojournalistic coverage.`;
+        }
+        else if (titleLower.includes('temple') || titleLower.includes('mosque') || titleLower.includes('church')) {
+          imagePrompt = `Religious site news photo: ${title}. ${location || 'religious site'} architecture, ${action || 'devotees visiting'}. ${numbers.length ? `${numbers[0]} visitors count on board` : ''}. Respectful religious photography, architectural details, cultural elements.`;
+        }
+        else if (titleLower.includes('student') || titleLower.includes('exam')) {
+          imagePrompt = `Photorealistic scene: ${title}. Indian students in ${location || 'examination hall'}, ${action || 'writing exam'}. ${numbers.length ? `${numbers[0]} visible on board/banner` : ''}. School/college uniforms, answer sheets visible, invigilator in background. Natural lighting from windows.`;
+        }
+        else if (titleLower.includes('accident') || titleLower.includes('crash')) {
+          imagePrompt = `Professional news photo: ${title}. Emergency response scene at ${location || 'accident site'}. Ambulance, police vehicles with flashing lights. ${numbers.length ? `${numbers[0]} casualties mentioned on news ticker` : ''}. Serious documentary style, respectful distance, no graphic content.`;
+        }
+        else if (titleLower.includes('market') || titleLower.includes('sensex') || titleLower.includes('nifty')) {
+          imagePrompt = `Financial news visualization: ${title}. BSE/NSE trading floor or digital display showing Sensex at ${numbers[0] || '50000'} points. ${hasPercentage ? `${numbers.find(n => n.includes('%')) || '5%'} change prominently displayed` : ''}. Green arrows for rise, red for fall. Multiple screens, traders visible. Bloomberg terminal style.`;
+        }
+        else if (titleLower.includes('budget') || titleLower.includes('economy')) {
+          imagePrompt = `Official government photo: ${title}. Finance Minister holding budget briefcase at North Block steps. ${hasCurrency ? `₹${numbers[0]} lakh crore budget figure on briefcase or backdrop` : ''}. Indian flag, government officials, media photographers. Golden hour lighting.`;
+        }
+        else if (titleLower.includes('cricket') || titleLower.includes('match')) {
+          imagePrompt = `Sports photography: ${title}. Cricket action at ${location || 'Wankhede Stadium'}. Scoreboard showing ${numbers.length ? `${numbers[0]}/${numbers[1] || '3'}` : 'IND 250/3'}. Players in Indian blue jersey, crowd with Indian flags. Dynamic action shot, ball in motion.`;
+        }
+        else if (titleLower.includes('bollywood') || titleLower.includes('film')) {
+          imagePrompt = `Entertainment news photo: ${title}. ${location || 'Mumbai'} film event, red carpet or movie poster launch. ${hasCurrency ? `₹${numbers[0]} crore box office collection displayed` : ''}. Paparazzi, film posters, spotlights. Glamorous but journalistic style.`;
+        }
+        else if (titleLower.includes('rain') || titleLower.includes('flood') || titleLower.includes('weather')) {
+          imagePrompt = `Weather news photo: ${title}. ${location || 'Indian city'} during ${titleLower.includes('flood') ? 'flooding with water-logged streets' : 'heavy rainfall'}. ${numbers.length ? `${numbers[0]}mm rainfall data on screen` : ''}. People with umbrellas, vehicles in water, weather department officials. Documentary style.`;
+        }
+        else if (titleLower.includes('technology') || titleLower.includes('ai') || titleLower.includes('startup')) {
+          imagePrompt = `Tech news visualization: ${title}. ${location || 'Bangalore tech park'}, modern office with ${action || 'product launch'}. ${numbers.length ? `${numbers[0]} funding amount on presentation screen` : ''}. Laptops, code on screens, startup team. Clean, modern, well-lit tech aesthetic.`;
+        }
+        else if (titleLower.includes('hospital') || titleLower.includes('health') || titleLower.includes('vaccine')) {
+          imagePrompt = `Healthcare news photo: ${title}. ${location || 'AIIMS Delhi'} hospital setting, ${action || 'medical procedure'}. ${numbers.length ? `${numbers[0]} beds/doses visible on display` : ''}. Doctors in white coats, medical equipment, sanitized environment. Professional medical photography.`;
+        }
+        else {
           // ULTRA-SPECIFIC image generation based on exact article content
           
           // Business/Finance specific
@@ -3271,19 +3324,41 @@ async function getArticleImage(title, category, env) {
             imagePrompt = `Football/ISL match: ${title}. Show goal celebration, ${numbers[0]}-${numbers[1]} score, Indian football fans.`;
           }
           
-          // Default with context extraction
+          // FALLBACK: Still create EXACT image based on title analysis
           else {
-            const contextClues = [];
-            if (hasNumbers) contextClues.push(`prominently showing ${numbers[0]} figure`);
-            if (hasCurrency) contextClues.push(`₹${numbers[0]} amount visible`);
-            if (hasPercentage) contextClues.push(`${numbers[0]}% displayed graphically`);
+            // Build hyper-specific prompt from title components
+            const components = [];
             
-            imagePrompt = `Create exact visual representation for this specific news: ${title}. 
-            ${contextClues.length > 0 ? contextClues.join(', ') + '. ' : ''}
-            Show specific elements from the headline, not generic imagery. 
-            Indian context, photojournalistic quality, highly relevant to the exact story.`;
+            // Add location context
+            if (location) components.push(`Location: ${location} prominently featured`);
+            
+            // Add action context
+            if (action) components.push(`Main action: ${action} being performed`);
+            
+            // Add numerical context
+            if (hasNumbers) components.push(`Display showing: ${numbers.join(', ')}`);
+            if (hasCurrency) components.push(`₹${numbers[0]} amount visible on screen/banner`);
+            if (hasPercentage) components.push(`Graph/chart showing ${numbers[0]}% change`);
+            
+            // Determine photo style based on category
+            let style = 'Professional news photography';
+            if (category === 'Business') style = 'Financial news visualization, Bloomberg style';
+            if (category === 'Technology') style = 'Modern tech photography, clean aesthetic';
+            if (category === 'Sports') style = 'Dynamic sports photography, action shot';
+            if (category === 'Entertainment') style = 'Entertainment news, paparazzi style';
+            
+            imagePrompt = `Create EXACT photorealistic news image for: "${title}". 
+            ${components.join('. ')}. 
+            Indian context with local elements (Indian flags, rupee symbols, local architecture). 
+            ${style}. 
+            Include text overlays or digital displays showing the exact headline information. 
+            Shot with professional camera, news agency quality. 
+            CRITICAL: Image must tell the EXACT story from the headline, not a generic ${category} photo.`;
           }
         }
+        
+        // Log the prompt for debugging
+        console.log(`DALL-E Prompt for "${title}":\n${imagePrompt}\n`);
         
         const response = await fetch('https://api.openai.com/v1/images/generations', {
           method: 'POST',
