@@ -1597,7 +1597,7 @@ Or use /menu for all options! 🚀
 // New function: Handle fetch news
 async function handleFetchNews(env, chatId) {
   // Send single initial message
-  await sendMessage(env, chatId, `🔄 *Fetching 1 Article...*\n\n⏳ This takes 30-60 seconds for quality content...`);
+  await sendMessage(env, chatId, `🔄 *Fetching 2 Articles...*\n\n⏳ This takes 60-90 seconds for quality content...`);
   
   try {
     console.log('[FETCH] Starting news fetch from Telegram command...');
@@ -3154,15 +3154,16 @@ async function fetchLatestNews(env) {
     const adminChat = await env.NEWS_KV.get('admin_chat');
     let feedCount = 0;
     
-    // Fetch from each feed
-    for (const feed of feeds) {
+    // Fetch from each feed - LIMIT TO FIRST 3 FEEDS FOR QUICK RESPONSE
+    const feedsToProcess = feeds.slice(0, 3); // Only process first 3 feeds for speed
+    for (const feed of feedsToProcess) {
       feedCount++;
-      console.log(`Fetching from ${feed.source}... (${feedCount}/${feeds.length})`);
+      console.log(`Fetching from ${feed.source}... (${feedCount}/${feedsToProcess.length})`);
       
-      // Send progress update every 3 feeds
-      if (feedCount % 3 === 0 && adminChat && env.TELEGRAM_BOT_TOKEN) {
-        await sendMessage(env, adminChat, `📡 Progress: Fetched ${feedCount}/${feeds.length} RSS feeds...`);
-      }
+      // Skip progress updates for faster processing
+      // if (feedCount % 3 === 0 && adminChat && env.TELEGRAM_BOT_TOKEN) {
+      //   await sendMessage(env, adminChat, `📡 Progress: Fetched ${feedCount}/${feeds.length} RSS feeds...`);
+      // }
       
       try {
         const response = await fetch(feed.url);
@@ -3175,7 +3176,7 @@ async function fetchLatestNews(env) {
         // Enhanced RSS parsing
         const items = text.match(/<item>([\s\S]*?)<\/item>/g) || [];
         
-        for (let i = 0; i < Math.min(3, items.length); i++) { // 3 articles per feed for better coverage
+        for (let i = 0; i < Math.min(1, items.length); i++) { // 1 article per feed for faster processing
           const item = items[i];
           // Extract with more flexible regex that handles multiline
           let title = (item.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '';
@@ -3236,10 +3237,10 @@ async function fetchLatestNews(env) {
             let originalTitle = '';
             
             try {
-              // Create original article with new headline
+              // Create original article with new headline - REDUCED TIMEOUT
               const researchResult = await Promise.race([
                 generateOriginalArticle(article.sourceMaterial, env),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Article generation timeout')), 30000))
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Article generation timeout')), 15000)) // 15 seconds
               ]);
               
               fullArticle = researchResult.content;
@@ -3276,6 +3277,19 @@ async function fetchLatestNews(env) {
     
     if (allArticles.length === 0) {
       console.error('No articles fetched from any RSS feed');
+      // Send error notification to admin
+      if (adminChat && env.TELEGRAM_BOT_TOKEN) {
+        await sendMessage(env, adminChat, 
+          `❌ *Fetch Failed*\n\n` +
+          `Reason: No articles could be generated\n` +
+          `Feeds checked: ${feedsToProcess.length}\n` +
+          `Possible issues:\n` +
+          `• RSS feeds down\n` +
+          `• OpenAI API issues\n` +
+          `• Network timeout\n\n` +
+          `Try: /fetch again or check /health`
+        );
+      }
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'No articles fetched from RSS feeds',
