@@ -222,7 +222,7 @@ export default {
                 `📰 *Source:* ${article.source || 'RSS Feed'}\n` +
                 `📸 *Image:* ${article.image?.type === 'generated' ? '🎨 AI Generated' : article.image?.type === 'personality' ? '👤 Real Photo' : '📷 Stock Photo'}\n` +
                 `📊 *Quality:* ${article.fullContent && article.fullContent.length > 3000 ? '✅ High' : '⚠️ Medium'} (${article.fullContent ? article.fullContent.length : 0} chars)\n` +
-                `🔗 *Link:* https://agaminews.in/article/${i}\n\n` +
+                `🔗 *Link:* https://agaminews.in${article.url || `/article/${i}`}\n\n` +
                 `_Auto-published at ${new Date().toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})}_`
               );
               
@@ -1247,13 +1247,15 @@ async function sendMessage(env, chatId, text, keyboard = null) {
   const token = env.TELEGRAM_BOT_TOKEN;
   if (!token) {
     console.error('TELEGRAM_BOT_TOKEN not set, cannot send message');
-    return;
+    return false;
   }
   
   if (!chatId) {
     console.error('No chatId provided, cannot send message');
-    return;
+    return false;
   }
+  
+  console.log(`[TELEGRAM] Sending message to chat ${chatId}, text length: ${text.length}`);
   
   const url = `https://api.telegram.org/bot${token}/sendMessage`;
   const body = {
@@ -1272,7 +1274,7 @@ async function sendMessage(env, chatId, text, keyboard = null) {
     
     if (!response.ok) {
       const error = await response.text();
-      console.error(`Telegram API error: ${response.status} - ${error}`);
+      console.error(`[TELEGRAM] API error: ${response.status} - ${error}`);
       throw new Error(`Telegram API error: ${response.status}`);
     }
     
@@ -2415,52 +2417,78 @@ async function fetchLatestNewsAuto(env, articlesToFetch = 3, priority = 'normal'
               category = 'Technology';
             }
             
-            // Generate full article with GPT-3.5
-            let fullContent = '';
-            try {
-              fullContent = await generateFullArticle(
-                { title, category },
-                cleanDesc,
-                env
-              );
-              
-              // Check if we got generic content (fallback template)
-              if (fullContent.includes('This development is particularly significant')) {
-                console.log('Warning: Generic content detected, OpenAI may have failed');
-                // Skip this article if it's generic
-                continue;
-              }
-            } catch (error) {
-              console.error('Article generation failed:', error);
-              continue; // Skip failed articles
-            }
-            
-            // Get article-specific image
-            const imageData = await getArticleImage(title, category, env);
-            
-            // Check if image is generic
-            if (imageData?.credit?.includes('Unsplash') && !imageData?.isRelevant) {
-              console.log('Warning: Generic image detected for:', title);
-            }
-            
-            allArticles.push({
-              id: `auto-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              title: title,
-              preview: fullContent.substring(0, 500),
-              fullContent: fullContent,
-              category: category,
+            // Create source material for original article generation
+            const sourceMaterial = {
+              originalTitle: title,
+              description: cleanDesc,
               source: feedUrl.includes('timesofindia') ? 'Times of India' :
                      feedUrl.includes('thehindu') ? 'The Hindu' :
                      feedUrl.includes('ndtv') ? 'NDTV' :
                      feedUrl.includes('economictimes') ? 'Economic Times' :
                      feedUrl.includes('moneycontrol') ? 'Moneycontrol' : 'News Agency',
               link: link,
+              category: category
+            };
+            
+            // Create article structure with proper ID
+            const article = {
+              sourceMaterial: sourceMaterial,
+              id: generateArticleId(), // 6-digit ID like NDTV
+              slug: '', // Will be generated from final title
+              title: '', // Will be created by AI
+              preview: '', // Will be filled with article beginning
+              category: category,
+              source: 'AgamiNews Research Team',
+              originalSourceLink: link,
+              image: null,
               timestamp: Date.now(),
               views: 0,
-              image: imageData,
-              autoPublished: true,
-              priority: priority
-            });
+              date: getTimeAgo(allArticles.length),
+              trending: Math.random() > 0.6,
+              fullContent: null,
+              autoPublished: true
+            };
+            
+            // Generate COMPLETELY ORIGINAL article with research
+            console.log(`[AUTO] Researching and creating original article about: ${title}`);
+            let fullArticle = '';
+            let originalTitle = '';
+            
+            try {
+              // Create original article with new headline
+              const researchResult = await Promise.race([
+                generateOriginalArticle(sourceMaterial, env),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Article generation timeout')), 30000))
+              ]);
+              
+              fullArticle = researchResult.content;
+              originalTitle = researchResult.title;
+              
+              console.log(`[AUTO] Created original article: "${originalTitle}" (${fullArticle.length} chars)`);
+              article.fullContent = fullArticle;
+              article.title = originalTitle; // Use AI-generated original title
+              article.slug = generateSlug(originalTitle); // Generate SEO-friendly slug
+              article.url = `/${article.category.toLowerCase()}-news/${article.slug}-${article.id}`; // Full URL path
+              
+              // Now get image based on the ORIGINAL title (with 95% DALL-E usage)
+              article.image = await getArticleImage(originalTitle, category, env);
+              
+              // Check if we got generic content
+              if (fullArticle.includes('This development is particularly significant')) {
+                console.log('[AUTO] Warning: Generic content detected, skipping');
+                continue;
+              }
+              
+            } catch (genError) {
+              console.error(`[AUTO] Failed to generate article for ${title}:`, genError.message);
+              continue; // Skip failed articles
+            }
+            
+            // Extract first 500 chars of article as preview for homepage
+            const plainText = fullArticle.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+            article.preview = plainText.substring(0, 500) + '...';
+            
+            allArticles.push(article);
           }
         }
       } catch (feedError) {
