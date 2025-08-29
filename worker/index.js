@@ -1628,19 +1628,8 @@ async function handleNaturalLanguage(env, chatId, text) {
     await sendHelp(env, chatId);
   }
   else {
-    // AI-like response
-    await sendMessage(env, chatId, `
-Got it! You said: "${text}"
-
-I understand natural language! Try:
-• "Fetch latest news"
-• "Show me stats"
-• "What's our API cost?"
-• "Check SEO status"
-• "Is everything working?"
-
-Or use /menu for all options! 🚀
-    `);
+    // For any unrecognized text, show the menu
+    await sendMenu(env, chatId);
   }
 }
 
