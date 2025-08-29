@@ -1223,25 +1223,25 @@ async function serveWebsite(env) {
       </a>
     `;
     
-    // Build the HTML page - NO AI REFERENCES
+    // Build the HTML page - Professional News Website
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${seo.title || 'Agami News - Tech & Innovation Updates'}</title>
-<meta name="description" content="${seo.description || 'Latest technology news, cryptocurrency updates, and innovation insights.'}">
+<title>${seo.title || 'Agami News - Technology & Business News'}</title>
+<meta name="description" content="${seo.description || 'Latest technology news, cryptocurrency updates, and business insights from India and around the world.'}">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://agaminews.in/">
 <meta property="og:title" content="${seo.title || 'Agami News'}">
-<meta property="og:description" content="${seo.description || 'Your source for tech news and updates'}">
+<meta property="og:description" content="${seo.description || 'Your trusted source for tech and business news'}">
 <meta property="og:image" content="${seo.image || 'https://agaminews.in/og-image.jpg'}">
 <meta property="og:url" content="https://agaminews.in/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Agami News">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${seo.title || 'Agami News'}">
-<meta name="twitter:description" content="${seo.description || 'Tech news and updates'}">
+<meta name="twitter:description" content="${seo.description || 'Tech and business news'}">
 <meta name="twitter:image" content="${seo.image || 'https://agaminews.in/og-image.jpg'}">
 <!-- Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZW77WM2VPG"></script>
@@ -1260,7 +1260,7 @@ async function serveWebsite(env) {
   "@type": "WebSite",
   "name": "Agami News",
   "url": "https://agaminews.in",
-  "description": "Latest technology news, cryptocurrency updates, and innovation insights",
+  "description": "Latest technology and business news",
   "publisher": {
     "@type": "Organization",
     "name": "Agami News",
@@ -1269,30 +1269,235 @@ async function serveWebsite(env) {
 }
 </script>
 <style>
-  :root{
-    --bg:#0b1020;--text:#e8ecf2;--muted:#a8b1c7;--card:#121835;
-    --g1:linear-gradient(135deg,#7c3aed, #ef4444, #f59e0b);
-    --g2:linear-gradient(135deg,#06b6d4, #6366f1);
-    --g3:linear-gradient(135deg,#22c55e, #06b6d4);
-    --g4:linear-gradient(135deg,#f43f5e, #f97316);
-    --radius:18px;--shadow:0 12px 30px rgba(0,0,0,.25);
+  /* Professional News Website Design */
+  :root {
+    --primary: #1a1a1a;
+    --secondary: #2c3e50;
+    --accent: #e74c3c;
+    --text: #333333;
+    --light-gray: #f8f9fa;
+    --border: #dee2e6;
+    --white: #ffffff;
   }
-  *{box-sizing:border-box} body{margin:0;background:radial-gradient(1200px 600px at 10% -10%,#1a234a,transparent),var(--bg);color:var(--text);font:16px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
-  a{color:#7dd3fc;text-decoration:none}
-  .wrap{max-width:1024px;margin:auto;padding:18px}
   
-  /* Updated Navbar */
-  .navbar{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;margin:6px auto 12px;border-radius:999px;background:linear-gradient(90deg,#111936aa,#0c122d88);backdrop-filter:blur(8px);border:1px solid #ffffff18}
-  .brand{font-weight:800;font-size:20px;letter-spacing:.2px}
-  .nav-links{display:flex;align-items:center;gap:24px}
-  .nav-link{color:#dbeafe;font-size:14px;font-weight:600;transition:color .2s}
-  .nav-link:hover{color:#fff}
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
   
-  .grid{display:grid;gap:16px}
-  .hero{display:grid;gap:14px;grid-template-columns:1fr;align-items:center}
-  .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:#ffffff14;border:1px solid #ffffff1f;color:#dbeafe;font-size:12px}
-  .h1{font-size:clamp(28px,6vw,48px);line-height:1.1;margin:6px 0 4px;font-weight:900}
-  .lead{color:var(--muted);max-width:60ch}
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: var(--white);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+  
+  /* Professional Header */
+  .header {
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  
+  .header-top {
+    background: var(--primary);
+    color: var(--white);
+    padding: 8px 0;
+    font-size: 14px;
+  }
+  
+  .header-main {
+    padding: 20px 0;
+  }
+  
+  .logo {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--primary);
+    text-decoration: none;
+    letter-spacing: -1px;
+  }
+  
+  .logo span {
+    color: var(--accent);
+  }
+  
+  .nav {
+    background: var(--primary);
+    padding: 0;
+  }
+  
+  .nav-links {
+    display: flex;
+    gap: 0;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  
+  .nav-link {
+    color: var(--white);
+    padding: 12px 20px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background 0.3s;
+    display: block;
+  }
+  
+  .nav-link:hover {
+    background: var(--accent);
+  }
+  
+  /* Main Content Grid */
+  .main-content {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 30px;
+    margin-top: 30px;
+  }
+  
+  @media (max-width: 768px) {
+    .main-content {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  /* News Cards */
+  .news-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+  }
+  
+  .featured-article {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    padding: 20px;
+    background: var(--light-gray);
+    border-radius: 8px;
+    margin-bottom: 30px;
+  }
+  
+  @media (max-width: 768px) {
+    .featured-article {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  .article-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: transform 0.3s, box-shadow 0.3s;
+    cursor: pointer;
+  }
+  
+  .article-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  
+  .article-image {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+  }
+  
+  .article-content {
+    padding: 15px;
+  }
+  
+  .article-category {
+    display: inline-block;
+    padding: 4px 8px;
+    background: var(--accent);
+    color: var(--white);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    border-radius: 3px;
+    margin-bottom: 10px;
+  }
+  
+  .article-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 10px;
+    line-height: 1.3;
+  }
+  
+  .article-excerpt {
+    color: #666;
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 10px;
+  }
+  
+  .article-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #999;
+  }
+  
+  /* Sidebar */
+  .sidebar {
+    position: sticky;
+    top: 100px;
+  }
+  
+  .sidebar-widget {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .widget-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--accent);
+  }
+  
+  /* Footer */
+  .footer {
+    background: var(--primary);
+    color: var(--white);
+    padding: 40px 0 20px;
+    margin-top: 60px;
+  }
+  
+  .footer-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 30px;
+    margin-bottom: 30px;
+  }
+  
+  .footer-bottom {
+    text-align: center;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    font-size: 14px;
+  }
   .btn{display:inline-block;padding:12px 16px;border-radius:12px;font-weight:700}
   .btn-primary{background:var(--g2);color:#031022;box-shadow:var(--shadow)}
   .card{background:var(--card);border:1px solid #ffffff14;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
@@ -1336,19 +1541,34 @@ async function serveWebsite(env) {
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <!-- Updated Navbar with logo on left -->
-    <nav class="navbar">
-      <div class="brand">
-        🌈 ${seo.title || 'Agami News'}
-      </div>
-      <div class="nav-links">
-        <a href="#latest" class="nav-link">Latest</a>
-        <a href="#tech" class="nav-link">Tech</a>
-        <a href="#crypto" class="nav-link">Crypto</a>
-        <a href="#startups" class="nav-link">Startups</a>
-      </div>
-    </nav>
+
+<!-- Professional News Header -->
+<header class="header">
+  <div class="header-top">
+    <div class="container">
+      <span>${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+    </div>
+  </div>
+  <div class="header-main">
+    <div class="container">
+      <a href="/" class="logo">AGAMI<span>NEWS</span></a>
+    </div>
+  </div>
+  <nav class="nav">
+    <div class="container">
+      <ul class="nav-links">
+        <li><a href="/" class="nav-link">Home</a></li>
+        <li><a href="#tech" class="nav-link">Technology</a></li>
+        <li><a href="#crypto" class="nav-link">Cryptocurrency</a></li>
+        <li><a href="#ev" class="nav-link">Electric Vehicles</a></li>
+        <li><a href="/about" class="nav-link">About</a></li>
+        <li><a href="/contact" class="nav-link">Contact</a></li>
+      </ul>
+    </div>
+  </nav>
+</header>
+
+<div class="container">
 
     <!-- HERO -->
     <section class="hero">
