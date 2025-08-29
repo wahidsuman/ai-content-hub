@@ -4477,13 +4477,13 @@ async function getArticleImage(title, category, env) {
           console.error(`[DALL-E] API error: ${response.status} - ${response.statusText}`);
           console.error(`[DALL-E] Error details: ${errorText}`);
         }
-    } catch (error) {
-      console.error('[DALL-E] Final error in image generation:', error);
-      
-      // NO FALLBACK IMAGES - Try emergency DALL-E generation
-      console.log('[IMAGE] Primary DALL-E failed, attempting emergency generation for category:', category);
-    
-    const emergencyPrompts = {
+      } catch (error) {
+        console.error('[DALL-E] Final error in image generation:', error);
+        
+        // NO FALLBACK IMAGES - Try emergency DALL-E generation
+        console.log('[IMAGE] Primary DALL-E failed, attempting emergency generation for category:', category);
+        
+        const emergencyPrompts = {
       'Technology': 'BREAKING TECH NEWS: Futuristic AI visualization, glowing circuit boards, holographic displays, quantum computing, digital transformation, neon tech elements, urgent innovation update',
       'Business': 'MARKET ALERT: Stock market surge, financial graphs shooting upward, business success story, corporate breakthrough, economic boom visualization, money flow dynamics',
       'India': 'INDIA BREAKING NEWS: Modern Indian cityscape, vibrant colors, technological progress, cultural landmarks, developing nation success, urgent India update',
@@ -4532,7 +4532,7 @@ async function getArticleImage(title, category, env) {
       type: 'placeholder',
       isRelevant: false
     };
-    }
+  }
 }
 
 // Helper functions for entity extraction
