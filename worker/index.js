@@ -4938,8 +4938,6 @@ async function renderArticlePage(env, article, allArticles, request) {
             </h1>
             
             <div class="article-meta">
-                ${article.preview || article.description || 'Read the full story below.'}
-                <br><br>
                 <strong>Published Date:</strong> ${new Date(article.timestamp || Date.now()).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true })} IST &nbsp;&nbsp;&nbsp; <strong>By</strong> ${article.source || 'AgamiNews'}
             </div>
         </div>
@@ -5785,8 +5783,6 @@ async function serveArticle(env, request, pathname) {
             </h1>
             
             <div class="article-meta">
-                ${article.preview || article.description || 'Read the full story below.'}
-                <br><br>
                 <strong>Published Date:</strong> ${new Date(article.timestamp || Date.now()).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true })} IST &nbsp;&nbsp;&nbsp; <strong>By</strong> ${article.source || 'AgamiNews'}
             </div>
         </div>
