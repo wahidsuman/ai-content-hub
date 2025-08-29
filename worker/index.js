@@ -8,9 +8,69 @@ import { AIWebsiteManager } from './ai-manager.js';
 import { handleManagerCommands } from './telegram-commands.js';
 import { getPrivacyPolicy, getTermsOfService, getAboutPage, getContactPage, generateSitemap, getRobotsTxt } from './pages.js';
 
-// Version: 2.0 - DALL-E + Buttons + Analytics + Viral Headlines
+// Version: 2.1 - DALL-E + Buttons + Analytics + Viral Headlines + Full Google Integration
 // Deployed: ${new Date().toISOString()}
-// FORCE DEPLOYMENT - NEW CODE WITH ALL FEATURES
+// ALL PAGES HAVE GOOGLE ANALYTICS AND INDEXING TAGS
+
+// Helper function to generate Google tags for all pages
+function getGoogleTags(title = '', description = '', url = '', image = '') {
+  return `
+    <!-- Google SEO Meta Tags -->
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+    <meta name="googlebot" content="index, follow">
+    <meta name="description" content="${description}">
+    <link rel="canonical" href="${url || 'https://agaminews.in'}">
+    
+    <!-- Open Graph Tags -->
+    <meta property="og:title" content="${title}">
+    <meta property="og:description" content="${description}">
+    <meta property="og:url" content="${url}">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="${image || 'https://agaminews.in/og-default.jpg'}">
+    <meta property="og:site_name" content="Agami News">
+    
+    <!-- Twitter Card Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="${title}">
+    <meta name="twitter:description" content="${description}">
+    <meta name="twitter:image" content="${image}">
+    
+    <!-- Google Analytics GA4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZW77WM2VPG"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-ZW77WM2VPG', {
+        page_path: window.location.pathname,
+        page_title: '${title}',
+      });
+    </script>
+    
+    <!-- Google Search Console Verification -->
+    <meta name="google-site-verification" content="YOUR_VERIFICATION_CODE">
+    
+    <!-- Schema.org Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "NewsArticle",
+      "headline": "${title}",
+      "description": "${description}",
+      "url": "${url}",
+      "datePublished": "${new Date().toISOString()}",
+      "publisher": {
+        "@type": "Organization",
+        "name": "Agami News",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://agaminews.in/logo.png"
+        }
+      }
+    }
+    </script>
+  `;
+}
 export default {
   // Main request handler
   async fetch(request, env, ctx) {
