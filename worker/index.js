@@ -151,9 +151,11 @@ async function handleTelegram(request, env) {
       const text = update.message.text;
       const firstName = update.message.from.first_name || 'User';
       
-      // Security: Only respond to authorized user
-      if (chatId.toString() !== env.YOUR_TELEGRAM_ID) {
-        return new Response('Unauthorized', { status: 403 });
+      // Admin management - first user becomes admin
+      let adminChat = await env.NEWS_KV.get('admin_chat');
+      if (!adminChat) {
+        await env.NEWS_KV.put('admin_chat', String(chatId));
+        adminChat = String(chatId);
       }
       
       // Handle AI Manager commands
@@ -161,6 +163,43 @@ async function handleTelegram(request, env) {
           text.startsWith('/performance') || text.startsWith('/budget') ||
           text.startsWith('/suggestions') || text.startsWith('/schedule')) {
         await handleManagerCommands(env, chatId, text);
+        return new Response('OK');
+      }
+      
+      // Handle admin commands
+      if (text === '/admin' || text === '/whoami') {
+        const isAdmin = String(chatId) === String(adminChat);
+        await sendMessage(env, chatId, `👤 *Your Status*\n\nChat ID: \`${chatId}\`\nAdmin: ${isAdmin ? '✅ Yes' : '❌ No'}\n\n${!isAdmin ? 'Use \`/setadmin agami2024\` to become admin' : 'You have full access!'}`);
+        return new Response('OK');
+      } else if (text.startsWith('/setadmin')) {
+        const secret = text.split(' ')[1];
+        if (secret === 'agami2024') {
+          await env.NEWS_KV.put('admin_chat', String(chatId));
+          await sendMessage(env, chatId, '✅ You are now the admin!');
+        } else {
+          await sendMessage(env, chatId, '❌ Invalid secret. Use: \`/setadmin agami2024\`');
+        }
+        return new Response('OK');
+      } else if (text.startsWith('/delete')) {
+        // Delete article with fixed authorization
+        if (String(chatId) !== String(await env.NEWS_KV.get('admin_chat'))) {
+          await sendMessage(env, chatId, `❌ Unauthorized. Use \`/setadmin agami2024\` first.`);
+        } else {
+          const articleNum = text.split(' ')[1];
+          if (!articleNum) {
+            await sendMessage(env, chatId, '❌ Usage: \`/delete 0\`');
+          } else {
+            const articles = await env.NEWS_KV.get('articles', 'json') || [];
+            const index = parseInt(articleNum);
+            if (articles[index]) {
+              articles.splice(index, 1);
+              await env.NEWS_KV.put('articles', JSON.stringify(articles));
+              await sendMessage(env, chatId, `✅ Deleted article #${index}`);
+            } else {
+              await sendMessage(env, chatId, `❌ Article #${articleNum} not found`);
+            }
+          }
+        }
         return new Response('OK');
       }
       
