@@ -2,6 +2,7 @@
 // This manages your entire website through AI and Telegram
 // Last updated: December 2024 - Full functionality with natural language
 // Supports both commands and natural conversation
+// Deploy triggered: Admin commands and DALL-E integration fixed
 
 import { AIWebsiteManager } from './ai-manager.js';
 import { handleManagerCommands } from './telegram-commands.js';
