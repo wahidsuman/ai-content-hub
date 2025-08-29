@@ -713,12 +713,12 @@ async function serveArticle(env, articleId) {
 <meta name="twitter:description" content="${article.seo?.metaDescription || ''}">
 <meta name="twitter:image" content="${article.image?.url || 'https://agaminews.in/og-default.jpg'}">
 <!-- Google Analytics -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-ZW77WM2VPG"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
-  gtag('config', 'G-XXXXXXXXXX');
+  gtag('config', 'G-ZW77WM2VPG');
 </script>
 <!-- Google Search Console Verification -->
 <meta name="google-site-verification" content="YOUR_VERIFICATION_CODE">
@@ -867,12 +867,12 @@ async function servePage(env, title, content) {
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://agaminews.in${title.includes('Privacy') ? '/privacy' : title.includes('Terms') ? '/terms' : '/'}">
 <!-- Google Analytics -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-ZW77WM2VPG"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
-  gtag('config', 'G-XXXXXXXXXX');
+  gtag('config', 'G-ZW77WM2VPG');
 </script>
 <style>
   :root{
@@ -1067,12 +1067,12 @@ async function serveWebsite(env) {
 <meta name="twitter:description" content="${seo.description || 'Tech news and updates'}">
 <meta name="twitter:image" content="${seo.image || 'https://agaminews.in/og-image.jpg'}">
 <!-- Google Analytics -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-ZW77WM2VPG"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
-  gtag('config', 'G-XXXXXXXXXX');
+  gtag('config', 'G-ZW77WM2VPG');
 </script>
 <!-- Google Search Console Verification -->
 <meta name="google-site-verification" content="YOUR_VERIFICATION_CODE">
