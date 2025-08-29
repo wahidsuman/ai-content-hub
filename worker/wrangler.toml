@@ -1,9 +1,9 @@
-name = "ai-website-manager"
+name = "agaminews"
 main = "index.js"
 compatibility_date = "2024-01-01"
 
 # Route is configured in Cloudflare Dashboard
-# Worker: ai-website-manager
+# Worker: agaminews
 
 # KV Namespace binding
 [[kv_namespaces]]
