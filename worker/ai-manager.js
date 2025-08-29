@@ -237,9 +237,12 @@ Return ONLY the new headline, nothing else.`;
       content: fullArticle,
       image: image,
       category: newsItem.category,
+      created: new Date().toISOString(),
       seo: {
         keywords: this.extractKeywords(article),
-        metaDescription: this.generateMetaDescription(article)
+        metaDescription: this.generateMetaDescription(article),
+        googleIndexing: true,  // Flag for Google indexing
+        analyticsEnabled: true  // Flag for Google Analytics
       }
     };
   }
