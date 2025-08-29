@@ -2,6 +2,10 @@
 // Single file for easy management and deployment
 // IMPORTANT: Google Analytics ID G-ZW77WM2VPG must be on EVERY page!
 
+// Version: 2.5.0 - Fixed Fetch & Delete Menu
+// Last Updated: 2025-08-29T13:35:00Z
+// Cache Bust: ${Date.now()}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
