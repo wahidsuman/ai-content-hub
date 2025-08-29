@@ -1363,3 +1363,4 @@ Format as HTML with proper tags. Start with <h1>${finalTitle}</h1>`;
 
 // Export for use in main worker
 export { AIWebsiteManager };
+export { AIWebsiteManager as AIManager }; // Alias for compatibility

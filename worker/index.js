@@ -1722,8 +1722,8 @@ async function handleFetchNews(env, chatId) {
     console.log('[FETCH] Starting news fetch from Telegram command...');
     
     // Import AI Manager
-    const { AIManager } = await import('./ai-manager.js');
-    const ai = new AIManager(env);
+    const { AIWebsiteManager } = await import('./ai-manager.js');
+    const ai = new AIWebsiteManager(env);
     
     // Fetch news sources
     const newsItems = await ai.fetchDailyNews();
