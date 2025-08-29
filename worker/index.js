@@ -4671,7 +4671,7 @@ async function renderArticlePage(env, article, allArticles, request) {
         }
         
         .article-title {
-            font-size: 32px;
+            font-size: 36px;
             font-weight: bold;
             margin: 20px 0;
             line-height: 1.3;
@@ -4679,7 +4679,7 @@ async function renderArticlePage(env, article, allArticles, request) {
         .article-meta {
             color: ${isDark ? '#999' : '#666'};
             margin: 15px 0;
-            font-size: 14px;
+            font-size: 16px;
         }
         .article-image {
             width: 100%;
@@ -4692,9 +4692,14 @@ async function renderArticlePage(env, article, allArticles, request) {
             height: auto;
         }
         .article-content {
-            font-size: 18px;
+            font-size: 20px;
             line-height: 1.8;
             margin: 30px 0;
+        }
+        .article-text {
+            font-size: 20px;
+            line-height: 1.7;
+            color: #333;
         }
         .article-content p {
             margin-bottom: 20px;
@@ -4772,13 +4777,13 @@ async function renderArticlePage(env, article, allArticles, request) {
             }
 
             .article-title {
-                font-size: 20px;
+                font-size: 26px;
                 line-height: 1.2;
                 margin: 10px 0;
             }
 
             .article-meta {
-                font-size: 12px;
+                font-size: 14px;
                 line-height: 1.4;
                 margin-bottom: 15px;
             }
@@ -4800,8 +4805,8 @@ async function renderArticlePage(env, article, allArticles, request) {
             }
 
             .article-text {
-                font-size: 14px;
-                line-height: 1.5;
+                font-size: 18px;
+                line-height: 1.6;
             }
 
             .social-share {
@@ -4880,15 +4885,15 @@ async function renderArticlePage(env, article, allArticles, request) {
             }
 
             .article-title {
-                font-size: 18px;
+                font-size: 22px;
             }
 
             .article-meta {
-                font-size: 11px;
+                font-size: 13px;
             }
 
             .article-text {
-                font-size: 13px;
+                font-size: 16px;
             }
 
             .article-card {
@@ -5669,8 +5674,8 @@ async function serveArticle(env, request, pathname) {
             }
 
             .article-text {
-                font-size: 14px;
-                line-height: 1.5;
+                font-size: 18px;
+                line-height: 1.6;
             }
 
             .social-share {
@@ -5732,15 +5737,15 @@ async function serveArticle(env, request, pathname) {
             }
 
             .article-title {
-                font-size: 18px;
+                font-size: 22px;
             }
 
             .article-meta {
-                font-size: 11px;
+                font-size: 13px;
             }
 
             .article-text {
-                font-size: 13px;
+                font-size: 16px;
             }
 
             .article-card {
