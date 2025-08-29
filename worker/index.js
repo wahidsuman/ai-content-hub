@@ -534,33 +534,7 @@ Your FULL capabilities:
   }
 }
 
-// Welcome message
-async function sendWelcomeMessage(env, chatId, firstName) {
-  const message = `
-🎉 *Welcome ${firstName}!*
-
-I'm your AI Website Manager for agaminews.in
-
-*Quick Start Commands:*
-• /news - Get 10-15 daily news summaries
-• /approve 1,3,5 - Approve & publish articles
-• /performance - View website stats
-• /budget - Check AI usage & costs
-• /suggestions - Get improvement ideas
-• /schedule - View daily routine
-
-*How it works:*
-1️⃣ I fetch news from free sources (Crypto, EVs, Tech)
-2️⃣ Send you summaries for review
-3️⃣ You approve what to publish
-4️⃣ I create SEO articles with images
-5️⃣ Stay under $10/month budget
-
-Type /news to start! 🚀
-  `;
-  
-  await sendMessage(env, chatId, message);
-}
+// Welcome message - removed duplicate (defined earlier)
 
 // Help message
 async function sendHelpMessage(env, chatId) {
