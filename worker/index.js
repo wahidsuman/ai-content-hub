@@ -4698,6 +4698,180 @@ async function renderArticlePage(env, article, allArticles, request) {
             border-radius: 5px;
             font-size: 14px;
         }
+
+        /* Mobile Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                max-width: 100%;
+                margin: 0;
+            }
+
+            .header {
+                padding: 0;
+            }
+
+            .nav-bar {
+                padding: 0 10px;
+                overflow-x: auto;
+            }
+
+            .nav-menu {
+                gap: 10px;
+                padding: 0;
+                min-width: max-content;
+            }
+
+            .nav-menu li {
+                padding: 10px 0;
+            }
+
+            .nav-menu a {
+                font-size: 12px;
+                padding: 0 5px;
+            }
+
+            .main-content {
+                padding: 15px 10px;
+                max-width: 100%;
+            }
+
+            .article-header {
+                margin-bottom: 15px;
+            }
+
+            .breadcrumb {
+                font-size: 11px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .article-title {
+                font-size: 20px;
+                line-height: 1.2;
+                margin: 10px 0;
+            }
+
+            .article-meta {
+                font-size: 12px;
+                line-height: 1.4;
+                margin-bottom: 15px;
+            }
+
+            .article-content {
+                padding: 15px;
+                border-radius: 5px;
+                margin-bottom: 15px;
+                background: white;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+
+            .article-image {
+                height: 200px;
+                width: 100%;
+                object-fit: cover;
+                margin-bottom: 10px;
+                border-radius: 5px;
+            }
+
+            .article-text {
+                font-size: 14px;
+                line-height: 1.5;
+            }
+
+            .social-share {
+                display: flex;
+                justify-content: center;
+                gap: 10px;
+                margin: 10px 0;
+            }
+
+            .social-btn {
+                width: 30px;
+                height: 30px;
+                font-size: 12px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                text-decoration: none;
+            }
+
+            .other-articles {
+                display: grid;
+                gap: 15px;
+                margin-top: 20px;
+            }
+
+            .article-card {
+                background: white;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                padding: 12px;
+                display: flex;
+                gap: 12px;
+            }
+
+            .article-card img {
+                width: 80px;
+                height: 60px;
+                object-fit: cover;
+                border-radius: 3px;
+                flex-shrink: 0;
+            }
+
+            .article-card-content h3 {
+                font-size: 13px;
+                line-height: 1.2;
+                margin-bottom: 5px;
+                font-weight: bold;
+                color: #333;
+            }
+
+            .article-card-meta {
+                font-size: 11px;
+                color: #666;
+            }
+        }
+
+        /* Extra small devices */
+        @media (max-width: 380px) {
+            .nav-menu a {
+                font-size: 11px;
+            }
+
+            .article-title {
+                font-size: 18px;
+            }
+
+            .article-meta {
+                font-size: 11px;
+            }
+
+            .article-text {
+                font-size: 13px;
+            }
+
+            .article-card {
+                padding: 10px;
+            }
+
+            .article-card img {
+                width: 70px;
+                height: 50px;
+            }
+
+            .article-card-content h3 {
+                font-size: 12px;
+            }
+        }
+
+        .facebook { background: #3b5998; }
+        .twitter { background: #1da1f2; }
+        .whatsapp { background: #25d366; }
+        .telegram { background: #0088cc; }
+        .linkedin { background: #0077b5; }
     </style>
 </head>
 <body>
@@ -5387,24 +5561,150 @@ async function serveArticle(env, request, pathname) {
             color: #666;
         }
 
-        /* Responsive */
+        /* Mobile Responsive Design */
         @media (max-width: 768px) {
+            body {
+                max-width: 100%;
+                margin: 0;
+            }
+
+            .header {
+                padding: 0;
+            }
+
+            .nav-bar {
+                padding: 0 10px;
+                overflow-x: auto;
+            }
+
             .nav-menu {
-                gap: 15px;
-                flex-wrap: wrap;
+                gap: 10px;
+                padding: 0;
+                min-width: max-content;
+            }
+
+            .nav-menu li {
+                padding: 10px 0;
+            }
+
+            .nav-menu a {
+                font-size: 12px;
+                padding: 0 5px;
+            }
+
+            .main-content {
+                padding: 15px 10px;
+                max-width: 100%;
+            }
+
+            .article-header {
+                margin-bottom: 15px;
+            }
+
+            .breadcrumb {
+                font-size: 11px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
             }
 
             .article-title {
-                font-size: 24px;
+                font-size: 20px;
+                line-height: 1.2;
+                margin-bottom: 10px;
+            }
+
+            .article-meta {
+                font-size: 12px;
+                line-height: 1.4;
+                margin-bottom: 15px;
+            }
+
+            .article-content {
+                padding: 15px;
+                border-radius: 5px;
+                margin-bottom: 15px;
+            }
+
+            .article-image {
+                height: 200px;
+                margin-bottom: 10px;
+                border-radius: 5px;
+            }
+
+            .article-text {
+                font-size: 14px;
+                line-height: 1.5;
+            }
+
+            .social-share {
+                justify-content: center;
+                margin: 10px 0;
+            }
+
+            .social-btn {
+                width: 30px;
+                height: 30px;
+                font-size: 12px;
+            }
+
+            .other-articles {
+                gap: 15px;
+                margin-top: 20px;
             }
 
             .article-card {
-                flex-direction: column;
+                flex-direction: row;
+                padding: 12px;
+                gap: 12px;
             }
 
             .article-card img {
-                width: 100%;
-                height: 150px;
+                width: 80px;
+                height: 60px;
+                border-radius: 3px;
+            }
+
+            .article-card-content h3 {
+                font-size: 13px;
+                line-height: 1.2;
+                margin-bottom: 5px;
+            }
+
+            .article-card-meta {
+                font-size: 11px;
+            }
+        }
+
+        /* Extra small devices */
+        @media (max-width: 380px) {
+            .nav-menu a {
+                font-size: 11px;
+            }
+
+            .article-title {
+                font-size: 18px;
+            }
+
+            .article-meta {
+                font-size: 11px;
+            }
+
+            .article-text {
+                font-size: 13px;
+            }
+
+            .article-card {
+                padding: 10px;
+            }
+
+            .article-card img {
+                width: 70px;
+                height: 50px;
+            }
+
+            .article-card-content h3 {
+                font-size: 12px;
             }
         }
     </style>
