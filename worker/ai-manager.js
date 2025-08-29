@@ -32,7 +32,7 @@ class AIWebsiteManager {
       const cryptoRes = await fetch('https://api.coingecko.com/api/v3/news');
       const cryptoNews = await cryptoRes.json();
       allNews.push(...cryptoNews.data.slice(0, 5).map(n => ({
-        category: 'Crypto',
+        category: 'CRYPTO',
         title: n.title,
         description: n.description,
         url: n.url,
