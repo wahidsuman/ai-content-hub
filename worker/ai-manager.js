@@ -734,24 +734,83 @@ Format as HTML with proper tags. Start with <h1>${finalTitle}</h1>`;
       // Use DALL-E for ALL content to maximize quality and engagement
       console.log(`[DALL-E] Creating engaging image for ${category} article`);
 
-      // Enhanced prompts for Indian context
+      // Check for famous personalities first - Use real photos
+      const celebrities = {
+        // Indian Politicians
+        'modi': 'https://upload.wikimedia.org/wikipedia/commons/c/c4/Official_Photograph_of_Prime_Minister_Narendra_Modi_Portrait.png',
+        'narendra modi': 'https://upload.wikimedia.org/wikipedia/commons/c/c4/Official_Photograph_of_Prime_Minister_Narendra_Modi_Portrait.png',
+        'pm modi': 'https://upload.wikimedia.org/wikipedia/commons/c/c4/Official_Photograph_of_Prime_Minister_Narendra_Modi_Portrait.png',
+        'rahul gandhi': 'https://upload.wikimedia.org/wikipedia/commons/e/e5/Rahul_Gandhi_2024.jpg',
+        'amit shah': 'https://upload.wikimedia.org/wikipedia/commons/b/b4/Amit_Shah_2019.jpg',
+        'yogi adityanath': 'https://upload.wikimedia.org/wikipedia/commons/1/1f/Yogi_Adityanath_2023.jpg',
+        'arvind kejriwal': 'https://upload.wikimedia.org/wikipedia/commons/5/5e/Arvind_Kejriwal_2023.jpg',
+        'mamata banerjee': 'https://upload.wikimedia.org/wikipedia/commons/c/c7/Mamata_Banerjee_2023.jpg',
+        
+        // Indian Business
+        'mukesh ambani': 'https://upload.wikimedia.org/wikipedia/commons/6/69/Mukesh_Ambani.jpg',
+        'gautam adani': 'https://upload.wikimedia.org/wikipedia/commons/8/8c/Gautam_Adani.jpg',
+        'ratan tata': 'https://upload.wikimedia.org/wikipedia/commons/f/f4/Ratan_Tata_2023.jpg',
+        
+        // Indian Cricketers
+        'virat kohli': 'https://upload.wikimedia.org/wikipedia/commons/e/ef/Virat_Kohli_2023.jpg',
+        'ms dhoni': 'https://upload.wikimedia.org/wikipedia/commons/7/70/MS_Dhoni_2023.jpg',
+        'rohit sharma': 'https://upload.wikimedia.org/wikipedia/commons/c/c0/Rohit_Sharma_2023.jpg',
+        'sachin tendulkar': 'https://upload.wikimedia.org/wikipedia/commons/2/25/Sachin_Tendulkar_2023.jpg',
+        
+        // Bollywood
+        'shah rukh khan': 'https://upload.wikimedia.org/wikipedia/commons/6/6e/Shah_Rukh_Khan_2023.jpg',
+        'salman khan': 'https://upload.wikimedia.org/wikipedia/commons/8/86/Salman_Khan_2023.jpg',
+        'amitabh bachchan': 'https://upload.wikimedia.org/wikipedia/commons/c/c6/Amitabh_Bachchan_2023.jpg',
+        'deepika padukone': 'https://upload.wikimedia.org/wikipedia/commons/b/b6/Deepika_Padukone_2023.jpg',
+        'alia bhatt': 'https://upload.wikimedia.org/wikipedia/commons/4/41/Alia_Bhatt_2023.jpg',
+        'priyanka chopra': 'https://upload.wikimedia.org/wikipedia/commons/6/6c/Priyanka_Chopra_2023.jpg',
+        
+        // International Tech
+        'elon musk': 'https://upload.wikimedia.org/wikipedia/commons/3/34/Elon_Musk_2023.jpg',
+        'sundar pichai': 'https://upload.wikimedia.org/wikipedia/commons/d/d6/Sundar_Pichai_2023.png',
+        'satya nadella': 'https://upload.wikimedia.org/wikipedia/commons/7/78/MS-Exec-Nadella-Satya.jpg',
+        
+        // International Politics
+        'joe biden': 'https://upload.wikimedia.org/wikipedia/commons/6/68/Joe_Biden_presidential_portrait.jpg',
+        'donald trump': 'https://upload.wikimedia.org/wikipedia/commons/5/56/Donald_Trump_official_portrait.jpg',
+        'vladimir putin': 'https://upload.wikimedia.org/wikipedia/commons/8/8d/Vladimir_Putin_2023.jpg',
+        'xi jinping': 'https://upload.wikimedia.org/wikipedia/commons/e/ed/Xi_Jinping_2023.jpg'
+      };
+      
+      // Check if any celebrity is mentioned
+      const queryLower = query.toLowerCase();
+      for (const [name, imageUrl] of Object.entries(celebrities)) {
+        if (queryLower.includes(name)) {
+          console.log(`[IMAGE] Using real photo for ${name}`);
+          return {
+            url: imageUrl,
+            photographer: 'Wikipedia Commons',
+            photographerUrl: 'https://commons.wikimedia.org',
+            alt: query,
+            source: 'wikipedia',
+            credit: `Photo: ${name} (Wikipedia Commons)`
+          };
+        }
+      }
+      
+      // If no celebrity, generate with DALL-E - PHOTOREALISTIC style
       let imagePrompt = '';
       
-      // Check for Indian personalities
-      const indianCelebs = ['Modi', 'Ambani', 'Adani', 'Kohli', 'Dhoni', 'Shah Rukh', 'Salman', 'Amitabh'];
-      const hasCelebrity = indianCelebs.some(name => query.toLowerCase().includes(name.toLowerCase()));
-      
-      if (hasCelebrity) {
-        imagePrompt = `News context image: ${query}. Show relevant scene, symbols, or environment. No faces or identifiable people. Professional editorial photography.`;
-      } else if (category === 'INDIA') {
-        imagePrompt = `Indian news context: ${query}. Include Indian elements, architecture, or cultural symbols. Professional photojournalism style.`;
+      if (category === 'INDIA') {
+        imagePrompt = `PHOTOREALISTIC news photograph: ${query}. Professional photojournalism, real-world scene, authentic Indian context, natural lighting, documentary style, NO cartoon, NO illustration, NO artistic rendering. Shot with professional camera, news agency quality.`;
       } else if (category === 'TECHNOLOGY') {
-        imagePrompt = `Tech news visualization: ${query}. Modern, clean, futuristic aesthetic. Professional editorial style.`;
+        imagePrompt = `PHOTOREALISTIC technology image: ${query}. Real-world tech environment, actual devices and equipment, professional photography, clean modern setting, natural lighting, NO cartoon, NO illustration. Magazine quality photograph.`;
+      } else if (category === 'BUSINESS') {
+        imagePrompt = `PHOTOREALISTIC business photograph: ${query}. Professional corporate environment, real office or market setting, authentic business context, natural lighting, NO cartoon, NO illustration. Financial publication quality.`;
+      } else if (category === 'SPORTS') {
+        imagePrompt = `PHOTOREALISTIC sports photograph: ${query}. Actual sports action, real stadium or field, authentic athletic moment, dynamic composition, NO cartoon, NO illustration. Sports magazine quality, professional photography.`;
+      } else if (category === 'ENTERTAINMENT') {
+        imagePrompt = `PHOTOREALISTIC entertainment photograph: ${query}. Real entertainment venue, authentic scene, professional event photography, natural lighting, NO cartoon, NO illustration. Entertainment magazine quality.`;
       } else {
-        imagePrompt = `Professional news image: ${query}. Clean composition, relevant visual metaphor. Photojournalistic style.`;
+        imagePrompt = `PHOTOREALISTIC news photograph: ${query}. Professional photojournalism, real-world scene, authentic context, natural lighting, documentary style, NO cartoon, NO illustration, NO artistic effects. News agency quality photograph.`;
       }
 
-      console.log(`[DALL-E] Generating for ${category}:`, query.substring(0, 40));
+      console.log(`[DALL-E] Generating photorealistic image for ${category}:`, query.substring(0, 40));
       
       // Call DALL-E 3 API with optimized web settings
       const response = await fetch('https://api.openai.com/v1/images/generations', {
@@ -764,9 +823,9 @@ Format as HTML with proper tags. Start with <h1>${finalTitle}</h1>`;
           model: 'dall-e-3',
           prompt: imagePrompt,
           n: 1,
-          size: '1024x1024',    // Standard size for faster loading
+          size: '1792x1024',    // Wide format for better web display
           quality: 'standard',  // Standard quality for web optimization
-          style: 'natural'      // Natural style for realistic news images
+          style: 'natural'      // Natural style ensures photorealistic output
         })
       });
 
