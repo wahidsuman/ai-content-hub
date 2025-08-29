@@ -166,6 +166,11 @@ Return ONLY the new headline, nothing else.`;
     6. Meta description (155 chars)
     7. Focus keywords: ${newsItem.category}
     8. Make the content match the excitement of the headline
+    9. Include 2-3 internal links to related topics like:
+       - Link to homepage: <a href="https://agaminews.in">AgamiNews</a>
+       - Link to category: <a href="https://agaminews.in/category/${newsItem.category.toLowerCase().replace(/\s+/g, '-')}">${newsItem.category} News</a>
+       - Add contextual links naturally within the content
+    10. Add a "Related Articles" section at the end
     
     Format as HTML with proper tags. Start with an <h1> tag containing the headline.`;
     
@@ -207,8 +212,25 @@ Return ONLY the new headline, nothing else.`;
       }
     }
     
-    // Combine article with image
-    const fullArticle = imageHtml + article;
+    // Add related articles section with backlinks
+    const relatedArticlesHtml = `
+      <div style="margin-top: 40px; padding: 20px; background: #f5f5f5; border-radius: 8px;">
+        <h3>Related Articles & Resources</h3>
+        <ul style="line-height: 1.8;">
+          <li><a href="https://agaminews.in" style="color: #0066cc;">Visit AgamiNews Homepage</a> - Latest Tech Updates</li>
+          <li><a href="https://agaminews.in/category/${newsItem.category.toLowerCase().replace(/\s+/g, '-')}" style="color: #0066cc;">More ${newsItem.category} News</a> - Explore Similar Stories</li>
+          <li><a href="https://agaminews.in/trending" style="color: #0066cc;">Trending Tech Stories</a> - Most Popular Articles</li>
+          <li><a href="https://agaminews.in/archive" style="color: #0066cc;">News Archive</a> - Browse All Articles</li>
+        </ul>
+        <p style="margin-top: 15px; font-size: 14px; color: #666;">
+          Stay updated with the latest in <strong>${newsItem.category}</strong> and technology. 
+          Follow <a href="https://agaminews.in" style="color: #0066cc;">AgamiNews</a> for daily updates.
+        </p>
+      </div>
+    `;
+    
+    // Combine article with image and related articles
+    const fullArticle = imageHtml + article + relatedArticlesHtml;
     
     return {
       title: finalTitle,  // Use the new clickable headline
