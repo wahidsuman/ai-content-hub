@@ -453,6 +453,14 @@ class AIWebsiteManager {
   async createArticle(newsItem, approved) {
     if (!approved) return null;
     
+    // Check if OpenAI API key is available
+    if (!this.env.OPENAI_API_KEY) {
+      console.error('[AI] No OpenAI API key found');
+      throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY in Cloudflare settings.');
+    }
+    
+    console.log('[AI] Starting article creation for:', newsItem.title);
+    
     // Intelligently determine category if not already set properly
     if (!newsItem.category || newsItem.category === 'Tech' || newsItem.category === 'Crypto') {
       newsItem.category = this.determineCategory(newsItem.title, newsItem.description || '');
@@ -1236,14 +1244,25 @@ Format as HTML with proper tags. Start with <h1>${finalTitle}</h1>`;
       
       const data = await response.json();
       
+      // Check for API errors
+      if (!response.ok) {
+        console.error('[OpenAI] API Error:', data);
+        throw new Error(data.error?.message || `OpenAI API error: ${response.status}`);
+      }
+      
+      if (!data.choices || !data.choices[0]) {
+        console.error('[OpenAI] Invalid response:', data);
+        throw new Error('Invalid response from OpenAI');
+      }
+      
       // Track usage
       this.usageToday += estimatedCost;
       await this.env.NEWS_KV.put('usage_today', this.usageToday);
       
       return data.choices[0].message.content;
     } catch (e) {
-      console.log('OpenAI error:', e);
-      return null;
+      console.error('[OpenAI] Error details:', e.message);
+      throw e; // Re-throw to handle upstream
     }
   }
 

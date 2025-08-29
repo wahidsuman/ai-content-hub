@@ -1611,6 +1611,12 @@ async function verifyAICommands(env, chatId) {
   await sendMessage(env, chatId, `🔍 *Verifying AI Configuration...*`);
   
   try {
+    // First check if OpenAI key is configured
+    const hasOpenAIKey = !!env.OPENAI_API_KEY;
+    const keyStatus = hasOpenAIKey ? 
+      `✅ OpenAI API Key: Configured (${env.OPENAI_API_KEY.substring(0, 7)}...)` : 
+      `❌ OpenAI API Key: NOT CONFIGURED`;
+    
     // Test headline generation
     const testHeadline = "PM Modi announces new economic policy";
     const { AIManager } = await import('./ai-manager.js');
@@ -1653,6 +1659,9 @@ async function verifyAICommands(env, chatId) {
     
     const report = `
 ✅ *AI VERIFICATION REPORT*
+
+🔑 *API Configuration:*
+${keyStatus}
 
 📰 *Headline Generation:*
 ${verificationChecks.headlines ? '✅' : '❌'} Power words detected
@@ -1739,10 +1748,18 @@ async function handleFetchNews(env, chatId) {
     await sendMessage(env, chatId, `📰 *Found News:*\n${selectedNews.title}\n\n🤖 Generating article...`);
     
     // Create article with AI
-    const article = await ai.createArticle(selectedNews);
+    let article;
+    try {
+      article = await ai.createArticle(selectedNews, true); // Pass 'approved' as true
+      console.log('[FETCH] Article generation result:', article ? 'Success' : 'Failed');
+    } catch (genError) {
+      console.error('[FETCH] Article generation error:', genError);
+      await sendMessage(env, chatId, `❌ Article generation failed:\n${genError.message}\n\nThis might be due to:\n• OpenAI API key issue\n• Rate limiting\n• Network timeout`);
+      return;
+    }
     
     if (!article) {
-      await sendMessage(env, chatId, '❌ Failed to generate article. Please try again.');
+      await sendMessage(env, chatId, '❌ Failed to generate article. The AI returned empty content. Please try again.');
       return;
     }
     
