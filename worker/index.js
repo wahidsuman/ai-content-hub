@@ -150,6 +150,9 @@ async function handleTelegram(request, env) {
       } else if (data.startsWith('delete_article_')) {
         const articleId = data.replace('delete_article_', '');
         await handleManagerCommands(env, chatId, `/delete ${articleId}`);
+      } else if (data.startsWith('delete_page_')) {
+        const page = parseInt(data.replace('delete_page_', ''));
+        await handleDeleteMenu(env, chatId, page);
       } else if (data.startsWith('permission_')) {
         await handlePermissionCallback(env, chatId, data);
       }
@@ -241,11 +244,11 @@ async function handleTelegram(request, env) {
             if (articles[index]) {
               articles.splice(index, 1);
               await env.NEWS_KV.put('articles', JSON.stringify(articles));
-              const message = `✅ Deleted article #${index}\n\nTotal articles remaining: ${articles.length}`;
+              const message = `✅ Deleted article #${index + 1}\n\n📰 Articles remaining: ${articles.length}`;
               const keyboard = {
                 inline_keyboard: [
                   [
-                    { text: '🗑️ Delete More', callback_data: 'cmd_delete' },
+                    { text: '🗑️ Continue Deleting', callback_data: 'cmd_delete' },
                     { text: '📰 Get News', callback_data: 'cmd_news' }
                   ],
                   [
@@ -621,8 +624,8 @@ Your FULL capabilities:
   }
 }
 
-// Delete menu with article buttons
-async function handleDeleteMenu(env, chatId) {
+// Delete menu with article buttons and pagination
+async function handleDeleteMenu(env, chatId, page = 0) {
   const articles = await env.NEWS_KV.get('articles', 'json') || [];
   
   if (articles.length === 0) {
@@ -630,23 +633,54 @@ async function handleDeleteMenu(env, chatId) {
     return;
   }
   
-  const message = `🗑️ *Select an article to delete:*\n\nTotal articles: ${articles.length}`;
+  const itemsPerPage = 5;
+  const totalPages = Math.ceil(articles.length / itemsPerPage);
+  const currentPage = Math.min(Math.max(0, page), totalPages - 1);
+  const startIndex = currentPage * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, articles.length);
+  
+  let message = `🗑️ *Delete Articles*\n\n`;
+  message += `📄 Page ${currentPage + 1} of ${totalPages}\n`;
+  message += `📰 Total articles: ${articles.length}\n\n`;
+  message += `*Select an article to delete:*\n`;
+  
+  // Show article details for current page
+  for (let i = startIndex; i < endIndex; i++) {
+    const article = articles[i];
+    const title = article.title ? article.title.substring(0, 50) : `Article ${i}`;
+    const date = article.created ? new Date(article.created).toLocaleDateString() : 'Unknown date';
+    message += `\n${i + 1}. ${title}\n   📅 ${date}\n`;
+  }
   
   const keyboard = {
     inline_keyboard: []
   };
   
-  // Add article buttons (max 10 for readability)
-  for (let i = 0; i < Math.min(articles.length, 10); i++) {
+  // Add article buttons for current page
+  for (let i = startIndex; i < endIndex; i++) {
     const article = articles[i];
-    const title = article.title ? article.title.substring(0, 30) + '...' : `Article ${i}`;
+    const title = article.title ? article.title.substring(0, 40) + '...' : `Article ${i + 1}`;
     keyboard.inline_keyboard.push([
-      { text: `${i}. ${title}`, callback_data: `delete_article_${i}` }
+      { text: `🗑️ ${i + 1}. ${title}`, callback_data: `delete_article_${i}` }
     ]);
   }
   
-  // Add back button
+  // Add pagination buttons
+  const navigationButtons = [];
+  if (currentPage > 0) {
+    navigationButtons.push({ text: '⬅️ Previous', callback_data: `delete_page_${currentPage - 1}` });
+  }
+  if (currentPage < totalPages - 1) {
+    navigationButtons.push({ text: '➡️ Next', callback_data: `delete_page_${currentPage + 1}` });
+  }
+  
+  if (navigationButtons.length > 0) {
+    keyboard.inline_keyboard.push(navigationButtons);
+  }
+  
+  // Add utility buttons
   keyboard.inline_keyboard.push([
+    { text: '🔄 Refresh', callback_data: `delete_page_${currentPage}` },
     { text: '↩️ Back to Menu', callback_data: 'main_menu' }
   ]);
   
