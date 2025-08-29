@@ -15,6 +15,16 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       
+      - name: Check environment
+        run: |
+          echo "Checking deployment environment..."
+          echo "Has API Token: ${{ secrets.CLOUDFLARE_API_TOKEN && 'YES' || 'NO' }}"
+          echo "Has Account ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID && 'YES' || 'NO' }}"
+          echo "Worker directory contents:"
+          ls -la worker/
+          echo "Wrangler.toml contents:"
+          cat worker/wrangler.toml
+      
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:

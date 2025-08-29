@@ -1,0 +1,57 @@
+name: Test Deployment Configuration
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/test-deployment.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Test Deployment Setup
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Check Secrets
+        run: |
+          echo "=== Checking GitHub Secrets ==="
+          echo "CLOUDFLARE_API_TOKEN exists: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && 'YES ✅' || 'NO ❌' }}"
+          echo "CLOUDFLARE_ACCOUNT_ID exists: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' && 'YES ✅' || 'NO ❌' }}"
+          echo ""
+          echo "=== Account ID Check ==="
+          echo "Account ID length: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' && 'Set' || 'Not set' }}"
+          echo ""
+          echo "=== Worker Files Check ==="
+          ls -la worker/ || echo "Worker directory not found"
+          echo ""
+          echo "=== Package.json ==="
+          cat worker/package.json || echo "package.json not found"
+          echo ""
+          echo "=== Wrangler.toml ==="
+          cat worker/wrangler.toml || echo "wrangler.toml not found"
+      
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install Dependencies
+        working-directory: worker
+        run: |
+          echo "Installing dependencies..."
+          npm ci || npm install
+      
+      - name: Test Wrangler
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          echo "=== Testing Wrangler ==="
+          npx wrangler --version
+          echo ""
+          echo "=== Dry Run Deployment ==="
+          npx wrangler deploy --dry-run || echo "Dry run failed - check error above"
