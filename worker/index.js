@@ -4681,23 +4681,26 @@ async function renderArticlePage(env, article, allArticles, request) {
     ${getGoogleAnalyticsCode(article.title, article.url)}
     
     <style>
-        /* Article page styles */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: ${isDark ? '#000' : '#fff'};
-            color: ${isDark ? '#fff' : '#000'};
-            line-height: 1.6;
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
         }
-        .article-header {
-            background: ${isDark ? '#1a1a1a' : '#f8f8f8'};
-            padding: 20px;
-            border-bottom: 2px solid ${config.primaryColor};
+
+        /* Header */
+        .header {
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .article-container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
+
+        .nav-bar {
+            background-color: #ff6600;
+            padding: 0 15px;
         }
         .article-title {
             font-size: 32px;
