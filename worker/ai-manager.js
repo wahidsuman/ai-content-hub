@@ -127,18 +127,47 @@ class AIWebsiteManager {
   async createArticle(newsItem, approved) {
     if (!approved) return null;
     
+    // First, generate a more clickable headline
+    const headlinePrompt = `Transform this news title into a highly clickable, engaging headline that drives curiosity and clicks while remaining accurate:
+
+Original: "${newsItem.title}"
+Category: ${newsItem.category}
+
+Requirements for the new headline:
+1. Use power words (shocking, revealed, breakthrough, exclusive, urgent, etc.)
+2. Create curiosity gap (tease information without giving everything away)
+3. Include numbers when relevant (7 Ways, 5 Reasons, etc.)
+4. Add emotional triggers (amazing, unbelievable, game-changing)
+5. Keep under 60 characters for SEO
+6. Use action words and active voice
+7. Make it newsworthy and timely
+
+Examples of good headlines:
+- "Breaking: Major Tech Giant's Shocking AI Announcement Changes Everything"
+- "7 Hidden Features in Latest iPhone That Will Blow Your Mind"
+- "Exclusive: Tesla's Secret Project Revealed - Industry Experts Stunned"
+- "This Simple Crypto Strategy Made Investors 500% Returns (Here's How)"
+
+Return ONLY the new headline, nothing else.`;
+
+    const clickableTitle = await this.callOpenAI(headlinePrompt, 'gpt-3.5-turbo', 100);
+    const finalTitle = clickableTitle.trim().replace(/^["']|["']$/g, '') || newsItem.title;
+    
     const prompt = `Create an SEO-optimized article about: ${newsItem.title}
+    
+    Use this headline for the article: "${finalTitle}"
     
     Requirements:
     1. 500-700 words
     2. Include keywords naturally
-    3. Add engaging intro
+    3. Add engaging intro that delivers on the headline's promise
     4. Use headers (H2, H3)
     5. Add call-to-action
     6. Meta description (155 chars)
     7. Focus keywords: ${newsItem.category}
+    8. Make the content match the excitement of the headline
     
-    Format as HTML with proper tags.`;
+    Format as HTML with proper tags. Start with an <h1> tag containing the headline.`;
     
     const article = await this.callOpenAI(prompt, 'gpt-3.5-turbo', 1500);
     
@@ -182,7 +211,7 @@ class AIWebsiteManager {
     const fullArticle = imageHtml + article;
     
     return {
-      title: newsItem.title,
+      title: finalTitle,  // Use the new clickable headline
       content: fullArticle,
       image: image,
       category: newsItem.category,
