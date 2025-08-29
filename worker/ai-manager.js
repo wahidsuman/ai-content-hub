@@ -571,13 +571,21 @@ ${research}
 
 HEADLINE (MUST USE EXACTLY): "${finalTitle}"
 
+🔥 CRITICAL: CURIOSITY-DRIVEN QUESTIONS THROUGHOUT:
+1. **START with a HOOK QUESTION** - Open the article with an intriguing question that makes readers want to know more
+2. **USE QUESTION SUB-HEADINGS** - Format sections as questions (e.g., "Why Is This Happening Now?", "What Does This Mean for You?")
+3. **SPRINKLE RHETORICAL QUESTIONS** - Add 3-4 rhetorical questions between paragraphs to maintain engagement
+4. **INCLUDE THOUGHT-PROVOKING QUESTIONS** - Use "Have you ever wondered...", "What if...", "Could this mean..." to spark curiosity
+5. **END with an OPEN QUESTION** - Close with a question that encourages readers to think deeper or share their opinion
+6. **CONVERSATIONAL TONE** - Write as if you're having an engaging conversation with the reader
+
 YOUR WRITING PERSONA for ${newsItem.category}:
 - Role: ${writingStyle.role}
 - Personality: ${writingStyle.personality}
 - Expertise Areas: ${writingStyle.expertise}
 - Vocabulary Style: ${writingStyle.vocabulary}
 
-ARTICLE STRUCTURE:
+ARTICLE STRUCTURE WITH QUESTIONS:
 
 1. OPENING HOOK (First Paragraph)
    - Immediately deliver on headline promise
@@ -741,7 +749,8 @@ Format as HTML with proper tags. Start with <h1>${finalTitle}</h1>`;
       // Use DALL-E for ALL content to maximize quality and engagement
       console.log(`[DALL-E] Creating engaging image for ${category} article`);
 
-      // Check for famous personalities first - Use real photos
+      // For famous personalities - Create edited/composite images with DALL-E
+      // We'll include them in the scene rather than using stock photos
       const celebrities = {
         // Indian Politicians
         'modi': 'https://upload.wikimedia.org/wikipedia/commons/c/c4/Official_Photograph_of_Prime_Minister_Narendra_Modi_Portrait.png',
@@ -861,42 +870,59 @@ Format as HTML with proper tags. Start with <h1>${finalTitle}</h1>`;
         'yash': 'https://upload.wikimedia.org/wikipedia/commons/e/e4/Yash_2023.jpg'
       };
       
-      // Check if any celebrity is mentioned
+      // Check if any celebrity is mentioned - Generate edited scene with them
       const queryLower = query.toLowerCase();
-      for (const [name, imageUrl] of Object.entries(celebrities)) {
-        if (queryLower.includes(name)) {
-          console.log(`[IMAGE] Using real photo for ${name}`);
-          // Use Wikipedia's thumbnail service for optimized images (500px width)
-          const optimizedUrl = imageUrl.includes('upload.wikimedia.org') 
-            ? imageUrl.replace('/commons/', '/commons/thumb/').replace(/(\.\w+)$/, '/500px-$1')
-            : imageUrl;
-          
-          return {
-            url: optimizedUrl,
-            photographer: 'Wikipedia Commons',
-            photographerUrl: 'https://commons.wikimedia.org',
-            alt: query,
-            source: 'wikipedia',
-            credit: `Photo: ${name} (Wikipedia)`
-          };
+      let celebrityFound = null;
+      
+      // Check for celebrity names
+      const celebrityNames = [
+        'modi', 'narendra modi', 'rahul gandhi', 'amit shah', 'kejriwal',
+        'virat kohli', 'ms dhoni', 'rohit sharma', 'hardik pandya', 'bumrah',
+        'shah rukh khan', 'salman khan', 'amitabh bachchan', 'deepika', 'alia bhatt',
+        'mukesh ambani', 'gautam adani', 'ratan tata', 'elon musk', 'sundar pichai',
+        'rajinikanth', 'vijay', 'mahesh babu', 'allu arjun', 'prabhas'
+      ];
+      
+      for (const celeb of celebrityNames) {
+        if (queryLower.includes(celeb)) {
+          celebrityFound = celeb;
+          break;
         }
       }
       
-      // If no celebrity, generate with DALL-E - PHOTOREALISTIC style
+      // Generate PHOTOREALISTIC images - Include celebrities if mentioned
       let imagePrompt = '';
       
-      if (category === 'INDIA') {
-        imagePrompt = `PHOTOREALISTIC news photograph: ${query}. Professional photojournalism, real-world scene, authentic Indian context, natural lighting, documentary style, NO cartoon, NO illustration, NO artistic rendering. Shot with professional camera, news agency quality.`;
-      } else if (category === 'TECHNOLOGY') {
-        imagePrompt = `PHOTOREALISTIC technology image: ${query}. Real-world tech environment, actual devices and equipment, professional photography, clean modern setting, natural lighting, NO cartoon, NO illustration. Magazine quality photograph.`;
-      } else if (category === 'BUSINESS') {
-        imagePrompt = `PHOTOREALISTIC business photograph: ${query}. Professional corporate environment, real office or market setting, authentic business context, natural lighting, NO cartoon, NO illustration. Financial publication quality.`;
-      } else if (category === 'SPORTS') {
-        imagePrompt = `PHOTOREALISTIC sports photograph: ${query}. Actual sports action, real stadium or field, authentic athletic moment, dynamic composition, NO cartoon, NO illustration. Sports magazine quality, professional photography.`;
-      } else if (category === 'ENTERTAINMENT') {
-        imagePrompt = `PHOTOREALISTIC entertainment photograph: ${query}. Real entertainment venue, authentic scene, professional event photography, natural lighting, NO cartoon, NO illustration. Entertainment magazine quality.`;
+      if (celebrityFound) {
+        // Include the celebrity in a realistic edited scene
+        const celebrityTitle = celebrityFound.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        
+        if (category === 'INDIA' || celebrityFound.includes('modi') || celebrityFound.includes('gandhi')) {
+          imagePrompt = `ULTRA-PHOTOREALISTIC edited news photograph showing ${celebrityTitle} in action: ${query}. Professional composite image, person integrated into relevant scene, authentic Indian political context, press conference or parliament setting, natural lighting, HIGH QUALITY PHOTO EDITING, person's face clearly visible and recognizable, NO cartoon, NO illustration. News agency quality, Reuters/AP style.`;
+        } else if (category === 'SPORTS' || ['kohli', 'dhoni', 'rohit', 'hardik', 'bumrah'].some(n => celebrityFound.includes(n))) {
+          imagePrompt = `ULTRA-PHOTOREALISTIC edited sports photograph showing ${celebrityTitle} in cricket action: ${query}. Professional composite image, cricketer in stadium setting, batting/bowling/fielding pose, crowd in background, dynamic action shot, person clearly visible, NO cartoon, NO illustration. ESPN/Sports Illustrated quality.`;
+        } else if (category === 'ENTERTAINMENT' || ['shah rukh', 'salman', 'amitabh', 'deepika', 'alia'].some(n => celebrityFound.includes(n))) {
+          imagePrompt = `ULTRA-PHOTOREALISTIC edited entertainment photograph showing ${celebrityTitle} at premiere/event: ${query}. Professional composite image, celebrity at red carpet or film event, glamorous setting, paparazzi style, person clearly recognizable, NO cartoon, NO illustration. Vogue/Filmfare quality.`;
+        } else if (category === 'BUSINESS' || ['ambani', 'adani', 'tata'].some(n => celebrityFound.includes(n))) {
+          imagePrompt = `ULTRA-PHOTOREALISTIC edited business photograph showing ${celebrityTitle} in corporate setting: ${query}. Professional composite image, business leader in boardroom or conference, formal attire, corporate environment, person clearly visible, NO cartoon, NO illustration. Forbes/Fortune magazine quality.`;
+        } else {
+          imagePrompt = `ULTRA-PHOTOREALISTIC edited photograph showing ${celebrityTitle}: ${query}. Professional composite image with person integrated into relevant scene, natural lighting, person's features clearly visible and recognizable, NO cartoon, NO illustration, NO artistic effects. High-end magazine quality photo editing.`;
+        }
       } else {
-        imagePrompt = `PHOTOREALISTIC news photograph: ${query}. Professional photojournalism, real-world scene, authentic context, natural lighting, documentary style, NO cartoon, NO illustration, NO artistic effects. News agency quality photograph.`;
+        // No celebrity - standard photorealistic prompts
+        if (category === 'INDIA') {
+          imagePrompt = `PHOTOREALISTIC news photograph: ${query}. Professional photojournalism, real-world scene, authentic Indian context, natural lighting, documentary style, NO cartoon, NO illustration, NO artistic rendering. Shot with DSLR camera, Reuters quality.`;
+        } else if (category === 'TECHNOLOGY') {
+          imagePrompt = `PHOTOREALISTIC technology photograph: ${query}. Real-world tech environment, actual devices and equipment, professional photography, clean modern setting, natural lighting, NO cartoon, NO illustration. Wired magazine quality.`;
+        } else if (category === 'BUSINESS') {
+          imagePrompt = `PHOTOREALISTIC business photograph: ${query}. Professional corporate environment, real office or market setting, authentic business context, natural lighting, NO cartoon, NO illustration. Bloomberg quality.`;
+        } else if (category === 'SPORTS') {
+          imagePrompt = `PHOTOREALISTIC sports photograph: ${query}. Actual sports action, real stadium or field, authentic athletic moment, dynamic composition, NO cartoon, NO illustration. Sports Illustrated quality.`;
+        } else if (category === 'ENTERTAINMENT') {
+          imagePrompt = `PHOTOREALISTIC entertainment photograph: ${query}. Real entertainment venue, authentic scene, professional event photography, natural lighting, NO cartoon, NO illustration. Hollywood Reporter quality.`;
+        } else {
+          imagePrompt = `PHOTOREALISTIC news photograph: ${query}. Professional photojournalism, real-world scene, authentic context, natural lighting, documentary style, NO cartoon, NO illustration, NO artistic effects. Associated Press quality.`;
+        }
       }
 
       console.log(`[DALL-E] Generating photorealistic image for ${category}:`, query.substring(0, 40));
