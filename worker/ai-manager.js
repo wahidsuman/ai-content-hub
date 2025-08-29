@@ -367,88 +367,169 @@ class AIWebsiteManager {
       newsItem.category = this.determineCategory(newsItem.title, newsItem.description || '');
     }
     
-    // First, do deeper research on the topic
-    const researchPrompt = `As an investigative journalist, research and expand on this news:
-Topic: ${newsItem.title}
-Initial Info: ${newsItem.description || 'Breaking news'}
-Category: ${newsItem.category}
+    // PHASE 1: COMPREHENSIVE RESEARCH
+    const researchPrompt = `You are an investigative journalist with access to all public information. Conduct DEEP research on this news:
 
-Provide:
-1. Key facts and context
-2. Why this matters now
-3. Impact and implications
-4. Expert perspectives (inferred)
-5. Related developments
-6. Unique angles not covered elsewhere
+TOPIC: ${newsItem.title}
+INITIAL INFO: ${newsItem.description || 'Breaking news'}
+CATEGORY: ${newsItem.category}
+SOURCE: ${newsItem.source || 'Various'}
 
-Be factual but insightful. Add depth beyond the surface story.`;
+RESEARCH REQUIREMENTS:
+1. BACKGROUND CONTEXT
+   - Historical context and how we got here
+   - Previous similar events and their outcomes
+   - Key players and stakeholders involved
 
-    const research = await this.callOpenAI(researchPrompt, 'gpt-4-turbo-preview', 500);
+2. CURRENT SITUATION
+   - Exact facts and verified details
+   - Multiple perspectives from different sources
+   - Conflicting reports or viewpoints if any
+   - Timeline of events
+
+3. EXPERT ANALYSIS (inferred from data)
+   - What industry experts would likely say
+   - Technical/professional assessment
+   - Potential skepticism or concerns
+
+4. IMPACT ASSESSMENT
+   - Immediate consequences
+   - Short-term (weeks) implications
+   - Long-term (months/years) effects
+   - Who wins and who loses
+
+5. UNIQUE INSIGHTS
+   - Angles others haven't covered
+   - Hidden connections or patterns
+   - Interesting parallels or comparisons
+   - "What nobody is talking about"
+
+6. FUTURE PREDICTIONS
+   - Likely next developments
+   - Potential scenarios
+   - What to watch for
+
+Provide comprehensive research that goes BEYOND surface-level reporting. Find the story within the story.`;
+
+    const research = await this.callOpenAI(researchPrompt, 'gpt-4-turbo-preview', 800);
     
-    // Generate category-specific headline
+    // PHASE 2: ULTRA-CLICKABLE HEADLINE GENERATION
     const headlineStyle = this.getHeadlineStyle(newsItem.category);
-    const headlinePrompt = `Create a ${headlineStyle.tone} headline for this news:
+    
+    // First, generate multiple headline options
+    const headlinePrompt = `You are a viral content expert who creates headlines that get millions of clicks.
 
-Original: "${newsItem.title}"
-Category: ${newsItem.category}
-Research: ${research.substring(0, 200)}
+ORIGINAL NEWS: "${newsItem.title}"
+CATEGORY: ${newsItem.category}
+KEY RESEARCH INSIGHTS: ${research.substring(0, 400)}
 
-Style Guidelines for ${newsItem.category}:
+CREATE 5 DIFFERENT HEADLINES using these psychological triggers:
+
+1. CURIOSITY GAP: Make readers NEED to know what happens
+   Example: "You Won't Believe What [Famous Person] Just Did With..."
+
+2. FEAR OF MISSING OUT (FOMO): Create urgency
+   Example: "Everyone Is Talking About This [Thing] - Here's What You Need to Know"
+
+3. CONTROVERSY/SHOCK: Provocative but true
+   Example: "[Authority] Admits They Were Wrong About [Common Belief]"
+
+4. BENEFIT/VALUE: Clear value proposition
+   Example: "This Simple [Method] Could Save You [Specific Amount]"
+
+5. EMOTIONAL TRIGGER: Strong emotional response
+   Example: "[Heartwarming/Shocking] Moment When [Unexpected Thing Happened]"
+
+CATEGORY-SPECIFIC REQUIREMENTS for ${newsItem.category}:
 ${headlineStyle.guidelines}
 
-Requirements:
-1. MUST be completely original - not copied from source
-2. Create curiosity and urgency
-3. Use ${headlineStyle.powerWords.join(', ')}
-4. Keep under 65 characters
-5. Match the ${headlineStyle.tone} tone
-6. Be accurate but compelling
+POWER WORDS TO USE: ${headlineStyle.powerWords.join(', ')}
 
-Examples for ${newsItem.category}:
-${headlineStyle.examples.join('\n')}
+RULES:
+- Maximum 65 characters
+- MUST be factually accurate
+- Create irresistible curiosity
+- Use numbers when possible
+- Include emotional triggers
+- Make it shareable
+- ${headlineStyle.tone} tone
 
-Return ONLY the new headline.`;
+Provide 5 headlines, then choose the BEST one based on:
+- Click potential (1-10)
+- Shareability (1-10)
+- Accuracy (1-10)
 
-    const clickableTitle = await this.callOpenAI(headlinePrompt, 'gpt-3.5-turbo', 100);
-    const finalTitle = clickableTitle.trim().replace(/^["']|["']$/g, '') || newsItem.title;
+Return ONLY the best headline.`;
+
+    const clickableTitle = await this.callOpenAI(headlinePrompt, 'gpt-4-turbo-preview', 200);
+    const finalTitle = clickableTitle.trim().replace(/^["']|["']$/g, '').replace(/^\d+\.\s*/, '') || newsItem.title;
     
     // Get category-specific writing style
     const writingStyle = this.getWritingStyle(newsItem.category);
     
-    const prompt = `You are an experienced ${writingStyle.role} writing for AgamiNews.
-    
-RESEARCH INSIGHTS:
+    // PHASE 3: EXPERT-LEVEL ARTICLE WRITING
+    const prompt = `You are ${writingStyle.role} writing an in-depth article for AgamiNews.
+
+COMPREHENSIVE RESEARCH DATA:
 ${research}
 
-HEADLINE TO USE: "${finalTitle}"
+HEADLINE (MUST USE EXACTLY): "${finalTitle}"
 
-WRITING INSTRUCTIONS for ${newsItem.category}:
-${writingStyle.instructions}
+YOUR WRITING PERSONA for ${newsItem.category}:
+- Role: ${writingStyle.role}
+- Personality: ${writingStyle.personality}
+- Expertise Areas: ${writingStyle.expertise}
+- Vocabulary Style: ${writingStyle.vocabulary}
 
-TONE & STYLE:
-${writingStyle.tone}
+ARTICLE STRUCTURE:
 
-REQUIREMENTS:
-1. 600-800 words of COMPLETELY ORIGINAL content
-2. NEVER copy phrases from source material - rewrite everything
-3. Add unique insights and analysis not found elsewhere
-4. Include expert-like commentary showing deep understanding
-5. Use ${writingStyle.vocabulary}
-6. Structure with engaging headers (H2, H3)
-7. Hook readers in first paragraph - deliver on headline promise
-8. Include 2-3 internal links naturally:
-   - Homepage: <a href="https://agaminews.in">AgamiNews</a>
-   - Category: <a href="https://agaminews.in/${newsItem.category.toLowerCase()}">${newsItem.category} News</a>
-9. End with forward-looking conclusion
-10. Write like a human - vary sentence length, use transitions
+1. OPENING HOOK (First Paragraph)
+   - Immediately deliver on headline promise
+   - Create "I must read this" feeling
+   - Use surprising fact or compelling scenario
+   - Connect emotionally with reader
 
-IMPORTANT: 
-- Be ${writingStyle.personality}
-- Show expertise through ${writingStyle.expertise}
-- Make it impossible to tell this is AI-generated
-- Add subtle personality quirks and opinions
+2. CONTEXT & BACKGROUND (Paragraphs 2-3)
+   - Explain why this matters NOW
+   - Provide essential background
+   - Use research insights to add depth
 
-Format as HTML. Start with <h1> containing the headline.`;
+3. MAIN CONTENT (Core Paragraphs)
+   ${writingStyle.instructions}
+   - Include exclusive insights from research
+   - Add data, statistics, expert opinions
+   - Use specific examples and case studies
+
+4. ANALYSIS & IMPLICATIONS
+   - What this means for readers
+   - Hidden impacts others haven't discussed
+   - Future scenarios and predictions
+
+5. CONCLUSION
+   - Summarize key takeaways
+   - Call to action or thought-provoking question
+   - Forward-looking statement
+
+WRITING REQUIREMENTS:
+- 700-900 words of COMPLETELY ORIGINAL content
+- NEVER copy any phrases - everything must be rewritten
+- Include 3-4 subheadings (H2/H3) for scannability
+- Use short paragraphs (2-3 sentences max)
+- Mix sentence lengths for natural flow
+- Include transition phrases between sections
+- Add 2-3 internal links naturally
+- Reference the deep research naturally
+
+TONE: ${writingStyle.tone}
+
+CRITICAL: Write like a human expert, not AI. Include:
+- Personal observations
+- Industry insider knowledge
+- Subtle opinions and perspectives
+- Conversational elements
+- Occasional rhetorical questions
+
+Format as HTML with proper tags. Start with <h1>${finalTitle}</h1>`;
     
     // Use GPT-4 for high-quality, human-like articles
     const article = await this.callOpenAI(prompt, 'gpt-4-turbo-preview', 2000);
