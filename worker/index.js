@@ -5088,66 +5088,96 @@ async function serveArticle(env, request, pathname) {
     </script>
     
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: ${isDark ? '#0A0A0A' : '#FFF'};
-            color: ${isDark ? '#FFF' : '#000'};
-            line-height: 1.8;
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
         }
+        /* Header */
         .header {
-            background: ${isDark ? '#1A1A1A' : '#F8F8F8'};
-            padding: 20px;
-            border-bottom: 2px solid ${config.primaryColor};
-            position: sticky;
-            top: 0;
-            z-index: 100;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .header-content {
-            max-width: 900px;
-            margin: 0 auto;
+
+        .nav-bar {
+            background-color: #ff6600;
+            padding: 0 15px;
+        }
+
+        .nav-menu {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            list-style: none;
+            gap: 30px;
         }
-        .logo {
-            font-size: 24px;
-            font-weight: 900;
-            color: ${config.primaryColor};
+
+        .nav-menu li {
+            padding: 12px 0;
+        }
+
+        .nav-menu a {
+            color: white;
             text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            text-transform: uppercase;
         }
-        .article-container {
+
+        .nav-menu a:hover {
+            text-decoration: underline;
+        }
+        /* Main Content */
+        .main-content {
+            padding: 20px 15px;
             max-width: 900px;
             margin: 0 auto;
-            padding: 40px 20px;
         }
-        .article-category {
-            color: ${config.primaryColor};
-            font-size: 14px;
-            font-weight: 600;
-            text-transform: uppercase;
-            margin-bottom: 10px;
-        }
-        .article-title {
-            font-size: 36px;
-            font-weight: 900;
-            line-height: 1.2;
+
+        .article-header {
             margin-bottom: 20px;
         }
+
+        .breadcrumb {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .breadcrumb a {
+            color: #ff6600;
+            text-decoration: none;
+        }
+
+        .article-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+            line-height: 1.3;
+            margin-bottom: 15px;
+        }
+
         .article-meta {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid ${isDark ? '#333' : '#E0E0E0'};
             font-size: 14px;
-            opacity: 0.8;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .article-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
         }
         .article-image {
             width: 100%;
-            max-height: 500px;
+            height: 300px;
             object-fit: cover;
-            border-radius: 10px;
+            border-radius: 8px;
             margin-bottom: 10px;
         }
         .image-credit {
@@ -5353,114 +5383,129 @@ async function serveArticle(env, request, pathname) {
             }
         }
         
-        @media (max-width: 380px) {
-            .article-title { font-size: 20px; }
-            .article-content { font-size: 14px; }
-            .share-btn { 
-                display: block;
+        /* Other Articles */
+        .other-articles {
+            display: grid;
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .article-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 15px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .article-card img {
+            width: 120px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .article-card-content h3 {
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+
+        .article-card-meta {
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-menu {
+                gap: 15px;
+                flex-wrap: wrap;
+            }
+
+            .article-title {
+                font-size: 24px;
+            }
+
+            .article-card {
+                flex-direction: column;
+            }
+
+            .article-card img {
                 width: 100%;
-                margin: 5px 0;
+                height: 150px;
             }
         }
     </style>
 </head>
 <body>
     <header class="header">
-        <div class="header-content">
-            <a href="/" class="logo">${config.siteName}</a>
-            <div style="font-size: 12px; opacity: 0.7;">Tech & Finance News</div>
-        </div>
+        <nav class="nav-bar">
+            <ul class="nav-menu">
+                <li><a href="/">HOME</a></li>
+                <li><a href="/">LATEST</a></li>
+                <li><a href="#">INDIA</a></li>
+                <li><a href="#">BUSINESS</a></li>
+                <li><a href="#">TECHNOLOGY</a></li>
+                <li><a href="#">ENTERTAINMENT</a></li>
+            </ul>
+        </nav>
     </header>
-    
-    <div class="article-container">
-        <div class="article-category">${article.category}</div>
-        <h1 class="article-title">${article.title}</h1>
-        
-        <div class="article-meta">
-            <span>📅 ${article.date || 'Today'}</span>
-            <span>👁️ ${article.views?.toLocaleString() || 1} views</span>
-            ${article.source ? `<span>📰 Source: ${article.source}</span>` : ''}
-            ${article.trending ? '<span>🔥 Trending</span>' : ''}
-        </div>
-        
-        ${article.image ? `
-            <img src="${article.image.url || article.image}" alt="${article.title}" class="article-image">
-            ${article.image.credit ? `<div class="image-credit">${article.image.credit}</div>` : ''}
-        ` : ''}
-        
-        <div class="article-content">
-            ${fullContent}
+
+    <main class="main-content">
+        <div class="article-header">
+            <div class="breadcrumb">
+                <a href="/">Home</a> › <a href="#">${article.category}</a> › <span>${article.title.substring(0, 50)}...</span>
+            </div>
             
-            <!-- Internal Links for SEO -->
-            <div style="margin: 40px 0; padding: 20px; background: ${isDark ? '#1a1a1a' : '#f0f8ff'}; border-left: 4px solid #0066cc; border-radius: 8px;">
-                <h3 style="margin-top: 0; color: #0066cc;">📚 Continue Reading</h3>
-                <p style="margin: 10px 0; color: ${isDark ? '#ccc' : '#666'};">Discover more exclusive stories:</p>
-                <ul style="list-style: none; padding: 0;">
-                    ${articles
-                      .filter((a, i) => i !== articleId)
-                      .slice(0, 3)
-                      .map((related, idx) => `
-                        <li style="margin: 10px 0;">
-                            <a href="${related.url || `/article/${articles.indexOf(related)}`}" 
-                               style="color: #0066cc; text-decoration: none; font-weight: 500; display: block; padding: 5px 0;">
-                               → ${related.title}
-                            </a>
-                        </li>
-                      `).join('')}
-                </ul>
-                <a href="/" style="display: inline-block; margin-top: 15px; color: #0066cc; font-weight: bold;">
-                    View All Stories →
-                </a>
+            <h1 class="article-title">
+                ${article.title}
+            </h1>
+            
+            <div class="article-meta">
+                ${article.preview || article.description || 'Read the full story below.'}
+                <br><br>
+                <strong>Published Date:</strong> ${new Date(article.timestamp || Date.now()).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true })} IST &nbsp;&nbsp;&nbsp; <strong>By</strong> ${article.source || 'AgamiNews'}
             </div>
         </div>
-        
-        <div class="share-buttons">
-            <div class="share-title">Share this article</div>
-            <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${encodeURIComponent('https://agaminews.in/article/' + articleId)}" 
-               target="_blank" class="share-btn">Twitter</a>
-            <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent('https://agaminews.in/article/' + articleId)}" 
-               target="_blank" class="share-btn">Facebook</a>
-            <a href="https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent('https://agaminews.in/article/' + articleId)}" 
-               target="_blank" class="share-btn">LinkedIn</a>
-            <a href="https://wa.me/?text=${encodeURIComponent(article.title + ' https://agaminews.in/article/' + articleId)}" 
-               target="_blank" class="share-btn">WhatsApp</a>
-        </div>
-        
-        <div class="related-articles">
-            <h2 class="related-title">More Stories</h2>
-            <div class="related-grid">
-                ${articles
-                  .map((a, i) => ({ article: a, index: i })) // Keep track of original index
-                  .filter(item => item.index !== articleId)
-                  .sort((a, b) => {
-                    // Prioritize same category, then mix others
-                    if (a.article.category === article.category && b.article.category !== article.category) return -1;
-                    if (a.article.category !== article.category && b.article.category === article.category) return 1;
-                    return b.article.views - a.article.views; // Then by views
-                  })
-                  .slice(0, 6)
-                  .map(item => {
-                    const relatedIndex = item.index; // Use the preserved index
-                    const related = item.article;
-                    const imageUrl = related.image?.url || related.image || 
-                                   `https://via.placeholder.com/160x160/333/999?text=${encodeURIComponent(related.category)}`;
-                    return `
-                    <a href="${related.url || `/article/${relatedIndex}`}" class="related-card">
-                        <div class="related-card-image">
-                            <img src="${imageUrl}" alt="${related.title}" loading="lazy">
-                        </div>
-                        <div class="related-card-content">
-                            <div class="related-card-title">${related.title}</div>
-                            <div class="related-card-meta">${related.category} • ${related.date || 'Today'}</div>
-                        </div>
-                    </a>
-                  `;
-                  }).join('')}
+
+        <article class="article-content">
+            ${article.image ? `<img src="${article.image.url || article.image}" alt="${article.title}" class="article-image">` : ''}
+            
+            <div class="social-share">
+                <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(request.url)}" target="_blank" class="social-btn facebook">f</a>
+                <a href="https://twitter.com/intent/tweet?url=${encodeURIComponent(request.url)}&text=${encodeURIComponent(article.title)}" target="_blank" class="social-btn twitter">t</a>
+                <a href="https://wa.me/?text=${encodeURIComponent(article.title + ' ' + request.url)}" target="_blank" class="social-btn whatsapp">w</a>
+                <a href="https://t.me/share/url?url=${encodeURIComponent(request.url)}&text=${encodeURIComponent(article.title)}" target="_blank" class="social-btn telegram">T</a>
+                <a href="https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(request.url)}" target="_blank" class="social-btn linkedin">in</a>
             </div>
+            
+            <div class="article-text">
+                ${fullContent}
+            
+            </div>
+        </article>
+
+        <!-- Other Articles -->
+        <div class="other-articles">
+            ${articles
+                .filter((a, i) => i !== articleId)
+                .slice(0, 4)
+                .map(related => `
+                <div class="article-card">
+                    <img src="${related.image?.url || related.image || 'https://via.placeholder.com/120x80/ff6600/ffffff?text=News'}" alt="${related.title}">
+                    <div class="article-card-content">
+                        <h3><a href="${related.url || `/article/${articles.indexOf(related)}`}" style="color: #333; text-decoration: none;">${related.title}</a></h3>
+                        <div class="article-card-meta">${related.category} | ${related.date || 'Today'}</div>
+                    </div>
+                </div>
+            `).join('')}
         </div>
-        
-        <a href="/" class="back-btn">← Back to Homepage</a>
-    </div>
+    </main>
 </body>
 </html>`;
 
