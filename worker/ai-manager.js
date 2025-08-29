@@ -26,78 +26,125 @@ class AIWebsiteManager {
   async fetchDailyNews() {
     const allNews = [];
     
-    // 1. Crypto News
+    // OPTIMIZED FOR 15 ARTICLES/DAY WITH INDIA FOCUS (40% India, 30% Tech/Business, 20% Entertainment/Sports, 10% World)
+    
+    // 1. INDIA NEWS (6 articles - 40%)
     try {
-      // CoinGecko - FREE
-      const cryptoRes = await fetch('https://api.coingecko.com/api/v3/news');
-      const cryptoNews = await cryptoRes.json();
-      allNews.push(...cryptoNews.data.slice(0, 5).map(n => ({
-        category: 'CRYPTO',
-        title: n.title,
-        description: n.description,
-        url: n.url,
-        source: 'CoinGecko'
+      // Reddit India for local news
+      const indiaReddit = await fetch('https://www.reddit.com/r/india/top.json?limit=10&t=day');
+      const indiaData = await indiaReddit.json();
+      allNews.push(...indiaData.data.children.slice(0, 4).map(post => ({
+        category: 'INDIA',
+        title: post.data.title,
+        description: post.data.selftext?.substring(0, 200) || 'Latest news from India',
+        url: post.data.url,
+        source: 'India News',
+        priority: 'HIGH'
       })));
       
-      // Reddit Crypto - FREE
-      const redditCrypto = await fetch('https://www.reddit.com/r/cryptocurrency/top.json?limit=5');
-      const redditData = await redditCrypto.json();
-      allNews.push(...redditData.data.children.map(post => ({
-        category: 'CRYPTO',
-        title: post.data.title,
-        description: post.data.selftext?.substring(0, 200),
+      // Indian Startups & Business
+      const startupReddit = await fetch('https://www.reddit.com/r/indianstartups/hot.json?limit=5');
+      const startupData = await startupReddit.json();
+      allNews.push(...startupData.data.children.slice(0, 2).map(post => ({
+        category: 'INDIA',
+        title: post.data.title + ' - Indian Startup Scene',
+        description: post.data.selftext?.substring(0, 200) || 'Indian business development',
         url: post.data.url,
-        source: 'Reddit'
+        source: 'Indian Business',
+        priority: 'HIGH'
       })));
     } catch (e) {
-      console.log('Crypto fetch error:', e);
+      console.log('India news fetch error:', e);
     }
 
-    // 2. Electric Vehicle News
+    // 2. TECHNOLOGY & BUSINESS (5 articles - 33%)
     try {
-      const evReddit = await fetch('https://www.reddit.com/r/electricvehicles/top.json?limit=5');
-      const evData = await evReddit.json();
-      allNews.push(...evData.data.children.map(post => ({
-        category: 'TECHNOLOGY',
-        title: post.data.title,
-        description: post.data.selftext?.substring(0, 200),
-        url: post.data.url,
-        source: 'Reddit EV'
-      })));
-    } catch (e) {
-      console.log('EV fetch error:', e);
-    }
-
-    // 3. Tech & Gadgets
-    try {
-      // Hacker News - FREE
+      // Top Tech News
       const hnRes = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json');
       const hnIds = await hnRes.json();
       
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 3; i++) {
         const story = await fetch(`https://hacker-news.firebaseio.com/v0/item/${hnIds[i]}.json`);
         const storyData = await story.json();
-        allNews.push({
-          category: 'TECHNOLOGY',
-          title: storyData.title,
-          description: `Score: ${storyData.score} | Comments: ${storyData.descendants}`,
-          url: storyData.url,
-          source: 'HackerNews'
-        });
+        if (storyData && storyData.title) {
+          allNews.push({
+            category: 'TECHNOLOGY',
+            title: storyData.title,
+            description: `Breaking tech news with ${storyData.score} upvotes`,
+            url: storyData.url || '',
+            source: 'Tech News',
+            priority: 'MEDIUM'
+          });
+        }
       }
 
-      // Dev.to - FREE
-      const devRes = await fetch('https://dev.to/api/articles?top=1&per_page=5');
-      const devArticles = await devRes.json();
-      allNews.push(...devArticles.map(article => ({
-        category: 'TECHNOLOGY',
-        title: article.title,
-        description: article.description,
-        url: article.url,
-        source: 'Dev.to'
+      // Business & Crypto (limited to save costs)
+      const cryptoRes = await fetch('https://api.coingecko.com/api/v3/news');
+      const cryptoNews = await cryptoRes.json();
+      if (cryptoNews.data && cryptoNews.data.length > 0) {
+        allNews.push(...cryptoNews.data.slice(0, 2).map(n => ({
+          category: 'CRYPTO',
+          title: n.title,
+          description: n.description,
+          url: n.url,
+          source: 'Crypto News',
+          priority: 'MEDIUM'
+        })));
+      }
+    } catch (e) {
+      console.log('Tech/Business fetch error:', e);
+    }
+
+    // 3. ENTERTAINMENT & SPORTS (3 articles - 20%)
+    try {
+      // Bollywood Entertainment
+      const bollywoodReddit = await fetch('https://www.reddit.com/r/bollywood/top.json?limit=3&t=day');
+      const bollywoodData = await bollywoodReddit.json();
+      allNews.push(...bollywoodData.data.children.slice(0, 2).map(post => ({
+        category: 'ENTERTAINMENT',
+        title: post.data.title,
+        description: post.data.selftext?.substring(0, 200) || 'Bollywood entertainment news',
+        url: post.data.url,
+        source: 'Bollywood',
+        priority: 'LOW'
+      })));
+      
+      // Cricket/Sports
+      const cricketReddit = await fetch('https://www.reddit.com/r/Cricket/top.json?limit=3&t=day');
+      const cricketData = await cricketReddit.json();
+      allNews.push(...cricketData.data.children.slice(0, 1).map(post => ({
+        category: 'SPORTS',
+        title: post.data.title,
+        description: post.data.selftext?.substring(0, 200) || 'Cricket and sports news',
+        url: post.data.url,
+        source: 'Sports',
+        priority: 'LOW'
       })));
     } catch (e) {
-      console.log('Tech fetch error:', e);
+      console.log('Entertainment fetch error:', e);
+    }
+
+    // 4. WORLD NEWS (1 article - 7% - only major events)
+    try {
+      const worldReddit = await fetch('https://www.reddit.com/r/worldnews/top.json?limit=10&t=day');
+      const worldData = await worldReddit.json();
+      // Only include if it's really significant (high score)
+      const majorWorldNews = worldData.data.children
+        .filter(post => post.data.score > 10000) // Only major world events
+        .slice(0, 1)
+        .map(post => ({
+          category: 'WORLD',
+          title: post.data.title,
+          description: 'Major international development',
+          url: post.data.url,
+          source: 'World News',
+          priority: 'LOW'
+        }));
+      if (majorWorldNews.length > 0) {
+        allNews.push(...majorWorldNews);
+      }
+    } catch (e) {
+      console.log('World news fetch error:', e);
     }
 
     return allNews;
@@ -531,11 +578,13 @@ CRITICAL: Write like a human expert, not AI. Include:
 
 Format as HTML with proper tags. Start with <h1>${finalTitle}</h1>`;
     
-    // Use GPT-4 for high-quality, human-like articles
-    const article = await this.callOpenAI(prompt, 'gpt-4-turbo-preview', 2000);
+    // Use GPT-4 for high-quality articles (or GPT-3.5 to save costs)
+    const useGPT4 = newsItem.category === 'INDIA' || newsItem.category === 'TECHNOLOGY';
+    const model = useGPT4 ? 'gpt-4-turbo-preview' : 'gpt-3.5-turbo';
+    const article = await this.callOpenAI(prompt, model, 2000);
     
-    // Generate AI image with DALL-E
-    const image = await this.getFreeImage(newsItem.title);
+    // Generate optimized image with category context
+    const image = await this.getFreeImage(finalTitle, newsItem.category);
     
     // Add proper image HTML with attribution based on source
     let imageHtml = '';
@@ -608,25 +657,62 @@ Format as HTML with proper tags. Start with <h1>${finalTitle}</h1>`;
     };
   }
 
-  // Generate images using DALL-E 3 HD
-  async getFreeImage(query) {
+  // Get stock photo as fallback
+  async getStockPhoto(query) {
     try {
-      // Check if OpenAI API key is configured
-      if (!this.env.OPENAI_API_KEY) {
-        console.log('[DALL-E] OpenAI API key not configured, using placeholder');
-        return {
-          url: `https://via.placeholder.com/800x400/667eea/ffffff?text=${encodeURIComponent(query.substring(0, 20))}`,
-          photographer: 'AI Generated',
-          photographerUrl: null,
-          alt: query,
-          source: 'placeholder'
-        };
+      // Use Unsplash API (free tier)
+      const searchTerm = query.split(' ').slice(0, 3).join(' ');
+      const unsplashUrl = `https://source.unsplash.com/1792x1024/?${encodeURIComponent(searchTerm)},news`;
+      
+      return {
+        url: unsplashUrl,
+        photographer: 'Stock Photo',
+        photographerUrl: 'https://unsplash.com',
+        alt: query,
+        source: 'unsplash',
+        credit: 'Unsplash'
+      };
+    } catch (e) {
+      return {
+        url: `https://via.placeholder.com/1792x1024/667eea/ffffff?text=${encodeURIComponent(query.substring(0, 20))}`,
+        photographer: 'Placeholder',
+        alt: query,
+        source: 'placeholder'
+      };
+    }
+  }
+
+  // Generate optimized images with smart cost management
+  async getFreeImage(query, category = 'GENERAL') {
+    try {
+      // BUDGET OPTIMIZATION: Use DALL-E selectively
+      const highPriorityCategories = ['INDIA', 'TECHNOLOGY', 'BUSINESS'];
+      const shouldUseDallE = this.env.OPENAI_API_KEY && highPriorityCategories.includes(category);
+      
+      // For lower priority, use free stock photos
+      if (!shouldUseDallE) {
+        console.log(`[IMAGE] Using stock photo for ${category} to save costs`);
+        return await this.getStockPhoto(query);
       }
 
-      // Create a more detailed and news-appropriate prompt for DALL-E
-      const imagePrompt = `Professional news article image for: ${query}. Create a photorealistic, high-quality image suitable for a news website. Style: modern, clean, professional journalism photography. No text or watermarks.`;
+      // Enhanced prompts for Indian context
+      let imagePrompt = '';
+      
+      // Check for Indian personalities
+      const indianCelebs = ['Modi', 'Ambani', 'Adani', 'Kohli', 'Dhoni', 'Shah Rukh', 'Salman', 'Amitabh'];
+      const hasCelebrity = indianCelebs.some(name => query.toLowerCase().includes(name.toLowerCase()));
+      
+      if (hasCelebrity) {
+        imagePrompt = `News context image: ${query}. Show relevant scene, symbols, or environment. No faces or identifiable people. Professional editorial photography.`;
+      } else if (category === 'INDIA') {
+        imagePrompt = `Indian news context: ${query}. Include Indian elements, architecture, or cultural symbols. Professional photojournalism style.`;
+      } else if (category === 'TECHNOLOGY') {
+        imagePrompt = `Tech news visualization: ${query}. Modern, clean, futuristic aesthetic. Professional editorial style.`;
+      } else {
+        imagePrompt = `Professional news image: ${query}. Clean composition, relevant visual metaphor. Photojournalistic style.`;
+      }
 
-      console.log(`[DALL-E] Generating optimized image for: ${query}`);
+      console.log(`[DALL-E] Generating for ${category}:`, query.substring(0, 40));
       
       // Call DALL-E 3 API with optimized web settings
       const response = await fetch('https://api.openai.com/v1/images/generations', {
