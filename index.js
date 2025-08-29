@@ -1427,6 +1427,34 @@ Or just talk to me naturally! Try:
         await sendMessage(env, chatId, `🧪 *Testing Notification System*\n\nSending test messages...`);
         const result1 = await sendMessage(env, chatId, `📝 Test Message 1: Basic text`);
         const result2 = await sendMessage(env, chatId, `✅ Test Message 2: If you see this, notifications work!\n\nResult 1: ${result1}`);
+      } else if (text === '/whoami' || text === '/admin') {
+        // Check admin status
+        const adminChat = await env.NEWS_KV.get('admin_chat');
+        const isAdmin = adminChat && String(chatId) === String(adminChat);
+        
+        await sendMessage(env, chatId, `👤 *Your Status*\n\n` +
+          `Your Chat ID: \`${chatId}\`\n` +
+          `Admin Status: ${isAdmin ? '✅ Admin' : '❌ Not Admin'}\n` +
+          `Current Admin ID: \`${adminChat || 'Not set'}\`\n\n` +
+          `${!adminChat ? '💡 *Tip:* You will become admin automatically when you first use the bot.' : 
+            (isAdmin ? '✅ You have full admin access to delete articles!' : 
+            '⚠️ If you should be admin, use `/setadmin agami2024`')}`
+        );
+      } else if (text.startsWith('/setadmin')) {
+        // Force set admin with secret key
+        const parts = text.split(' ');
+        const secret = parts[1];
+        const expectedSecret = env.ADMIN_SECRET || 'agami2024';
+        
+        if (secret === expectedSecret) {
+          await env.NEWS_KV.put('admin_chat', String(chatId));
+          await sendMessage(env, chatId, `✅ *Admin Access Granted!*\n\nYou are now the admin.\nChat ID: \`${chatId}\`\n\nYou can now:\n• Delete articles with \`/delete\`\n• Clear all articles with \`/clear\`\n• Access all admin commands`);
+          console.log(`[ADMIN] Set ${chatId} as admin via /setadmin`);
+        } else if (!secret) {
+          await sendMessage(env, chatId, `❌ *Secret Required*\n\nUse: \`/setadmin <secret>\`\n\nDefault: \`/setadmin agami2024\``);
+        } else {
+          await sendMessage(env, chatId, `❌ *Invalid Secret*\n\nThe secret you provided is incorrect.`);
+        }
       } else if (text === '/cron-logs' || text === '/logs') {
         // Show cron execution logs
         const cronLogs = await env.NEWS_KV.get('cron_logs', 'json') || [];
@@ -2434,9 +2462,19 @@ ${projectedCost > 20 ? '⚠️ *Warning:* Reduce daily articles to stay within b
 
 // Handle delete specific article
 async function handleDeleteArticle(env, chatId, text) {
-  const adminChat = await env.NEWS_KV.get('admin_chat');
-  if (String(chatId) !== adminChat) {
-    await sendMessage(env, chatId, '❌ *Unauthorized*\n\nOnly the admin can delete articles.');
+  // Get admin chat ID
+  let adminChat = await env.NEWS_KV.get('admin_chat');
+  
+  // If no admin is set, set the current user as admin
+  if (!adminChat) {
+    await env.NEWS_KV.put('admin_chat', String(chatId));
+    adminChat = String(chatId);
+    console.log(`[DELETE] Set ${chatId} as admin`);
+  }
+  
+  // Check if current user is admin (compare as strings to avoid type issues)
+  if (String(chatId) !== String(adminChat)) {
+    await sendMessage(env, chatId, `❌ *Unauthorized*\n\nOnly the admin can delete articles.\n\nYour Chat ID: ${chatId}\nAdmin Chat ID: ${adminChat}\n\nIf you are the admin, please contact support.`);
     return;
   }
   
@@ -2492,6 +2530,13 @@ async function sendHelp(env, chatId) {
 /status - Check system health
 /help - This help message
 
+*Admin Commands:*
+/admin - Check your admin status
+/setadmin <secret> - Become admin
+/delete <number> - Delete specific article
+/clear - Delete all articles
+/whoami - See your chat ID & status
+
 *Natural Language:*
 Just talk to me! I understand:
 • "Fetch the latest news"
@@ -2502,7 +2547,7 @@ Just talk to me! I understand:
 
 *Automatic Features:*
 🔄 News updates every 3 hours
-📸 Smart image selection
+📸 DALL-E 3 HD image generation
 ✍️ Human-like content writing
 📊 Performance tracking
 💰 Cost monitoring
