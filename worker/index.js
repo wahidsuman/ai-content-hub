@@ -1269,15 +1269,16 @@ async function serveWebsite(env) {
 }
 </script>
 <style>
-  /* Professional News Website Design */
+  /* India.com Inspired Design */
   :root {
-    --primary: #1a1a1a;
-    --secondary: #2c3e50;
-    --accent: #e74c3c;
-    --text: #333333;
-    --light-gray: #f8f9fa;
-    --border: #dee2e6;
+    --primary-red: #d70000;
+    --dark-red: #b30000;
+    --text-dark: #000000;
+    --text-gray: #666666;
+    --light-gray: #f5f5f5;
+    --border-gray: #e0e0e0;
     --white: #ffffff;
+    --blue-link: #0066cc;
   }
   
   * {
@@ -1287,54 +1288,75 @@ async function serveWebsite(env) {
   }
   
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-family: 'Roboto', Arial, sans-serif;
     background: var(--white);
-    color: var(--text);
+    color: var(--text-dark);
     line-height: 1.6;
-  }
-  
-  .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 20px;
-  }
-  
-  /* Professional Header */
-  .header {
-    background: var(--white);
-    border-bottom: 1px solid var(--border);
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
-  
-  .header-top {
-    background: var(--primary);
-    color: var(--white);
-    padding: 8px 0;
     font-size: 14px;
   }
   
+  .container {
+    max-width: 1170px;
+    margin: 0 auto;
+    padding: 0 15px;
+  }
+  
+  /* India.com Style Header */
+  .header {
+    background: var(--white);
+    border-bottom: 3px solid var(--primary-red);
+  }
+  
+  .header-top {
+    border-bottom: 1px solid var(--border-gray);
+    padding: 5px 0;
+  }
+  
+  .header-top-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--text-gray);
+  }
+  
   .header-main {
-    padding: 20px 0;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--border-gray);
+  }
+  
+  .header-main-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
   
   .logo {
-    font-size: 32px;
-    font-weight: 700;
-    color: var(--primary);
+    font-size: 36px;
+    font-weight: 900;
+    color: var(--primary-red);
     text-decoration: none;
-    letter-spacing: -1px;
+    text-transform: uppercase;
+    letter-spacing: -2px;
   }
   
-  .logo span {
-    color: var(--accent);
+  .logo .dot {
+    color: var(--text-dark);
   }
   
+  .header-right {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+  
+  /* Navigation Bar */
   .nav {
-    background: var(--primary);
+    background: var(--primary-red);
     padding: 0;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
   }
   
   .nav-links {
@@ -1347,15 +1369,22 @@ async function serveWebsite(env) {
   
   .nav-link {
     color: var(--white);
-    padding: 12px 20px;
+    padding: 12px 18px;
     text-decoration: none;
     font-weight: 500;
+    font-size: 14px;
     transition: background 0.3s;
     display: block;
+    text-transform: uppercase;
+    border-right: 1px solid rgba(255,255,255,0.2);
   }
   
   .nav-link:hover {
-    background: var(--accent);
+    background: var(--dark-red);
+  }
+  
+  .nav-link:first-child {
+    background: var(--dark-red);
   }
   
   /* Main Content Grid */
@@ -1372,86 +1401,112 @@ async function serveWebsite(env) {
     }
   }
   
-  /* News Cards */
+  /* India.com Style News Cards */
+  .news-section {
+    margin-top: 20px;
+  }
+  
+  .section-header {
+    background: var(--primary-red);
+    color: var(--white);
+    padding: 8px 15px;
+    font-size: 18px;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 15px;
+  }
+  
   .news-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 20px;
+    margin-bottom: 30px;
+  }
+  
+  @media (max-width: 768px) {
+    .news-grid {
+      grid-template-columns: 1fr;
+    }
   }
   
   .featured-article {
     grid-column: 1 / -1;
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 2fr 1fr;
     gap: 20px;
-    padding: 20px;
-    background: var(--light-gray);
-    border-radius: 8px;
-    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-gray);
+    margin-bottom: 20px;
   }
   
-  @media (max-width: 768px) {
-    .featured-article {
-      grid-template-columns: 1fr;
-    }
+  .featured-image {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .featured-image img {
+    width: 100%;
+    height: 400px;
+    object-fit: cover;
   }
   
   .article-card {
     background: var(--white);
-    border: 1px solid var(--border);
-    border-radius: 8px;
+    border: 1px solid var(--border-gray);
     overflow: hidden;
-    transition: transform 0.3s, box-shadow 0.3s;
+    transition: box-shadow 0.3s;
     cursor: pointer;
   }
   
   .article-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  .article-card:hover .article-title {
+    color: var(--primary-red);
   }
   
   .article-image {
     width: 100%;
-    height: 200px;
+    height: 180px;
     object-fit: cover;
+    display: block;
   }
   
   .article-content {
-    padding: 15px;
+    padding: 12px;
   }
   
   .article-category {
     display: inline-block;
-    padding: 4px 8px;
-    background: var(--accent);
-    color: var(--white);
-    font-size: 12px;
-    font-weight: 600;
+    color: var(--primary-red);
+    font-size: 11px;
+    font-weight: 700;
     text-transform: uppercase;
-    border-radius: 3px;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
   }
   
   .article-title {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
-    color: var(--primary);
-    margin-bottom: 10px;
+    color: var(--text-dark);
+    margin-bottom: 8px;
     line-height: 1.3;
+    transition: color 0.3s;
   }
   
   .article-excerpt {
-    color: #666;
-    font-size: 14px;
-    line-height: 1.5;
-    margin-bottom: 10px;
+    color: var(--text-gray);
+    font-size: 13px;
+    line-height: 1.4;
+    margin-bottom: 8px;
   }
   
   .article-meta {
-    display: flex;
-    justify-content: space-between;
-    font-size: 12px;
+    font-size: 11px;
     color: #999;
+    display: flex;
+    gap: 15px;
   }
   
   /* Sidebar */
@@ -1542,27 +1597,37 @@ async function serveWebsite(env) {
 </head>
 <body>
 
-<!-- Professional News Header -->
+<!-- India.com Style Header -->
 <header class="header">
   <div class="header-top">
     <div class="container">
-      <span>${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+      <div class="header-top-content">
+        <span>${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+        <span>Updated: ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+      </div>
     </div>
   </div>
   <div class="header-main">
     <div class="container">
-      <a href="/" class="logo">AGAMI<span>NEWS</span></a>
+      <div class="header-main-content">
+        <a href="/" class="logo">AGAMINEWS<span class="dot">.</span>IN</a>
+        <div class="header-right">
+          <span style="font-size:12px;color:#666;">Your Daily Tech & Business News</span>
+        </div>
+      </div>
     </div>
   </div>
   <nav class="nav">
     <div class="container">
       <ul class="nav-links">
-        <li><a href="/" class="nav-link">Home</a></li>
-        <li><a href="#tech" class="nav-link">Technology</a></li>
-        <li><a href="#crypto" class="nav-link">Cryptocurrency</a></li>
-        <li><a href="#ev" class="nav-link">Electric Vehicles</a></li>
-        <li><a href="/about" class="nav-link">About</a></li>
-        <li><a href="/contact" class="nav-link">Contact</a></li>
+        <li><a href="/" class="nav-link">HOME</a></li>
+        <li><a href="#latest" class="nav-link">LATEST</a></li>
+        <li><a href="#tech" class="nav-link">TECHNOLOGY</a></li>
+        <li><a href="#crypto" class="nav-link">CRYPTO</a></li>
+        <li><a href="#business" class="nav-link">BUSINESS</a></li>
+        <li><a href="#startups" class="nav-link">STARTUPS</a></li>
+        <li><a href="#ai" class="nav-link">AI & ML</a></li>
+        <li><a href="#ev" class="nav-link">ELECTRIC VEHICLES</a></li>
       </ul>
     </div>
   </nav>
