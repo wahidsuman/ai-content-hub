@@ -1,4 +1,4 @@
-name = "agaminews"
+name = "telegram-mcq-bot-wahid"
 main = "index.js"
 compatibility_date = "2024-01-01"
 
