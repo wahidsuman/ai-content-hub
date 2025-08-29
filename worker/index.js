@@ -572,7 +572,7 @@ async function sendStatusMessage(env, chatId) {
 • Cloudflare Worker: ✅ Active
 • OpenAI API: ✅ Connected
 • Telegram Bot: ✅ Running
-• DALL-E 3 HD: ✅ Configured
+• DALL-E 3: ✅ Configured
 • KV Storage: ✅ Connected
 
 *Next Actions:*
@@ -934,7 +934,7 @@ async function serveWebsite(env) {
         imageHtml = `
           <div class="img" style="background-image:url('${article.image.url}');background-size:cover;background-position:center;position:relative;">
             <div style="position:absolute;bottom:2px;right:4px;font-size:9px;background:rgba(0,0,0,0.7);color:#fff;padding:2px 4px;border-radius:4px;">
-              🎨 DALL-E 3 HD
+              🎨 DALL-E 3
             </div>
           </div>
         `;

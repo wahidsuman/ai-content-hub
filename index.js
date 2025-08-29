@@ -1365,7 +1365,7 @@ I'm your intelligent news manager powered by AI. I handle everything automatical
 • API Cost: ~$1.50/month
 • Budget: $20/month (plenty left!)
 • News Sources: Active ✅
-• Image System: DALL-E 3 HD ${env.OPENAI_API_KEY ? '✅' : '❌'}
+• Image System: DALL-E 3 ${env.OPENAI_API_KEY ? '✅' : '❌'}
 
 📍 *Focus:* Tech + Finance for Indian professionals
 
@@ -1601,7 +1601,7 @@ async function sendMenu(env, chatId) {
 
 ⚡ *System Status:*
 • AI Model: GPT-4 Turbo
-• Images: DALL-E 3 HD
+• Images: DALL-E 3 (Optimized)
 • Last Auto-Run: ${lastCron}
 • Next Run: ${nextCronHour}:00
 
@@ -2280,7 +2280,7 @@ async function handleCreateArticle(env, chatId, text) {
       `✅ *Article Created Successfully!*\n\n` +
       `📌 *Title:* ${article.title}\n` +
       `🏷️ *Category:* ${article.category}\n` +
-      `📸 *Image:* ${article.image?.type === 'generated' ? '🎨 DALL-E 3 HD' : '📷 Stock'}\n` +
+      `📸 *Image:* ${article.image?.type === 'generated' ? '🎨 DALL-E 3' : '📷 Stock'}\n` +
       `📊 *Length:* ${article.fullContent.length} chars\n` +
       `🔗 *Link:* https://agaminews.in${article.url}\n\n` +
       `_Article is now live on the website!_`
@@ -2392,7 +2392,7 @@ async function sendCostReport(env, chatId) {
   
   // Cost calculations
   const COST_PER_ARTICLE = 0.03; // GPT-4 Turbo
-  const COST_PER_IMAGE = 0.01; // DALL-E 3 HD
+  const COST_PER_IMAGE = 0.008; // DALL-E 3 Standard (optimized for web)
   const COST_PER_UNIT = COST_PER_ARTICLE + COST_PER_IMAGE;
   
   // Get monthly stats
@@ -2443,7 +2443,7 @@ async function sendCostReport(env, chatId) {
 
 💡 *Cost Breakdown:*
 • GPT-4 Turbo: $0.03/article
-• DALL-E 3 HD: $0.01/image
+• DALL-E 3: $0.008/image
 • Total per article: $0.04
 
 🎯 *Budget: $20.00/month*
@@ -2547,7 +2547,7 @@ Just talk to me! I understand:
 
 *Automatic Features:*
 🔄 News updates every 3 hours
-📸 DALL-E 3 HD image generation
+📸 DALL-E 3 optimized images
 ✍️ Human-like content writing
 📊 Performance tracking
 💰 Cost monitoring
