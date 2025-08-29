@@ -553,7 +553,6 @@ Return ONLY the best headline.`;
     
     // Get category-specific writing style
     const writingStyle = this.getWritingStyle(newsItem.category);
-    const isEvergreen = newsItem.evergreen || newsItem.priority === 'EVERGREEN';
     
     // PHASE 3: OPTIMIZED ARTICLE WRITING (Evergreen vs Fresh)
     const articleType = isEvergreen ? 'comprehensive evergreen guide' : 'breaking news story';
