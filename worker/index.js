@@ -1197,6 +1197,8 @@ Or just talk to me naturally! Try:
         await sendMenu(env, chatId);
       } else if (text === '/stats') {
         await sendStats(env, chatId);
+      } else if (text === '/list') {
+        await handleListArticles(env, chatId, 0);
       } else if (text === '/top' || text === '/popular') {
         await sendTopArticles(env, chatId);
       } else if (text === '/costs' || text === '/cost') {
@@ -1419,7 +1421,11 @@ async function sendMenu(env, chatId) {
       ],
       [
         { text: '📊 Full Stats', callback_data: 'stats' },
-        { text: '💰 Cost Report', callback_data: 'costs' }
+        { text: '📚 List Articles', callback_data: 'list' }
+      ],
+      [
+        { text: '💰 Cost Report', callback_data: 'costs' },
+        { text: '🗑 Delete Menu', callback_data: 'delete_menu' }
       ],
       [
         { text: '📈 Analytics', callback_data: 'analytics' },
@@ -1440,23 +1446,169 @@ async function sendMenu(env, chatId) {
   });
 }
 
-async function sendStats(env, chatId) {
+async function sendStats(env, chatId, section = 'overview') {
   const stats = await env.NEWS_KV.get('stats', 'json') || {};
   const articles = await env.NEWS_KV.get('articles', 'json') || [];
   
-  await sendMessage(env, chatId, `
-📊 *Performance Report*
-
-Views: ${stats.totalViews || 0}
-Today: ${stats.todayViews || 0}
-Articles: ${articles.length}
-Trending: ${articles.filter(a => a.trending).length}
-  `, {
-    inline_keyboard: [
-      [{ text: '🔄 Refresh', callback_data: 'stats' }],
-      [{ text: '↩️ Back', callback_data: 'menu' }]
-    ]
-  });
+  let message = '';
+  let buttons = [];
+  
+  switch(section) {
+    case 'overview':
+      const todayArticles = articles.filter(a => {
+        const articleDate = new Date(a.timestamp);
+        const today = new Date();
+        return articleDate.toDateString() === today.toDateString();
+      }).length;
+      
+      message = `📊 *Statistics Overview*\n\n`;
+      message += `📈 *Traffic Stats:*\n`;
+      message += `• Total Views: ${stats.totalViews || 0}\n`;
+      message += `• Today's Views: ${stats.todayViews || 0}\n`;
+      message += `• Active Readers: ${getActiveReaders(stats)}\n\n`;
+      message += `📰 *Content Stats:*\n`;
+      message += `• Total Articles: ${articles.length}\n`;
+      message += `• Today's Articles: ${todayArticles}\n`;
+      message += `• Trending Now: ${articles.filter(a => a.trending).length}\n\n`;
+      message += `💰 *Cost Stats:*\n`;
+      message += `• Today's Cost: $${(todayArticles * 0.04).toFixed(2)}\n`;
+      message += `• Monthly Est: $${(todayArticles * 30 * 0.04).toFixed(2)}\n`;
+      
+      buttons = [
+        [
+          { text: '📂 Categories', callback_data: 'stats_categories' },
+          { text: '🏆 Top Articles', callback_data: 'stats_top' }
+        ],
+        [
+          { text: '📈 Analytics', callback_data: 'stats_analytics' },
+          { text: '🌍 Audience', callback_data: 'stats_audience' }
+        ],
+        [
+          { text: '🔄 Refresh', callback_data: 'stats' },
+          { text: '↩️ Menu', callback_data: 'menu' }
+        ]
+      ];
+      break;
+      
+    case 'categories':
+      const categoryStats = {};
+      articles.forEach(a => {
+        const cat = a.category || 'UNCATEGORIZED';
+        categoryStats[cat] = (categoryStats[cat] || 0) + 1;
+      });
+      
+      message = `📂 *Category Distribution*\n\n`;
+      Object.entries(categoryStats)
+        .sort((a, b) => b[1] - a[1])
+        .forEach(([cat, count]) => {
+          const percentage = ((count / articles.length) * 100).toFixed(1);
+          const bar = '█'.repeat(Math.floor(percentage / 5));
+          message += `*${cat}*\n`;
+          message += `${bar} ${count} articles (${percentage}%)\n\n`;
+        });
+      
+      buttons = [
+        [
+          { text: '📊 Overview', callback_data: 'stats' },
+          { text: '🏆 Top Articles', callback_data: 'stats_top' }
+        ],
+        [
+          { text: '↩️ Back to Stats', callback_data: 'stats' },
+          { text: '↩️ Menu', callback_data: 'menu' }
+        ]
+      ];
+      break;
+      
+    case 'top':
+      const topArticles = articles
+        .sort((a, b) => (b.views || 0) - (a.views || 0))
+        .slice(0, 5);
+      
+      message = `🏆 *Top 5 Articles by Views*\n\n`;
+      topArticles.forEach((article, idx) => {
+        const emoji = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;
+        message += `${emoji} *${article.title}*\n`;
+        message += `   👁 ${article.views || 0} views | ${article.category}\n\n`;
+      });
+      
+      buttons = [
+        [
+          { text: '📊 Overview', callback_data: 'stats' },
+          { text: '📂 Categories', callback_data: 'stats_categories' }
+        ],
+        [
+          { text: '↩️ Back to Stats', callback_data: 'stats' },
+          { text: '↩️ Menu', callback_data: 'menu' }
+        ]
+      ];
+      break;
+      
+    case 'analytics':
+      const analytics = stats.analytics || {};
+      const hourly = analytics.hourly || {};
+      const peakHour = getPeakHour(stats);
+      
+      message = `📈 *Analytics Deep Dive*\n\n`;
+      message += `⏰ *Peak Traffic Hour:* ${peakHour}\n`;
+      message += `📱 *Device Split:*\n`;
+      message += `• Mobile: ${analytics.devices?.mobile || 0} (${Math.round((analytics.devices?.mobile || 0) / (stats.totalViews || 1) * 100)}%)\n`;
+      message += `• Desktop: ${analytics.devices?.desktop || 0} (${Math.round((analytics.devices?.desktop || 0) / (stats.totalViews || 1) * 100)}%)\n\n`;
+      message += `🔗 *Traffic Sources:*\n`;
+      const referrers = analytics.referrers || {};
+      Object.entries(referrers).slice(0, 5).forEach(([source, count]) => {
+        message += `• ${source}: ${count} visits\n`;
+      });
+      
+      buttons = [
+        [
+          { text: '📊 Overview', callback_data: 'stats' },
+          { text: '🌍 Audience', callback_data: 'stats_audience' }
+        ],
+        [
+          { text: '↩️ Back to Stats', callback_data: 'stats' },
+          { text: '↩️ Menu', callback_data: 'menu' }
+        ]
+      ];
+      break;
+      
+    case 'audience':
+      const analytics2 = stats.analytics || {};
+      const countries = analytics2.countries || {};
+      const topCountry = getTopCountry(stats);
+      
+      message = `🌍 *Audience Insights*\n\n`;
+      message += `📍 *Top Country:* ${topCountry}\n\n`;
+      message += `*Geographic Distribution:*\n`;
+      Object.entries(countries)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .forEach(([country, views]) => {
+          const flag = country === 'IN' ? '🇮🇳' : 
+                       country === 'US' ? '🇺🇸' :
+                       country === 'GB' ? '🇬🇧' :
+                       country === 'CA' ? '🇨🇦' : '🌍';
+          message += `${flag} ${country}: ${views} views\n`;
+        });
+      
+      message += `\n*Engagement:*\n`;
+      message += `• Bounce Rate: ${analytics2.bounceRate || 'N/A'}\n`;
+      message += `• Avg Time: ${analytics2.avgTimeOnSite || 'N/A'}\n`;
+      message += `• Return Visitors: ${analytics2.returnVisitors || 0}\n`;
+      
+      buttons = [
+        [
+          { text: '📊 Overview', callback_data: 'stats' },
+          { text: '📈 Analytics', callback_data: 'stats_analytics' }
+        ],
+        [
+          { text: '↩️ Back to Stats', callback_data: 'stats' },
+          { text: '↩️ Menu', callback_data: 'menu' }
+        ]
+      ];
+      break;
+  }
+  
+  await sendMessage(env, chatId, message, { inline_keyboard: buttons });
 }
 
 async function handleNaturalLanguage(env, chatId, text) {
@@ -2329,47 +2481,58 @@ async function sendHelp(env, chatId) {
   await sendMessage(env, chatId, `
 📚 *AgamiNews Manager Help*
 
-*Quick Commands:*
-/menu - Main control panel
-/stats - View website statistics
-/fetch - Force news update now
-/status - Check system health
-/help - This help message
+I'm your AI-powered news manager. Use the buttons below or type commands directly!
 
-*Admin Commands:*
-/admin - Check your admin status
-/setadmin <secret> - Become admin
-/delete <number> - Delete specific article
-/clear - Delete all articles
-/whoami - See your chat ID & status
+*🎯 Main Features:*
+• Automated news generation every 3 hours
+• DALL-E 3 image generation
+• GPT-4 Turbo article writing
+• Real-time analytics tracking
+• Category-based content organization
 
-*Natural Language:*
-Just talk to me! I understand:
+*💬 Natural Language:*
+Just talk to me naturally! Try:
 • "Fetch the latest news"
 • "Show me today's stats"
 • "What's our monthly cost?"
-• "How's our SEO doing?"
-• "Change theme to dark"
+• "How many articles today?"
 
-*Automatic Features:*
-🔄 News updates every 3 hours
-📸 DALL-E 3 optimized images
-✍️ Human-like content writing
-📊 Performance tracking
-💰 Cost monitoring
+*🔐 Admin Features:*
+• Delete specific articles
+• Clear all content
+• Monitor API costs
+• Track performance
 
-*Dashboard Links:*
-• Website: https://agaminews.in
-• Debug: https://agaminews.in/debug
-• Manual fetch: https://agaminews.in/fetch-news
+*Quick Actions:*`, {
+    inline_keyboard: [
+      [
+        { text: '📊 View Stats', callback_data: 'stats' },
+        { text: '📚 List Articles', callback_data: 'list' }
+      ],
+      [
+        { text: '🚀 Fetch News', callback_data: 'fetch' },
+        { text: '✏️ Create Article', callback_data: 'create_prompt' }
+      ],
+      [
+        { text: '💰 Cost Report', callback_data: 'costs' },
+        { text: '🗑 Delete Menu', callback_data: 'delete_menu' }
+      ],
+      [
+        { text: '⚙️ Main Menu', callback_data: 'menu' }
+      ]
+    ]
+  });
+}
 
-*Tips:*
-• Peak traffic is 9 AM and 5 PM
-• Tech news gets most engagement
-• Images improve click rates by 40%
-• Fresh content helps Google ranking
+async function sendHelpOld(env, chatId) {
+  await sendMessage(env, chatId, `
+📚 *Help*
 
-Need specific help? Just ask!
+Commands:
+/menu - Main menu
+/stats - Statistics
+/list - List articles
+/help - This help
   `, {
     inline_keyboard: [
       [{ text: '⚙️ Menu', callback_data: 'menu' }]
@@ -2470,6 +2633,76 @@ Are you sure?`, {
   });
 }
 
+async function handleListArticles(env, chatId, page = 0) {
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  const perPage = 5;
+  const totalPages = Math.ceil(articles.length / perPage);
+  const start = page * perPage;
+  const end = start + perPage;
+  const pageArticles = articles.slice(start, end);
+  
+  if (articles.length === 0) {
+    await sendMessage(env, chatId, '📭 *No articles found*\n\nUse /fetch to generate new articles.', {
+      inline_keyboard: [
+        [{ text: '🚀 Fetch News', callback_data: 'fetch' }],
+        [{ text: '↩️ Back to Menu', callback_data: 'menu' }]
+      ]
+    });
+    return;
+  }
+  
+  let message = `📚 *Articles List (Page ${page + 1}/${totalPages})*\n`;
+  message += `_Total: ${articles.length} articles_\n\n`;
+  
+  pageArticles.forEach((article, idx) => {
+    const globalIdx = start + idx;
+    const emoji = article.category === 'CRYPTO' ? '₿' : 
+                  article.category === 'TECHNOLOGY' ? '💻' :
+                  article.category === 'BUSINESS' ? '💼' :
+                  article.category === 'INDIA' ? '🇮🇳' :
+                  article.category === 'WORLD' ? '🌍' :
+                  article.category === 'SPORTS' ? '⚽' :
+                  article.category === 'ENTERTAINMENT' ? '🎬' : '📰';
+    
+    message += `${globalIdx + 1}. ${emoji} *${article.title}*\n`;
+    message += `   📂 ${article.category} | 👁 ${article.views || 0} views\n`;
+    message += `   🔗 [View Article](https://agaminews.in${article.url || `/article/${globalIdx}`})\n\n`;
+  });
+  
+  // Create navigation buttons
+  const navButtons = [];
+  
+  // First row: Previous/Next navigation
+  const navRow = [];
+  if (page > 0) {
+    navRow.push({ text: '⬅️ Previous', callback_data: `list_page_${page - 1}` });
+  }
+  navRow.push({ text: `📄 ${page + 1}/${totalPages}`, callback_data: 'noop' });
+  if (page < totalPages - 1) {
+    navRow.push({ text: 'Next ➡️', callback_data: `list_page_${page + 1}` });
+  }
+  navButtons.push(navRow);
+  
+  // Second row: Quick jump buttons
+  if (totalPages > 1) {
+    const jumpRow = [];
+    if (page !== 0) jumpRow.push({ text: '⏮ First', callback_data: 'list_page_0' });
+    if (page !== totalPages - 1) jumpRow.push({ text: 'Last ⏭', callback_data: `list_page_${totalPages - 1}` });
+    if (jumpRow.length > 0) navButtons.push(jumpRow);
+  }
+  
+  // Third row: Action buttons
+  navButtons.push([
+    { text: '🗑 Delete Articles', callback_data: 'delete_menu' },
+    { text: '📊 Stats', callback_data: 'stats' }
+  ]);
+  
+  // Fourth row: Back to menu
+  navButtons.push([{ text: '↩️ Back to Menu', callback_data: 'menu' }]);
+  
+  await sendMessage(env, chatId, message, { inline_keyboard: navButtons });
+}
+
 async function handleCallback(env, query) {
   const chatId = query.message.chat.id;
   const data = query.data;
@@ -2481,12 +2714,34 @@ async function handleCallback(env, query) {
     body: JSON.stringify({ callback_query_id: query.id })
   });
   
+  // Handle list pagination
+  if (data.startsWith('list_page_')) {
+    const page = parseInt(data.replace('list_page_', ''));
+    await handleListArticles(env, chatId, page);
+    return;
+  }
+  
   switch(data) {
     case 'menu':
       await sendMenu(env, chatId);
       break;
     case 'stats':
-      await sendStats(env, chatId);
+      await sendStats(env, chatId, 'overview');
+      break;
+    case 'stats_categories':
+      await sendStats(env, chatId, 'categories');
+      break;
+    case 'stats_top':
+      await sendStats(env, chatId, 'top');
+      break;
+    case 'stats_analytics':
+      await sendStats(env, chatId, 'analytics');
+      break;
+    case 'stats_audience':
+      await sendStats(env, chatId, 'audience');
+      break;
+    case 'list':
+      await handleListArticles(env, chatId, 0);
       break;
     case 'analytics':
       await sendDetailedAnalytics(env, chatId);
