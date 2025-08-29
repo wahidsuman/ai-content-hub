@@ -802,12 +802,7 @@ async function serveWebsite(env, request) {
             font-size: 1.4rem;
         }
         
-        .logo .sub-text {
-            font-size: 0.9rem;
-            color: #666;
-            margin-left: 6rem;
-            margin-top: -0.2rem;
-        }
+
         
         .header-right {
             display: flex;
@@ -1010,7 +1005,6 @@ async function serveWebsite(env, request) {
         <div class="logo-container">
             <a href="/" class="logo">
                 <span class="main-text">AgamiNews</span>
-                <span class="sub-text">.in</span>
             </a>
         </div>
     </header>
