@@ -8,6 +8,9 @@ import { AIWebsiteManager } from './ai-manager.js';
 import { handleManagerCommands } from './telegram-commands.js';
 import { getPrivacyPolicy, getTermsOfService, getAboutPage, getContactPage, generateSitemap, getRobotsTxt } from './pages.js';
 
+// Version: 2.0 - DALL-E + Buttons + Analytics + Viral Headlines
+// Deployed: ${new Date().toISOString()}
+// FORCE DEPLOYMENT - NEW CODE WITH ALL FEATURES
 export default {
   // Main request handler
   async fetch(request, env, ctx) {
