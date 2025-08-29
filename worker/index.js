@@ -1321,3 +1321,4 @@ async function sendChatAction(env, chatId, action) {
     console.error('Send chat action error:', error);
   }
 }// Force deployment: Fri Aug 29 07:02:07 AM UTC 2025
+// Force deployment: 2025-08-29 08:11:13
