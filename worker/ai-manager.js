@@ -564,7 +564,9 @@ Create 5 ULTRA-VIRAL headlines, then pick the ABSOLUTE MOST CLICKABLE one.
 Return ONLY the best headline.`;
 
     const clickableTitle = await this.callOpenAI(headlinePrompt, 'gpt-4-turbo-preview', 200);
+    console.log('[HEADLINE TEST] Generated headline:', clickableTitle);
     const finalTitle = clickableTitle.trim().replace(/^["']|["']$/g, '').replace(/^\d+\.\s*/, '') || newsItem.title;
+    console.log('[HEADLINE VERIFY] Final headline:', finalTitle);
     
     // Get category-specific writing style
     const writingStyle = this.getWritingStyle(newsItem.category);
@@ -933,6 +935,7 @@ Format as HTML with proper tags. Start with <h1>${finalTitle}</h1>`;
       }
 
       console.log(`[DALL-E] Generating photorealistic image for ${category}:`, query.substring(0, 40));
+      console.log('[IMAGE VERIFY] Using prompt:', imagePrompt.substring(0, 200));
       
       // Call DALL-E 3 API with optimized web settings
       const response = await fetch('https://api.openai.com/v1/images/generations', {
