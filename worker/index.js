@@ -4395,6 +4395,8 @@ async function getArticleImage(title, category, env) {
           isRelevant: false
         };
       }
+    } catch (error) {
+      console.error('[DALL-E] Final error in image generation:', error);
     }
     
     // NO FALLBACK IMAGES - Try emergency DALL-E generation
@@ -4450,12 +4452,12 @@ async function getArticleImage(title, category, env) {
       isRelevant: false
     };
     
-  } catch (error) {
-    console.error('Image fetch error:', error);
+    // Final fallback if everything fails
+    console.error('All image generation attempts failed');
     // Always generate with DALL-E as last resort
     try {
-      const fallbackResponse = await fetch('https://api.openai.com/v1/images/generations', {
-        method: 'POST',
+    const fallbackResponse = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
         headers: {
           'Authorization': `Bearer ${env.OPENAI_API_KEY}`,
           'Content-Type': 'application/json',
@@ -4490,7 +4492,6 @@ async function getArticleImage(title, category, env) {
       type: 'placeholder',
       isRelevant: false
     };
-  }
 }
 
 // Helper functions for entity extraction
