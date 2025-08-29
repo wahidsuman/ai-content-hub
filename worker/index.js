@@ -4645,6 +4645,31 @@ async function renderArticlePage(env, article, allArticles, request) {
             background-color: #ff6600;
             padding: 0 15px;
         }
+        
+        .nav-menu {
+            display: flex;
+            list-style: none;
+            gap: 20px;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .nav-menu li {
+            padding: 8px 0;
+        }
+        
+        .nav-menu a {
+            color: white;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        
+        .nav-menu a:hover {
+            text-decoration: underline;
+        }
+        
         .article-title {
             font-size: 32px;
             font-weight: bold;
@@ -4711,23 +4736,23 @@ async function renderArticlePage(env, article, allArticles, request) {
             }
 
             .nav-bar {
-                padding: 0 10px;
+                padding: 0 8px;
                 overflow-x: auto;
             }
 
             .nav-menu {
-                gap: 10px;
+                gap: 8px;
                 padding: 0;
                 min-width: max-content;
             }
 
             .nav-menu li {
-                padding: 10px 0;
+                padding: 6px 0;
             }
 
             .nav-menu a {
-                font-size: 12px;
-                padding: 0 5px;
+                font-size: 11px;
+                padding: 0 4px;
             }
 
             .main-content {
@@ -4837,8 +4862,21 @@ async function renderArticlePage(env, article, allArticles, request) {
 
         /* Extra small devices */
         @media (max-width: 380px) {
+            .nav-bar {
+                padding: 0 5px;
+            }
+            
+            .nav-menu {
+                gap: 5px;
+            }
+            
+            .nav-menu li {
+                padding: 5px 0;
+            }
+            
             .nav-menu a {
-                font-size: 11px;
+                font-size: 10px;
+                padding: 0 3px;
             }
 
             .article-title {
@@ -5573,23 +5611,23 @@ async function serveArticle(env, request, pathname) {
             }
 
             .nav-bar {
-                padding: 0 10px;
+                padding: 0 8px;
                 overflow-x: auto;
             }
 
             .nav-menu {
-                gap: 10px;
+                gap: 8px;
                 padding: 0;
                 min-width: max-content;
             }
 
             .nav-menu li {
-                padding: 10px 0;
+                padding: 6px 0;
             }
 
             .nav-menu a {
-                font-size: 12px;
-                padding: 0 5px;
+                font-size: 11px;
+                padding: 0 4px;
             }
 
             .main-content {
@@ -5678,8 +5716,21 @@ async function serveArticle(env, request, pathname) {
 
         /* Extra small devices */
         @media (max-width: 380px) {
+            .nav-bar {
+                padding: 0 5px;
+            }
+            
+            .nav-menu {
+                gap: 5px;
+            }
+            
+            .nav-menu li {
+                padding: 5px 0;
+            }
+            
             .nav-menu a {
-                font-size: 11px;
+                font-size: 10px;
+                padding: 0 3px;
             }
 
             .article-title {
