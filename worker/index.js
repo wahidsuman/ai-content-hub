@@ -1619,88 +1619,76 @@ async function handleNaturalLanguage(env, chatId, text) {
 
 // New function: Handle fetch news
 async function handleFetchNews(env, chatId) {
-  // Send single initial message
-  await sendMessage(env, chatId, `🔄 *Fetching 1 Article...*\n\n⏳ This takes 30-60 seconds for quality content...`);
+  // Send initial message
+  await sendMessage(env, chatId, `🔄 *Fetching Latest News...*\n\n⏳ Generating high-quality article with AI...`);
   
   try {
     console.log('[FETCH] Starting news fetch from Telegram command...');
     
-    // Call the fetch news function with timeout
-    const result = await Promise.race([
-      fetchLatestNews(env),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Fetch timeout')), 60000)) // 60 second timeout
-    ]);
+    // Import AI Manager
+    const { AIManager } = await import('./ai-manager.js');
+    const ai = new AIManager(env);
     
-    if (!result) {
-      throw new Error('No response from fetch function');
+    // Fetch news sources
+    const newsItems = await ai.fetchDailyNews();
+    
+    if (!newsItems || newsItems.length === 0) {
+      await sendMessage(env, chatId, '❌ No news available at the moment. Try again later.');
+      return;
     }
     
-    let data;
-    try {
-      data = await result.json();
-    } catch (e) {
-      console.error('[FETCH] Invalid response format:', e);
-      throw new Error('Invalid response format');
+    // Select the most recent/important news
+    const selectedNews = newsItems[0];
+    
+    await sendMessage(env, chatId, `📰 *Found News:*\n${selectedNews.title}\n\n🤖 Generating article...`);
+    
+    // Create article with AI
+    const article = await ai.createArticle(selectedNews);
+    
+    if (!article) {
+      await sendMessage(env, chatId, '❌ Failed to generate article. Please try again.');
+      return;
     }
     
-    if (data.success) {
-      const stats = await env.NEWS_KV.get('stats', 'json') || {};
-      
-      // Don't send another message here - fetchLatestNews already sends notifications
-      console.log(`[FETCH] Success - ${data.articles} article(s) published`);
-      
-      // Only send a simple completion if notifications failed
-      const adminChat = await env.NEWS_KV.get('admin_chat');
-      if (!adminChat || adminChat !== String(chatId)) {
-        await sendMessage(env, chatId, `
-✅ *Article Published!*
-
-📊 Daily Progress: ${stats.dailyArticlesPublished || data.articles}/8
-🔗 View: https://agaminews.in
-
-Use /stats for details
-        `, {
-          inline_keyboard: [
-            [{ text: '📊 View Stats', callback_data: 'stats' }],
-            [{ text: '↩️ Back', callback_data: 'menu' }]
-          ]
-        });
-      }
-    } else if (data.message && data.message.includes('limit reached')) {
-      await sendMessage(env, chatId, `
-ℹ️ *Daily Quality Limit Reached*
-
-✅ Published today: ${data.published}/12 articles
-📌 Strategy: Premium quality over quantity
-⏰ Next batch: Tomorrow 6 AM
-
-Current articles: https://agaminews.in
-      `, {
-        inline_keyboard: [
-          [{ text: '📊 View Stats', callback_data: 'stats' }],
-          [{ text: '↩️ Back', callback_data: 'menu' }]
-        ]
-      });
-    } else {
-      throw new Error(data.error || data.message || 'Failed to fetch');
-    }
+    // Save article
+    const articles = await env.NEWS_KV.get('articles', 'json') || [];
+    const newArticle = {
+      ...article,
+      id: Date.now(),
+      slug: article.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 50),
+      views: 0,
+      published: new Date().toISOString()
+    };
+    
+    articles.unshift(newArticle);
+    await env.NEWS_KV.put('articles', JSON.stringify(articles));
+    
+    // Update stats
+    const stats = await env.NEWS_KV.get('stats', 'json') || {};
+    stats.totalArticles = articles.length;
+    stats.dailyArticlesPublished = (stats.dailyArticlesPublished || 0) + 1;
+    stats.lastFetch = new Date().toISOString();
+    await env.NEWS_KV.put('stats', JSON.stringify(stats));
+    
+    // Send success message
+    await sendMessage(env, chatId, `✅ *Article Published!*\n\n📰 *${article.title}*\n\n🔗 View: https://agaminews.in/article/${newArticle.slug}\n\n✨ Category: ${article.category}\n📸 Image: DALL-E Generated\n\n📊 Daily Progress: ${stats.dailyArticlesPublished}/15`, {
+      inline_keyboard: [
+        [{ text: '🚀 Fetch Another', callback_data: 'fetch' }],
+        [{ text: '📊 View Stats', callback_data: 'stats' }],
+        [{ text: '↩️ Back to Menu', callback_data: 'menu' }]
+      ]
+    });
+    
   } catch (error) {
-    console.error('Fetch error:', error);
-    await sendMessage(env, chatId, `❌ *Error Fetching News*
-
-${error.message}
-
-*Possible Issues:*
-• RSS feeds temporarily down
-• OpenAI API key issue (if set)
-• Network connectivity
-
-*Try:*
-1. Check /status for system health
-2. Wait a moment and try again
-3. Verify API keys in Cloudflare
-
-*Debug:* ${error.stack ? error.stack.substring(0, 200) : 'No stack trace'}`);
+    console.error('[FETCH] Error:', error);
+    
+    // Check for specific error types
+    await sendMessage(env, chatId, `❌ *Error Generating Article*\n\n${error.message || 'Failed to generate article'}\n\nPlease try again.`, {
+      inline_keyboard: [
+        [{ text: '🔄 Try Again', callback_data: 'fetch' }],
+        [{ text: '↩️ Back', callback_data: 'menu' }]
+      ]
+    });
   }
 }
 
@@ -1797,6 +1785,91 @@ ${budgetUsed > 80 ? '• Monitor usage closely' : '• Plenty of budget remainin
       [{ text: '📊 Full Stats', callback_data: 'stats' }],
       [{ text: '↩️ Back', callback_data: 'menu' }]
     ]
+  });
+}
+
+// Delete Article by Index
+async function deleteArticleByIndex(env, chatId, index) {
+  // Check admin
+  const adminChat = await env.NEWS_KV.get('admin_chat');
+  if (!adminChat || String(chatId) !== String(adminChat)) {
+    await sendMessage(env, chatId, '❌ Unauthorized. Only admin can delete articles.');
+    return;
+  }
+  
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  
+  if (index < 0 || index >= articles.length) {
+    await sendMessage(env, chatId, '❌ Invalid article number.');
+    return;
+  }
+  
+  const deletedArticle = articles[index];
+  articles.splice(index, 1);
+  
+  // Save updated articles
+  await env.NEWS_KV.put('articles', JSON.stringify(articles));
+  
+  // Update stats
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  stats.totalArticles = articles.length;
+  await env.NEWS_KV.put('stats', JSON.stringify(stats));
+  
+  await sendMessage(env, chatId, `✅ *Article Deleted!*\n\n📰 ${deletedArticle.title?.substring(0, 60)}...\n\nTotal articles: ${articles.length}`, {
+    inline_keyboard: [
+      [{ text: '🗑 Delete Another', callback_data: 'delete_menu' }],
+      [{ text: '↩️ Back to Menu', callback_data: 'menu' }]
+    ]
+  });
+}
+
+// Delete Menu with Pagination
+async function handleDeleteMenu(env, chatId, page = 0) {
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  
+  if (articles.length === 0) {
+    await sendMessage(env, chatId, '📭 No articles to delete.');
+    return;
+  }
+  
+  const ITEMS_PER_PAGE = 5;
+  const totalPages = Math.ceil(articles.length / ITEMS_PER_PAGE);
+  const currentPage = Math.min(Math.max(0, page), totalPages - 1);
+  const startIdx = currentPage * ITEMS_PER_PAGE;
+  const endIdx = Math.min(startIdx + ITEMS_PER_PAGE, articles.length);
+  
+  // Build article list for current page
+  let message = `🗑 *Delete Articles (Page ${currentPage + 1}/${totalPages})*\n\n`;
+  const buttons = [];
+  
+  for (let i = startIdx; i < endIdx; i++) {
+    const article = articles[i];
+    const num = i + 1;
+    message += `${num}. ${article.title?.substring(0, 50)}...\n`;
+    message += `   📅 ${new Date(article.published || article.created).toLocaleDateString()}\n`;
+    message += `   👁 ${article.views || 0} views\n\n`;
+    
+    // Add delete button for this article
+    buttons.push([{ 
+      text: `❌ Delete #${num}`, 
+      callback_data: `delete_article_${i}` 
+    }]);
+  }
+  
+  // Add navigation buttons
+  const navButtons = [];
+  if (currentPage > 0) {
+    navButtons.push({ text: '⬅️ Previous', callback_data: `delete_page_${currentPage - 1}` });
+  }
+  navButtons.push({ text: '↩️ Back', callback_data: 'menu' });
+  if (currentPage < totalPages - 1) {
+    navButtons.push({ text: 'Next ➡️', callback_data: `delete_page_${currentPage + 1}` });
+  }
+  
+  buttons.push(navButtons);
+  
+  await sendMessage(env, chatId, message, {
+    inline_keyboard: buttons
   });
 }
 
@@ -2785,6 +2858,20 @@ async function handleCallback(env, query) {
     return;
   }
   
+  // Handle delete pagination
+  if (data.startsWith('delete_page_')) {
+    const page = parseInt(data.replace('delete_page_', ''));
+    await handleDeleteMenu(env, chatId, page);
+    return;
+  }
+  
+  // Handle article deletion
+  if (data.startsWith('delete_article_')) {
+    const index = parseInt(data.replace('delete_article_', ''));
+    await deleteArticleByIndex(env, chatId, index);
+    return;
+  }
+  
   switch(data) {
     case 'menu':
       await sendMenu(env, chatId);
@@ -2827,6 +2914,9 @@ async function handleCallback(env, query) {
       break;
     case 'costs':
       await sendCostReport(env, chatId);
+      break;
+    case 'delete_menu':
+      await handleDeleteMenu(env, chatId, 0);
       break;
     case 'create_prompt':
       await sendMessage(env, chatId, '✏️ *Create Custom Article*\n\nSend the topic you want:\n\nExample: `/create iPhone 16 Pro review`\n\nOr just type: /create <your topic>');
