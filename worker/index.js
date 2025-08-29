@@ -871,37 +871,7 @@ async function serveWebsite(env, request) {
             border-bottom-color: #ff6b35;
         }
         
-        /* News Sources Bar */
-        .news-sources {
-            background: white;
-            padding: 0.8rem;
-            overflow-x: auto;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        
-        .sources-container {
-            display: flex;
-            gap: 1rem;
-            min-width: max-content;
-        }
-        
-        .source-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-decoration: none;
-            color: #666;
-            font-size: 0.7rem;
-        }
-        
-        .source-logo {
-            width: 24px;
-            height: 16px;
-            background: #ff6b35;
-            margin-bottom: 0.2rem;
-            border-radius: 2px;
-        }
-        
+
         /* Featured Story */
         .featured-story {
             position: relative;
@@ -1046,42 +1016,15 @@ async function serveWebsite(env, request) {
     </header>
 
     <nav class="nav-tabs">
-        <a href="#latest" class="nav-tab active">LATEST</a>
-        <a href="#tech" class="nav-tab">TECHNOLOGY</a>
+        <a href="/" class="nav-tab active">LATEST</a>
+        <a href="#technology" class="nav-tab">TECHNOLOGY</a>
         <a href="#business" class="nav-tab">BUSINESS</a>
         <a href="#crypto" class="nav-tab">CRYPTO</a>
-        <a href="#ev" class="nav-tab">ELECTRIC VEHICLES</a>
-        <a href="#startups" class="nav-tab">STARTUPS</a>
+        <a href="#india" class="nav-tab">INDIA</a>
+        <a href="#world" class="nav-tab">WORLD</a>
+        <a href="#sports" class="nav-tab">SPORTS</a>
+        <a href="#entertainment" class="nav-tab">ENTERTAINMENT</a>
     </nav>
-
-    <div class="news-sources">
-        <div class="sources-container">
-            <a href="#" class="source-item">
-                <div class="source-logo"></div>
-                <span>TECH</span>
-            </a>
-            <a href="#" class="source-item">
-                <div class="source-logo" style="background: #1976d2;"></div>
-                <span>CRYPTO</span>
-            </a>
-            <a href="#" class="source-item">
-                <div class="source-logo" style="background: #e91e63;"></div>
-                <span>AI/ML</span>
-            </a>
-            <a href="#" class="source-item">
-                <div class="source-logo" style="background: #4caf50;"></div>
-                <span>STARTUPS</span>
-            </a>
-            <a href="#" class="source-item">
-                <div class="source-logo" style="background: #ff9800;"></div>
-                <span>BUSINESS</span>
-            </a>
-            <a href="#" class="source-item">
-                <div class="source-logo" style="background: #9c27b0;"></div>
-                <span>EVs</span>
-            </a>
-        </div>
-    </div>
 
     <main>
         ${articles.length > 0 ? `
@@ -4758,48 +4701,69 @@ async function renderArticlePage(env, article, allArticles, request) {
     </style>
 </head>
 <body>
-    <div class="article-header">
-        <div class="article-container">
-            <a href="/" class="back-btn">← Back to Homepage</a>
+    <header class="header">
+        <nav class="nav-bar">
+            <ul class="nav-menu">
+                <li><a href="/">HOME</a></li>
+                <li><a href="/">LATEST</a></li>
+                <li><a href="#">TECHNOLOGY</a></li>
+                <li><a href="#">BUSINESS</a></li>
+                <li><a href="#">CRYPTO</a></li>
+                <li><a href="#">INDIA</a></li>
+                <li><a href="#">WORLD</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="main-content">
+        <div class="article-header">
+            <div class="breadcrumb">
+                <a href="/">Home</a> › <a href="#">${article.category}</a> › <span>${article.title.substring(0, 50)}...</span>
+            </div>
+            
+            <h1 class="article-title">
+                ${article.title}
+            </h1>
+            
+            <div class="article-meta">
+                ${article.preview || article.description || 'Read the full story below.'}
+                <br><br>
+                <strong>Published Date:</strong> ${new Date(article.timestamp || Date.now()).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true })} IST &nbsp;&nbsp;&nbsp; <strong>By</strong> ${article.source || 'AgamiNews'}
+            </div>
         </div>
-    </div>
-    
-    <div class="article-container">
-        <h1 class="article-title">${article.title}</h1>
-        
-        <div class="article-meta">
-            <span>📅 ${new Date(article.timestamp).toLocaleDateString('en-IN')}</span>
-            <span> • </span>
-            <span>📰 ${article.source}</span>
-            <span> • </span>
-            <span>🏷️ ${article.category}</span>
-            <span> • </span>
-            <span>👁️ ${stats.articleViews[article.id] || 1} views</span>
+
+        <article class="article-content">
+            ${article.image ? `<img src="${article.image.url || article.image}" alt="${article.title}" class="article-image">` : ''}
+            
+            <div class="social-share">
+                <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(request.url)}" target="_blank" class="social-btn facebook">f</a>
+                <a href="https://twitter.com/intent/tweet?url=${encodeURIComponent(request.url)}&text=${encodeURIComponent(article.title)}" target="_blank" class="social-btn twitter">t</a>
+                <a href="https://wa.me/?text=${encodeURIComponent(article.title + ' ' + request.url)}" target="_blank" class="social-btn whatsapp">w</a>
+                <a href="https://t.me/share/url?url=${encodeURIComponent(request.url)}&text=${encodeURIComponent(article.title)}" target="_blank" class="social-btn telegram">T</a>
+                <a href="https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(request.url)}" target="_blank" class="social-btn linkedin">in</a>
+            </div>
+            
+            <div class="article-text">
+                ${fullContent}
+            </div>
+        </article>
+
+        <!-- Other Articles -->
+        <div class="other-articles">
+            ${allArticles
+                .filter((a, i) => i !== articleIndex)
+                .slice(0, 4)
+                .map(related => `
+                <div class="article-card">
+                    <img src="${related.image?.url || related.image || 'https://via.placeholder.com/120x80/ff6600/ffffff?text=News'}" alt="${related.title}">
+                    <div class="article-card-content">
+                        <h3><a href="${related.url || `/article/${allArticles.indexOf(related)}`}" style="color: #333; text-decoration: none;">${related.title}</a></h3>
+                        <div class="article-card-meta">${related.category} | ${related.date || 'Today'}</div>
+                    </div>
+                </div>
+            `).join('')}
         </div>
-        
-        ${article.image ? `
-        <div class="article-image">
-            <img src="${article.image.url || article.image}" alt="${article.title}">
-            ${article.image.credit ? `<div style="text-align: center; font-size: 12px; color: #999; margin-top: 5px;">${article.image.credit}</div>` : ''}
-        </div>
-        ` : ''}
-        
-        <div class="article-content">
-            ${fullContent}
-        </div>
-        
-        <div class="share-buttons">
-            <h3 style="margin-bottom: 15px;">Share this article</h3>
-            <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${encodeURIComponent('https://agaminews.in' + article.url)}" 
-               target="_blank" class="share-btn">Twitter</a>
-            <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent('https://agaminews.in' + article.url)}" 
-               target="_blank" class="share-btn">Facebook</a>
-            <a href="https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent('https://agaminews.in' + article.url)}" 
-               target="_blank" class="share-btn">LinkedIn</a>
-            <a href="https://wa.me/?text=${encodeURIComponent(article.title + ' https://agaminews.in' + article.url)}" 
-               target="_blank" class="share-btn">WhatsApp</a>
-        </div>
-    </div>
+    </main>
 </body>
 </html>`;
 
