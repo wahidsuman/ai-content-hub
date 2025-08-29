@@ -2,11 +2,8 @@ name = "ai-website-manager"
 main = "index.js"
 compatibility_date = "2024-01-01"
 
-# Routes - ensure deployment to correct domain
-routes = [
-  { pattern = "agaminews.in/*", zone_name = "agaminews.in" },
-  { pattern = "www.agaminews.in/*", zone_name = "agaminews.in" }
-]
+# Route is configured in Cloudflare Dashboard
+# Worker: ai-website-manager
 
 # KV Namespace binding
 [[kv_namespaces]]
