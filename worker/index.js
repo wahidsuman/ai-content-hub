@@ -1765,16 +1765,20 @@ async function handleFetchNews(env, chatId) {
     
     // Save article
     const articles = await env.NEWS_KV.get('articles', 'json') || [];
+    const newArticleId = generateArticleId();
+    const newArticleSlug = generateSlug(article.title);
     const newArticle = {
       ...article,
-      id: Date.now(),
-      slug: article.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 50),
+      id: newArticleId,
+      slug: newArticleSlug,
+      url: `/${article.category.toLowerCase()}-news/${newArticleSlug}-${newArticleId}`,
       views: 0,
       published: new Date().toISOString()
     };
     
     articles.unshift(newArticle);
     await env.NEWS_KV.put('articles', JSON.stringify(articles));
+    await env.NEWS_KV.put('articlesTimestamp', Date.now().toString());
     
     // Update stats
     const stats = await env.NEWS_KV.get('stats', 'json') || {};
@@ -1784,7 +1788,7 @@ async function handleFetchNews(env, chatId) {
     await env.NEWS_KV.put('stats', JSON.stringify(stats));
     
     // Send success message
-    await sendMessage(env, chatId, `✅ *Article Published!*\n\n📰 *${article.title}*\n\n🔗 View: https://agaminews.in/article/${newArticle.slug}\n\n✨ Category: ${article.category}\n📸 Image: DALL-E Generated\n\n📊 Daily Progress: ${stats.dailyArticlesPublished}/15`, {
+    await sendMessage(env, chatId, `✅ *Article Published!*\n\n📰 *${article.title}*\n\n🔗 View: https://agaminews.in${newArticle.url}\n\n✨ Category: ${article.category}\n📸 Image: DALL-E Generated\n\n📊 Daily Progress: ${stats.dailyArticlesPublished}/15`, {
       inline_keyboard: [
         [{ text: '🚀 Fetch Another', callback_data: 'fetch' }],
         [{ text: '📊 View Stats', callback_data: 'stats' }],
