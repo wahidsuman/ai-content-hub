@@ -1018,7 +1018,6 @@ async function serveArticle(env, articleId) {
     .container{padding:15px}
     .article{padding:20px}
     .article-content{font-size:16px}
-  }
 </style>
 </head>
 <body>
@@ -1146,7 +1145,6 @@ async function servePage(env, title, content) {
   @media(max-width:768px){
     .nav-links{display:none}
     .content{padding:20px}
-  }
 </style>
 </head>
 <body>
@@ -1329,89 +1327,231 @@ async function serveWebsite(env) {
 }
 </script>
 <style>
-  /* Modern Clean News Website */
-  :root {
-    --primary: #2563eb;
-    --primary-dark: #1d4ed8;
-    --text-primary: #111827;
-    --text-secondary: #6b7280;
-    --bg-white: #ffffff;
-    --bg-gray: #f9fafb;
-    --border: #e5e7eb;
-    --accent: #ef4444;
-  }
-  
   * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
   }
-  
+
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-    background: var(--bg-white);
-    color: var(--text-primary);
-    line-height: 1.6;
-    font-size: 16px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #f5f5f5;
+    line-height: 1.4;
   }
-  
-  .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 16px;
-  }
-  
-  @media (max-width: 768px) {
-    .container {
-      padding: 0 12px;
-    }
-  }
-  
-  /* Modern Clean Header */
+
+  /* Header */
   .header {
-    background: var(--bg-white);
-    border-bottom: 1px solid var(--border);
+    background: white;
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     position: sticky;
     top: 0;
     z-index: 100;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   }
-  
-  .header-top {
-    border-bottom: 1px solid var(--border-gray);
-    padding: 5px 0;
-  }
-  
-  .header-top-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 12px;
-    color: var(--text-gray);
-  }
-  
-  .header-main {
-    padding: 15px 0;
-    border-bottom: 1px solid var(--border-gray);
-  }
-  
-  .header-main-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  
+
   .logo {
-    font-size: 24px;
-    font-weight: 800;
-    color: var(--primary);
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: #333;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    line-height: 1;
     text-decoration: none;
+  }
+
+  .logo .main-text {
+    font-size: 1.4rem;
+  }
+
+  .logo .sub-text {
+    font-size: 0.9rem;
+    color: #666;
+    margin-left: 6rem;
+    margin-top: -0.2rem;
+  }
+
+  .header-right {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 1rem;
   }
-  
-  .logo-icon {
+
+  /* Navigation Tabs */
+  .nav-tabs {
+    background: white;
+    display: flex;
+    overflow-x: auto;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 0 1rem;
+  }
+
+  .nav-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-tab {
+    padding: 1rem 0.8rem;
+    color: #666;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    transition: all 0.3s;
+  }
+
+  .nav-tab.active {
+    color: #333;
+    border-bottom-color: #ff6b35;
+  }
+
+  /* News Sources Bar */
+  .news-sources {
+    background: white;
+    padding: 0.8rem;
+    overflow-x: auto;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  .sources-container {
+    display: flex;
+    gap: 1rem;
+    min-width: max-content;
+  }
+
+  .source-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    color: #666;
+    font-size: 0.7rem;
+  }
+
+  .source-logo {
+    width: 24px;
+    height: 16px;
+    background: #ff6b35;
+    margin-bottom: 0.2rem;
+    border-radius: 2px;
+  }
+
+  /* Featured Story */
+  .featured-story {
+    position: relative;
+    margin-bottom: 1rem;
+  }
+
+  .featured-image {
+    width: 100%;
+    height: 250px;
+    object-fit: cover;
+  }
+
+  .featured-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,0.8));
+    padding: 2rem 1rem 1rem;
+    color: white;
+  }
+
+  .featured-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  /* News List */
+  .news-list {
+    background: white;
+  }
+
+  .news-item {
+    display: flex;
+    padding: 1rem;
+    border-bottom: 1px solid #f0f0f0;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .news-content {
+    flex: 1;
+    padding-right: 0.8rem;
+  }
+
+  .news-title {
+    font-size: 0.95rem;
+    line-height: 1.4;
+    color: #333;
+    font-weight: 500;
+    margin-bottom: 0.3rem;
+  }
+
+  .news-image {
+    width: 80px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+
+  /* Live badge */
+  .live-badge {
+    background: #ff4444;
+    color: white;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    margin-left: 0.5rem;
+  }
+
+  /* Advertisement */
+  .advertisement {
+    background: white;
+    padding: 2rem 1rem;
+    text-align: center;
+    margin-bottom: 1rem;
+    border-top: 1px solid #e0e0e0;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  .ad-label {
+    color: #999;
+    font-size: 0.8rem;
+    margin-bottom: 1rem;
+  }
+
+  .ad-placeholder {
+    background: #f0f0f0;
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+  }
+
+  /* Responsive adjustments */
+  @media (min-width: 768px) {
+    body {
+      max-width: 400px;
+      margin: 0 auto;
+      box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    }
+  }
+
+  .logo-container {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
     width: 32px;
     height: 32px;
     background: var(--primary);
@@ -1712,82 +1852,115 @@ async function serveWebsite(env) {
     .hero{grid-template-columns:1.2fr .8fr}
     .grid.cols-3{grid-template-columns:repeat(3,1fr)}
     .grid.cols-2{grid-template-columns:repeat(2,1fr)}
-  }
 </style>
 </head>
 <body>
-
-<!-- Modern Clean Header -->
-<header class="header">
-  <div class="container">
-    <div class="header-main-content" style="padding: 16px 0; display: flex; justify-content: space-between; align-items: center;">
+  <header class="header">
+    <div class="logo-container">
       <a href="/" class="logo">
-        <div class="logo-icon">A</div>
-        <span>AgamiNews</span>
+        <span class="main-text">AgamiNews</span>
+        <span class="sub-text">.in</span>
       </a>
-      <div class="header-right" style="display: flex; align-items: center; gap: 16px;">
-        <span style="font-size: 12px; color: var(--text-secondary); display: none;" class="desktop-only">
-          ${new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-        </span>
-        <button class="menu-toggle" style="display: none; background: none; border: none; font-size: 24px; cursor: pointer;">☰</button>
-      </div>
+    </div>
+  </header>
+
+  <nav class="nav-tabs">
+    <a href="#latest" class="nav-tab active">LATEST</a>
+    <a href="#tech" class="nav-tab">TECHNOLOGY</a>
+    <a href="#business" class="nav-tab">BUSINESS</a>
+    <a href="#crypto" class="nav-tab">CRYPTO</a>
+    <a href="#ev" class="nav-tab">ELECTRIC VEHICLES</a>
+    <a href="#startups" class="nav-tab">STARTUPS</a>
+  </nav>
+
+  <div class="news-sources">
+    <div class="sources-container">
+      <a href="#" class="source-item">
+        <div class="source-logo"></div>
+        <span>TECH</span>
+      </a>
+      <a href="#" class="source-item">
+        <div class="source-logo" style="background: #1976d2;"></div>
+        <span>CRYPTO</span>
+      </a>
+      <a href="#" class="source-item">
+        <div class="source-logo" style="background: #e91e63;"></div>
+        <span>AI/ML</span>
+      </a>
+      <a href="#" class="source-item">
+        <div class="source-logo" style="background: #4caf50;"></div>
+        <span>STARTUPS</span>
+      </a>
+      <a href="#" class="source-item">
+        <div class="source-logo" style="background: #ff9800;"></div>
+        <span>BUSINESS</span>
+      </a>
+      <a href="#" class="source-item">
+        <div class="source-logo" style="background: #9c27b0;"></div>
+        <span>EVs</span>
+      </a>
     </div>
   </div>
-  <nav class="nav">
-    <div class="container">
-      <ul class="nav-links">
-        <li><a href="/" class="nav-link active">Home</a></li>
-        <li><a href="#latest" class="nav-link">Latest</a></li>
-        <li><a href="#tech" class="nav-link">Technology</a></li>
-        <li><a href="#crypto" class="nav-link">Crypto</a></li>
-        <li><a href="#business" class="nav-link">Business</a></li>
-        <li><a href="#startups" class="nav-link">Startups</a></li>
-        <li><a href="#ai" class="nav-link">AI</a></li>
-        <li><a href="#ev" class="nav-link">EVs</a></li>
-      </ul>
+
+  <main>
+    ${articles.length > 0 ? `
+    <!-- Featured Story -->
+    <article class="featured-story">
+      <img src="${articles[0].image ? articles[0].image.url : 'https://via.placeholder.com/400x250/ff6b35/ffffff?text=AgamiNews'}" alt="${articles[0].title}" class="featured-image">
+      <div class="featured-overlay">
+        <h1 class="featured-title">${articles[0].title}</h1>
+      </div>
+    </article>
+    ` : ''}
+
+    <!-- News List -->
+    <section class="news-list">
+      ${articles.slice(1, 10).map((article, index) => `
+        <a href="/article/${index + 1}" class="news-item">
+          <div class="news-content">
+            <h2 class="news-title">${article.title}
+              ${index === 0 ? '<span class="live-badge">NEW</span>' : ''}
+            </h2>
+          </div>
+          ${article.image ? `<img src="${article.image.url}" alt="${article.title}" class="news-image">` : '<img src="https://via.placeholder.com/80x60/ff6b35/ffffff?text=News" class="news-image">'}
+        </a>
+      `).join('')}
+    </section>
+
+    <!-- Advertisement -->
+    <div class="advertisement">
+      <div class="ad-label">Advertisement</div>
+      <div class="ad-placeholder">Google AdSense Space</div>
     </div>
-  </nav>
-</header>
 
-<div class="container">
-
-    <!-- HERO -->
-    <section class="hero">
-      <div>
-        <span class="pill">Daily Briefing • Tech & Innovation</span>
-        <h1 class="h1">Breaking Tech News & Updates</h1>
-        <p class="lead">Get the latest technology news, cryptocurrency insights, and innovation updates from around the world.</p>
-        <p style="margin-top:10px">
-          <a class="btn btn-primary" href="#latest">Read Latest</a>
-        </p>
-      </div>
-
-      <div class="card" style="background:var(--g1)">
-        <div class="cardPad">
-          <span class="badge">Featured</span>
-          <h3 class="title" style="color:#051324">Weekly Tech Roundup</h3>
-          <p class="muted" style="color:#05203b">Top stories and breakthrough innovations. ${articles.length} articles this week.</p>
-        </div>
-      </div>
+    <!-- More News -->
+    <section class="news-list">
+      ${articles.slice(10, 20).map((article, index) => `
+        <a href="/article/${index + 11}" class="news-item">
+          <div class="news-content">
+            <h2 class="news-title">${article.title}</h2>
+          </div>
+          ${article.image ? `<img src="${article.image.url}" alt="${article.title}" class="news-image">` : '<img src="https://via.placeholder.com/80x60/ff6b35/ffffff?text=News" class="news-image">'}
+        </a>
+      `).join('')}
     </section>
+  </main>
+</body>
+</html>`;
+    
+    return new Response(html, {
+      headers: {
+        'Content-Type': 'text/html;charset=UTF-8',
+        'Cache-Control': 'public, max-age=300'
+      }
+    });
+  } catch (error) {
+    console.error('Error serving website:', error);
+    return new Response('Error loading website', { status: 500 });
+  }
+}
 
-    <!-- CATEGORIES -->
-    <section style="margin-top:18px">
-      <div class="catGrid">
-        <a class="cat ai" href="#tech">Technology</a>
-        <a class="cat crypto" href="#crypto">Crypto</a>
-        <a class="cat startups" href="#startups">Startups</a>
-        <a class="cat finance" href="#finance">Finance</a>
-      </div>
-    </section>
-
-    <!-- LATEST LIST -->
-    <section id="latest" style="margin-top:18px" class="list">
-      ${newsArticles}
-    </section>
-
-    <!-- NEWSLETTER -->
-    <section style="margin-top:18px" class="newsletter card">
+// Telegram helper functions
       <div class="cardPad">
         <h3 class="title" style="margin:0">Stay Updated</h3>
         <p>Join thousands of readers getting daily tech news delivered to their inbox.</p>
