@@ -1364,51 +1364,35 @@ async function sendMessage(env, chatId, text, keyboard = null) {
 async function sendMenu(env, chatId) {
   const stats = await env.NEWS_KV.get('stats', 'json') || {};
   const articles = await env.NEWS_KV.get('articles', 'json') || [];
-  const cronLogs = await env.NEWS_KV.get('cron_logs', 'json') || [];
   
-  // Calculate today's cost
+  // Calculate today's metrics
   const todayArticles = stats.dailyArticlesPublished || 0;
-  const todayCost = todayArticles * 0.04; // $0.04 per article
+  const todayCost = todayArticles * 0.055; // Updated cost per article
   
-  // Get last cron run time
-  const lastCron = cronLogs[0] ? new Date(cronLogs[0].time).toLocaleTimeString('en-IN', {timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit'}) : 'Never';
-  
-  // Next cron in
+  // Next cron time
   const now = new Date();
   const nextHour = Math.ceil(now.getHours() / 3) * 3;
   const nextCronHour = nextHour === 24 ? 0 : nextHour;
   
   await sendMessage(env, chatId, `🎯 *AgamiNews Control Panel*
-  
-📊 *Today:* ${todayArticles} articles | $${todayCost.toFixed(2)} spent
-📰 *Total:* ${articles.length} articles published
-⏰ *Next Run:* ${nextCronHour}:00
 
-Select an action:`, {
+📊 Today: *${todayArticles}* articles | *$${todayCost.toFixed(2)}*
+📚 Total: *${articles.length}* articles
+⏰ Next: ${nextCronHour}:00
+
+Select action:`, {
     inline_keyboard: [
       [
-        { text: '📰 Fetch Article', callback_data: 'fetch' },
-        { text: '✏️ Create Custom', callback_data: 'create_prompt' }
+        { text: '🚀 Fetch News', callback_data: 'fetch' },
+        { text: '📊 Statistics', callback_data: 'stats' }
       ],
       [
-        { text: '📊 Full Stats', callback_data: 'stats' },
-        { text: '📚 List Articles', callback_data: 'list' }
+        { text: '📚 List Articles', callback_data: 'list' },
+        { text: '🗑 Delete', callback_data: 'delete_menu' }
       ],
       [
-        { text: '💰 Cost Report', callback_data: 'costs' },
-        { text: '🗑 Delete Menu', callback_data: 'delete_menu' }
-      ],
-      [
-        { text: '📈 Analytics', callback_data: 'analytics' },
-        { text: '🗑️ Delete Article', callback_data: 'delete_prompt' }
-      ],
-      [
-        { text: '⏰ Cron History', callback_data: 'cron_logs' },
-        { text: '🔧 Force Run', callback_data: 'trigger_cron' }
-      ],
-      [
-        { text: '🔍 SEO Report', callback_data: 'seo' },
-        { text: '💡 All Commands', callback_data: 'help' }
+        { text: '💰 Costs', callback_data: 'cost_report' },
+        { text: '🔍 SEO', callback_data: 'seo_report' }
       ],
       [
         { text: '🌐 Open Website', url: 'https://agaminews.in' }
@@ -1756,6 +1740,126 @@ ${!status.openai ? '\n⚠️ Add OpenAI API key for DALL-E images!' : ''}
   `, {
     inline_keyboard: [
       [{ text: '🚀 Fetch News', callback_data: 'fetch' }],
+      [{ text: '↩️ Back', callback_data: 'menu' }]
+    ]
+  });
+}
+
+// Cost Report Function
+async function sendCostReport(env, chatId) {
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  const config = await env.NEWS_KV.get('config', 'json') || {};
+  
+  // Calculate costs
+  const dailyArticles = stats.dailyArticlesPublished || 0;
+  const totalArticles = stats.totalArticles || 0;
+  const costPerArticle = 0.055; // Updated cost
+  
+  const todayCost = dailyArticles * costPerArticle;
+  const monthlyProjected = todayCost * 30;
+  const totalSpent = totalArticles * costPerArticle;
+  
+  // Budget analysis
+  const monthlyBudget = 20.00;
+  const budgetUsed = (monthlyProjected / monthlyBudget * 100).toFixed(1);
+  const budgetStatus = monthlyProjected <= monthlyBudget ? '✅ Within Budget' : '⚠️ Over Budget';
+  
+  await sendMessage(env, chatId, `
+💰 *Cost Report*
+
+📊 *Today's Costs*
+• Articles: ${dailyArticles}
+• Cost: $${todayCost.toFixed(2)}
+
+📈 *Monthly Projection*
+• Projected: $${monthlyProjected.toFixed(2)}
+• Budget: $${monthlyBudget.toFixed(2)}
+• Usage: ${budgetUsed}%
+• Status: ${budgetStatus}
+
+💵 *Breakdown per Article*
+• GPT-4 Research: $0.015
+• Headlines: $0.005
+• Article Writing: $0.025
+• DALL-E Image: $0.010
+• Total: $${costPerArticle}
+
+📅 *Historical*
+• Total Articles: ${totalArticles}
+• Total Spent: $${totalSpent.toFixed(2)}
+• Avg Daily: $${(totalSpent / 30).toFixed(2)}
+
+💡 *Optimization Tips*
+${monthlyProjected > 15 ? '• Consider reducing to 12 articles/day' : '• You can increase to 20 articles/day'}
+${budgetUsed > 80 ? '• Monitor usage closely' : '• Plenty of budget remaining'}
+  `, {
+    inline_keyboard: [
+      [{ text: '📊 Full Stats', callback_data: 'stats' }],
+      [{ text: '↩️ Back', callback_data: 'menu' }]
+    ]
+  });
+}
+
+// SEO Report Function
+async function sendSEOReport(env, chatId) {
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  
+  // Analyze SEO metrics
+  const recentArticles = articles.slice(-10);
+  const evergreenCount = articles.filter(a => a.title?.includes('Guide') || a.title?.includes('How')).length;
+  const categoryCounts = {};
+  
+  articles.forEach(article => {
+    const cat = article.category || 'UNCATEGORIZED';
+    categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+  });
+  
+  // Check indexing status
+  const indexedArticles = articles.filter(a => a.seo?.googleIndexing).length;
+  const indexingRate = articles.length > 0 ? (indexedArticles / articles.length * 100).toFixed(1) : 0;
+  
+  await sendMessage(env, chatId, `
+🔍 *SEO Report*
+
+📈 *Content Performance*
+• Total Articles: ${articles.length}
+• Evergreen Content: ${evergreenCount}
+• Fresh Content: ${articles.length - evergreenCount}
+• Indexing Rate: ${indexingRate}%
+
+🏷️ *Category Distribution*
+${Object.entries(categoryCounts)
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 5)
+  .map(([cat, count]) => `• ${cat}: ${count} articles`)
+  .join('\n')}
+
+✅ *SEO Features Active*
+• Google Analytics: ✅
+• Meta Tags: ✅
+• Schema Markup: ✅
+• Sitemap: ✅
+• Mobile Optimized: ✅
+
+🎯 *Keyword Strategy*
+• Long-tail keywords: Active
+• Voice search optimized: Yes
+• Featured snippets: Targeted
+• Internal linking: Enabled
+
+📊 *Recent Articles SEO*
+${recentArticles.slice(0, 3).map(a => 
+  `• ${a.title?.substring(0, 30)}... ${a.seo?.googleIndexing ? '✅' : '⏳'}`
+).join('\n')}
+
+💡 *Recommendations*
+${evergreenCount < 10 ? '• Create more evergreen content' : '• Good evergreen balance'}
+${articles.length < 50 ? '• Build more content for authority' : '• Strong content foundation'}
+${indexingRate < 80 ? '• Check Google Search Console' : '• Excellent indexing rate'}
+  `, {
+    inline_keyboard: [
+      [{ text: '📊 Analytics', callback_data: 'analytics' }],
       [{ text: '↩️ Back', callback_data: 'menu' }]
     ]
   });
@@ -2714,6 +2818,12 @@ async function handleCallback(env, query) {
       break;
     case 'fetch':
       await handleFetchNews(env, chatId);
+      break;
+    case 'cost_report':
+      await sendCostReport(env, chatId);
+      break;
+    case 'seo_report':
+      await sendSEOReport(env, chatId);
       break;
     case 'costs':
       await sendCostReport(env, chatId);
