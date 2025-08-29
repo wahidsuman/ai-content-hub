@@ -1329,16 +1329,16 @@ async function serveWebsite(env) {
 }
 </script>
 <style>
-  /* India.com Inspired Design */
+  /* Modern Clean News Website */
   :root {
-    --primary-red: #d70000;
-    --dark-red: #b30000;
-    --text-dark: #000000;
-    --text-gray: #666666;
-    --light-gray: #f5f5f5;
-    --border-gray: #e0e0e0;
-    --white: #ffffff;
-    --blue-link: #0066cc;
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+    --bg-white: #ffffff;
+    --bg-gray: #f9fafb;
+    --border: #e5e7eb;
+    --accent: #ef4444;
   }
   
   * {
@@ -1348,23 +1348,33 @@ async function serveWebsite(env) {
   }
   
   body {
-    font-family: 'Roboto', Arial, sans-serif;
-    background: var(--white);
-    color: var(--text-dark);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    background: var(--bg-white);
+    color: var(--text-primary);
     line-height: 1.6;
-    font-size: 14px;
+    font-size: 16px;
   }
   
   .container {
-    max-width: 1170px;
+    max-width: 1200px;
     margin: 0 auto;
-    padding: 0 15px;
+    padding: 0 16px;
   }
   
-  /* India.com Style Header */
+  @media (max-width: 768px) {
+    .container {
+      padding: 0 12px;
+    }
+  }
+  
+  /* Modern Clean Header */
   .header {
-    background: var(--white);
-    border-bottom: 3px solid var(--primary-red);
+    background: var(--bg-white);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   }
   
   .header-top {
@@ -1392,16 +1402,31 @@ async function serveWebsite(env) {
   }
   
   .logo {
-    font-size: 36px;
-    font-weight: 900;
-    color: var(--primary-red);
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--primary);
     text-decoration: none;
-    text-transform: uppercase;
-    letter-spacing: -2px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
   
-  .logo .dot {
-    color: var(--text-dark);
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--primary);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+  }
+  
+  @media (max-width: 768px) {
+    .logo {
+      font-size: 20px;
+    }
   }
   
   .header-right {
@@ -1410,13 +1435,12 @@ async function serveWebsite(env) {
     align-items: center;
   }
   
-  /* Navigation Bar */
+  /* Modern Navigation */
   .nav {
-    background: var(--primary-red);
-    padding: 0;
-    position: sticky;
-    top: 0;
-    z-index: 1000;
+    background: var(--bg-white);
+    border-top: 1px solid var(--border);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
   
   .nav-links {
@@ -1425,26 +1449,34 @@ async function serveWebsite(env) {
     list-style: none;
     margin: 0;
     padding: 0;
+    min-width: max-content;
   }
   
   .nav-link {
-    color: var(--white);
-    padding: 12px 18px;
+    color: var(--text-secondary);
+    padding: 12px 20px;
     text-decoration: none;
     font-weight: 500;
     font-size: 14px;
-    transition: background 0.3s;
+    transition: all 0.2s;
     display: block;
-    text-transform: uppercase;
-    border-right: 1px solid rgba(255,255,255,0.2);
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
   }
   
-  .nav-link:hover {
-    background: var(--dark-red);
+  .nav-link:hover, .nav-link.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
   }
   
-  .nav-link:first-child {
-    background: var(--dark-red);
+  @media (max-width: 768px) {
+    .nav {
+      padding: 0 8px;
+    }
+    .nav-link {
+      padding: 10px 12px;
+      font-size: 13px;
+    }
   }
   
   /* Main Content Grid */
@@ -1461,19 +1493,28 @@ async function serveWebsite(env) {
     }
   }
   
-  /* India.com Style News Cards */
+  /* Modern News Cards */
   .news-section {
-    margin-top: 20px;
+    margin: 32px 0;
   }
   
   .section-header {
-    background: var(--primary-red);
-    color: var(--white);
-    padding: 8px 15px;
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 700;
-    text-transform: uppercase;
-    margin-bottom: 15px;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--primary);
+    display: inline-block;
+  }
+  
+  @media (max-width: 768px) {
+    .news-section {
+      margin: 24px 0;
+    }
+    .section-header {
+      font-size: 18px;
+    }
   }
   
   .news-grid {
@@ -1511,19 +1552,27 @@ async function serveWebsite(env) {
   }
   
   .article-card {
-    background: var(--white);
-    border: 1px solid var(--border-gray);
+    background: var(--bg-white);
+    border-radius: 12px;
     overflow: hidden;
-    transition: box-shadow 0.3s;
+    transition: all 0.3s;
     cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   }
   
   .article-card:hover {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.12);
   }
   
   .article-card:hover .article-title {
-    color: var(--primary-red);
+    color: var(--primary);
+  }
+  
+  @media (max-width: 768px) {
+    .article-card {
+      border-radius: 8px;
+    }
   }
   
   .article-image {
@@ -1539,34 +1588,45 @@ async function serveWebsite(env) {
   
   .article-category {
     display: inline-block;
-    color: var(--primary-red);
-    font-size: 11px;
-    font-weight: 700;
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 600;
     text-transform: uppercase;
     margin-bottom: 8px;
+    letter-spacing: 0.5px;
   }
   
   .article-title {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--text-dark);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
     margin-bottom: 8px;
-    line-height: 1.3;
-    transition: color 0.3s;
+    line-height: 1.4;
+    transition: color 0.2s;
   }
   
   .article-excerpt {
-    color: var(--text-gray);
-    font-size: 13px;
-    line-height: 1.4;
-    margin-bottom: 8px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 12px;
   }
   
   .article-meta {
-    font-size: 11px;
-    color: #999;
+    font-size: 12px;
+    color: var(--text-secondary);
     display: flex;
-    gap: 15px;
+    gap: 16px;
+    align-items: center;
+  }
+  
+  @media (max-width: 768px) {
+    .article-title {
+      font-size: 16px;
+    }
+    .article-excerpt {
+      font-size: 13px;
+    }
   }
   
   /* Sidebar */
@@ -1657,37 +1717,33 @@ async function serveWebsite(env) {
 </head>
 <body>
 
-<!-- India.com Style Header -->
+<!-- Modern Clean Header -->
 <header class="header">
-  <div class="header-top">
-    <div class="container">
-      <div class="header-top-content">
-        <span>${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-        <span>Updated: ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
-      </div>
-    </div>
-  </div>
-  <div class="header-main">
-    <div class="container">
-      <div class="header-main-content">
-        <a href="/" class="logo">AGAMINEWS<span class="dot">.</span>IN</a>
-        <div class="header-right">
-          <span style="font-size:12px;color:#666;">Your Daily Tech & Business News</span>
-        </div>
+  <div class="container">
+    <div class="header-main-content" style="padding: 16px 0; display: flex; justify-content: space-between; align-items: center;">
+      <a href="/" class="logo">
+        <div class="logo-icon">A</div>
+        <span>AgamiNews</span>
+      </a>
+      <div class="header-right" style="display: flex; align-items: center; gap: 16px;">
+        <span style="font-size: 12px; color: var(--text-secondary); display: none;" class="desktop-only">
+          ${new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+        </span>
+        <button class="menu-toggle" style="display: none; background: none; border: none; font-size: 24px; cursor: pointer;">☰</button>
       </div>
     </div>
   </div>
   <nav class="nav">
     <div class="container">
       <ul class="nav-links">
-        <li><a href="/" class="nav-link">HOME</a></li>
-        <li><a href="#latest" class="nav-link">LATEST</a></li>
-        <li><a href="#tech" class="nav-link">TECHNOLOGY</a></li>
-        <li><a href="#crypto" class="nav-link">CRYPTO</a></li>
-        <li><a href="#business" class="nav-link">BUSINESS</a></li>
-        <li><a href="#startups" class="nav-link">STARTUPS</a></li>
-        <li><a href="#ai" class="nav-link">AI & ML</a></li>
-        <li><a href="#ev" class="nav-link">ELECTRIC VEHICLES</a></li>
+        <li><a href="/" class="nav-link active">Home</a></li>
+        <li><a href="#latest" class="nav-link">Latest</a></li>
+        <li><a href="#tech" class="nav-link">Technology</a></li>
+        <li><a href="#crypto" class="nav-link">Crypto</a></li>
+        <li><a href="#business" class="nav-link">Business</a></li>
+        <li><a href="#startups" class="nav-link">Startups</a></li>
+        <li><a href="#ai" class="nav-link">AI</a></li>
+        <li><a href="#ev" class="nav-link">EVs</a></li>
       </ul>
     </div>
   </nav>
