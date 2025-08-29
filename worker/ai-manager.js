@@ -34,9 +34,9 @@ class AIWebsiteManager {
       const indiaReddit = await fetch('https://www.reddit.com/r/india/hot.json?limit=15');
       const indiaData = await indiaReddit.json();
       
-      // Get RECENT news (last 24 hours)
+      // Get RECENT news (last 24 hours) - Adjusted for 15/day
       const recentIndiaNews = indiaData.data.children
-        .slice(0, 6)
+        .slice(0, 5)  // 5 recent India news
         .map(post => ({
           category: 'INDIA',
           title: post.data.title,
@@ -183,7 +183,15 @@ class AIWebsiteManager {
       console.log('Entertainment fetch error:', e);
     }
 
-    return allNews;
+    // Ensure exactly 15 articles per day
+    console.log(`[FETCH] Total articles fetched: ${allNews.length}`);
+    
+    // Shuffle for variety and return exactly 15
+    const shuffled = allNews.sort(() => Math.random() - 0.5);
+    const finalArticles = shuffled.slice(0, 15);
+    
+    console.log(`[FETCH] Returning ${finalArticles.length} articles for daily quota`);
+    return finalArticles;
   }
 
   // AI Summarizes and asks for approval
