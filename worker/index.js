@@ -125,20 +125,31 @@ async function handleTelegram(request, env) {
       // Handle different callbacks
       if (data === 'main_menu') {
         await sendMainMenu(env, chatId);
-      } else if (data === 'get_news') {
+      } else if (data === 'get_news' || data === 'cmd_news') {
         await handleManagerCommands(env, chatId, '/news');
-      } else if (data === 'show_performance') {
+      } else if (data === 'show_performance' || data === 'cmd_performance') {
         await handleManagerCommands(env, chatId, '/performance');
-      } else if (data === 'show_budget') {
+      } else if (data === 'show_budget' || data === 'cmd_budget') {
         await handleManagerCommands(env, chatId, '/budget');
-      } else if (data === 'get_suggestions') {
+      } else if (data === 'get_suggestions' || data === 'cmd_suggestions') {
         await handleManagerCommands(env, chatId, '/suggestions');
-      } else if (data === 'show_schedule') {
+      } else if (data === 'show_schedule' || data === 'cmd_schedule') {
         await handleManagerCommands(env, chatId, '/schedule');
+      } else if (data === 'cmd_status') {
+        await handleManagerCommands(env, chatId, '/status');
+      } else if (data === 'cmd_delete') {
+        await handleDeleteMenu(env, chatId);
+      } else if (data === 'cmd_admin') {
+        await handleManagerCommands(env, chatId, '/admin');
+      } else if (data === 'setadmin_prompt') {
+        await sendMessage(env, chatId, '🔐 To become admin, send:\n\n`/setadmin agami2024`\n\nCopy and send this command.');
       } else if (data === 'refresh_news') {
         await handleManagerCommands(env, chatId, '/news');
       } else if (data.startsWith('approve_')) {
         await handleApprovalCallback(env, chatId, data);
+      } else if (data.startsWith('delete_article_')) {
+        const articleId = data.replace('delete_article_', '');
+        await handleManagerCommands(env, chatId, `/delete ${articleId}`);
       } else if (data.startsWith('permission_')) {
         await handlePermissionCallback(env, chatId, data);
       }
@@ -170,13 +181,48 @@ async function handleTelegram(request, env) {
       // Handle admin commands
       if (text === '/admin' || text === '/whoami') {
         const isAdmin = String(chatId) === String(adminChat);
-        await sendMessage(env, chatId, `👤 *Your Status*\n\nChat ID: \`${chatId}\`\nAdmin: ${isAdmin ? '✅ Yes' : '❌ No'}\n\n${!isAdmin ? 'Use \`/setadmin agami2024\` to become admin' : 'You have full access!'}`);
+        const message = `👤 *Your Status*\n\nChat ID: \`${chatId}\`\nAdmin: ${isAdmin ? '✅ Yes' : '❌ No'}\n\n${!isAdmin ? 'Use the button below to become admin' : 'You have full access!'}`;
+        
+        const keyboard = {
+          inline_keyboard: isAdmin ? [
+            [
+              { text: '🗑️ Delete Articles', callback_data: 'cmd_delete' },
+              { text: '📰 Get News', callback_data: 'cmd_news' }
+            ],
+            [
+              { text: '📊 Performance', callback_data: 'cmd_performance' },
+              { text: '📚 Help Menu', callback_data: 'main_menu' }
+            ]
+          ] : [
+            [
+              { text: '🔐 Become Admin', callback_data: 'setadmin_prompt' }
+            ],
+            [
+              { text: '📚 Help Menu', callback_data: 'main_menu' }
+            ]
+          ]
+        };
+        
+        await sendMessageWithKeyboard(env, chatId, message, keyboard);
         return new Response('OK');
       } else if (text.startsWith('/setadmin')) {
         const secret = text.split(' ')[1];
         if (secret === 'agami2024') {
           await env.NEWS_KV.put('admin_chat', String(chatId));
-          await sendMessage(env, chatId, '✅ You are now the admin!');
+          const message = '✅ You are now the admin! Full access granted.';
+          const keyboard = {
+            inline_keyboard: [
+              [
+                { text: '🗑️ Delete Articles', callback_data: 'cmd_delete' },
+                { text: '📰 Get News', callback_data: 'cmd_news' }
+              ],
+              [
+                { text: '📊 Performance', callback_data: 'cmd_performance' },
+                { text: '📚 Help Menu', callback_data: 'main_menu' }
+              ]
+            ]
+          };
+          await sendMessageWithKeyboard(env, chatId, message, keyboard);
         } else {
           await sendMessage(env, chatId, '❌ Invalid secret. Use: \`/setadmin agami2024\`');
         }
@@ -195,7 +241,20 @@ async function handleTelegram(request, env) {
             if (articles[index]) {
               articles.splice(index, 1);
               await env.NEWS_KV.put('articles', JSON.stringify(articles));
-              await sendMessage(env, chatId, `✅ Deleted article #${index}`);
+              const message = `✅ Deleted article #${index}\n\nTotal articles remaining: ${articles.length}`;
+              const keyboard = {
+                inline_keyboard: [
+                  [
+                    { text: '🗑️ Delete More', callback_data: 'cmd_delete' },
+                    { text: '📰 Get News', callback_data: 'cmd_news' }
+                  ],
+                  [
+                    { text: '🌐 View Website', url: 'https://agaminews.in' },
+                    { text: '📚 Main Menu', callback_data: 'main_menu' }
+                  ]
+                ]
+              };
+              await sendMessageWithKeyboard(env, chatId, message, keyboard);
             } else {
               await sendMessage(env, chatId, `❌ Article #${articleNum} not found`);
             }
@@ -534,37 +593,80 @@ Your FULL capabilities:
   }
 }
 
+// Delete menu with article buttons
+async function handleDeleteMenu(env, chatId) {
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  
+  if (articles.length === 0) {
+    await sendMessage(env, chatId, '📭 No articles to delete');
+    return;
+  }
+  
+  const message = `🗑️ *Select an article to delete:*\n\nTotal articles: ${articles.length}`;
+  
+  const keyboard = {
+    inline_keyboard: []
+  };
+  
+  // Add article buttons (max 10 for readability)
+  for (let i = 0; i < Math.min(articles.length, 10); i++) {
+    const article = articles[i];
+    const title = article.title ? article.title.substring(0, 30) + '...' : `Article ${i}`;
+    keyboard.inline_keyboard.push([
+      { text: `${i}. ${title}`, callback_data: `delete_article_${i}` }
+    ]);
+  }
+  
+  // Add back button
+  keyboard.inline_keyboard.push([
+    { text: '↩️ Back to Menu', callback_data: 'main_menu' }
+  ]);
+  
+  await sendMessageWithKeyboard(env, chatId, message, keyboard);
+}
+
 // Welcome message - removed duplicate (defined earlier)
 
-// Help message
+// Help message with buttons
 async function sendHelpMessage(env, chatId) {
   const message = `
 📚 *AI Manager Commands*
 
-*Content Management:*
-/news - Fetch latest news summaries
-/approve [numbers] - Approve articles (e.g., /approve 1,3,5)
+*Choose an action below:*
 
-*Analytics & Optimization:*
-/performance - Website statistics
-/suggestions - AI recommendations
-/budget - Usage & cost tracking
+💰 Budget: $${(await env.NEWS_KV.get('usage_today') || 0)} used today
 
-*System:*
-/schedule - Daily routine
-/status - System status
-/help - This message
-
-*Natural Language:*
-Just type normally! Examples:
+You can also type naturally! Examples:
 • "Get crypto news"
 • "Show me stats"
 • "What's my budget?"
-
-Budget: $${(await env.NEWS_KV.get('usage_today') || 0)} used today
   `;
   
-  await sendMessage(env, chatId, message);
+  const keyboard = {
+    inline_keyboard: [
+      [
+        { text: '📰 Get News', callback_data: 'cmd_news' },
+        { text: '📊 Performance', callback_data: 'cmd_performance' }
+      ],
+      [
+        { text: '💡 Suggestions', callback_data: 'cmd_suggestions' },
+        { text: '💰 Budget', callback_data: 'cmd_budget' }
+      ],
+      [
+        { text: '📅 Schedule', callback_data: 'cmd_schedule' },
+        { text: '🔧 Status', callback_data: 'cmd_status' }
+      ],
+      [
+        { text: '🗑️ Delete Article', callback_data: 'cmd_delete' },
+        { text: '👤 Admin Status', callback_data: 'cmd_admin' }
+      ],
+      [
+        { text: '🌐 Visit Website', url: 'https://agaminews.in' }
+      ]
+    ]
+  };
+  
+  await sendMessageWithKeyboard(env, chatId, message, keyboard);
 }
 
 // Status message
