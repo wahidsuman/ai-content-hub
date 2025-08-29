@@ -763,546 +763,369 @@ async function serveWebsite(env, request) {
     </script>
     
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        html {
-            font-size: 16px;
-            overflow-x: hidden;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
+        
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: ${isDark ? '#0A0A0A' : '#FFF'};
-            color: ${isDark ? '#FFF' : '#000'};
-            line-height: 1.6;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-            width: 100%;
-            overflow-x: hidden;
+            background-color: #f5f5f5;
+            line-height: 1.4;
         }
+        /* Header */
         .header {
-            background: ${isDark ? '#1A1A1A' : '#F8F8F8'};
-            padding: 15px;
-            border-bottom: 2px solid ${config.primaryColor};
+            background: white;
+            padding: 0.8rem 1rem;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             position: sticky;
             top: 0;
             z-index: 100;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-        .header-content {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 15px;
-        }
-        .logo-section {
+        
+        .logo {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #333;
             display: flex;
             flex-direction: column;
+            align-items: flex-start;
+            line-height: 1;
+            text-decoration: none;
         }
-        .logo {
-            font-size: 24px;
-            font-weight: 900;
-            color: ${config.primaryColor};
+        
+        .logo .main-text {
+            font-size: 1.4rem;
         }
-        .tagline {
-            font-size: 10px;
-            color: ${isDark ? '#999' : '#666'};
-            margin-top: 2px;
-            display: none;
+        
+        .logo .sub-text {
+            font-size: 0.9rem;
+            color: #666;
+            margin-left: 6rem;
+            margin-top: -0.2rem;
         }
-        .live {
-            background: ${config.primaryColor};
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .switch-text {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .language-btn {
+            background: #ff6b35;
             color: white;
-            padding: 6px 12px;
+            padding: 0.4rem 0.8rem;
             border-radius: 20px;
-            font-size: 11px;
-            animation: pulse 2s infinite;
-            white-space: nowrap;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-decoration: none;
         }
         
-        /* Mobile Menu Button */
-        .mobile-menu-btn {
+        .login-btn {
+            background: #f0f0f0;
+            color: #333;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        
+        /* Navigation Tabs */
+        .nav-tabs {
+            background: white;
+            display: flex;
+            overflow-x: auto;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 0 1rem;
+        }
+        
+        .nav-tabs::-webkit-scrollbar {
             display: none;
-            background: none;
-            border: none;
-            color: ${config.primaryColor};
-            font-size: 24px;
-            cursor: pointer;
-            padding: 5px;
-            margin-left: 10px;
         }
         
-        @media (max-width: 768px) {
-            .header {
-                padding: 12px 10px;
-            }
-            .header-content {
-                padding: 0 10px;
-            }
-            .logo {
-                font-size: 20px;
-            }
-            .tagline {
-                display: block;
-            }
-            .live {
-                font-size: 10px;
-                padding: 5px 10px;
+        .nav-tab {
+            padding: 1rem 0.8rem;
+            color: #666;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            white-space: nowrap;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .nav-tab.active {
+            color: #333;
+            border-bottom-color: #ff6b35;
+        }
+        
+        /* News Sources Bar */
+        .news-sources {
+            background: white;
+            padding: 0.8rem;
+            overflow-x: auto;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .sources-container {
+            display: flex;
+            gap: 1rem;
+            min-width: max-content;
+        }
+        
+        .source-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: #666;
+            font-size: 0.7rem;
+        }
+        
+        .source-logo {
+            width: 24px;
+            height: 16px;
+            background: #ff6b35;
+            margin-bottom: 0.2rem;
+            border-radius: 2px;
+        }
+        
+        /* Featured Story */
+        .featured-story {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+        
+        .featured-image {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+        }
+        
+        .featured-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0,0,0,0.8));
+            padding: 2rem 1rem 1rem;
+            color: white;
+        }
+        
+        .featured-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+        
+        /* Advertisement */
+        .advertisement {
+            background: white;
+            padding: 2rem 1rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            border-top: 1px solid #e0e0e0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .ad-label {
+            color: #999;
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+        }
+        
+        .ad-placeholder {
+            background: #f0f0f0;
+            height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+        }
+        
+        /* News List */
+        .news-list {
+            background: white;
+        }
+        
+        .news-item {
+            display: flex;
+            padding: 1rem;
+            border-bottom: 1px solid #f0f0f0;
+            text-decoration: none;
+            color: inherit;
+        }
+        
+        .news-content {
+            flex: 1;
+            padding-right: 0.8rem;
+        }
+        
+        .news-title {
+            font-size: 0.95rem;
+            line-height: 1.4;
+            color: #333;
+            font-weight: 500;
+            margin-bottom: 0.3rem;
+        }
+        
+        .news-image {
+            width: 80px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+        
+        /* Live badge */
+        .live-badge {
+            background: #ff4444;
+            color: white;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            margin-left: 0.5rem;
+        }
+        
+        /* Responsive adjustments */
+        @media (min-width: 768px) {
+            body {
+                max-width: 400px;
+                margin: 0 auto;
+                box-shadow: 0 0 20px rgba(0,0,0,0.1);
             }
             .mobile-menu-btn {
                 display: block;
             }
         }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-        .container {
-            max-width: 1200px;
-            width: 100%;
-            margin: 0 auto;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-        .stats-bar {
-            background: ${isDark ? '#1A1A1A' : '#F8F8F8'};
-            border-radius: 10px;
-            padding: 20px;
-            margin: 20px 0;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 20px;
-        }
-        .stat {
-            text-align: center;
-        }
-        .stat-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: ${config.primaryColor};
-        }
-        .stat-label {
-            font-size: 12px;
-            opacity: 0.7;
-            text-transform: uppercase;
-        }
-        .news-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-            margin: 30px 0;
-        }
-        .news-card-link {
-            text-decoration: none;
-            color: inherit;
-            display: block;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .news-card {
-            background: ${isDark ? '#1A1A1A' : '#F8F8F8'};
-            border-radius: 10px;
-            overflow: hidden;
-            border: 1px solid ${isDark ? '#2A2A2A' : '#E0E0E0'};
-            transition: transform 0.3s, box-shadow 0.3s;
+        
+        .hamburger {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
             cursor: pointer;
         }
-        .news-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        
+        .hamburger span {
+            width: 100%;
+            height: 2px;
+            background: #333;
+            display: block;
         }
         
-        @media (max-width: 768px) {
-            .news-grid {
-                grid-template-columns: 1fr !important;
-                gap: 16px;
-                margin: 10px 0;
-                padding: 0;
-            }
-            .news-card {
-                border-radius: 12px;
-                width: 100%;
-                max-width: 100%;
-                margin: 0;
-                padding: 0;
-                overflow: hidden;
-            }
-            .news-card-link {
-                display: block;
-                width: 100%;
-            }
-            .news-card:hover {
-                transform: none;
-            }
-            .news-card:active {
-                transform: scale(0.98);
-            }
-            .news-image {
-                height: 200px;
-                width: 100%;
-                margin: 0;
-                border-radius: 0;
-            }
-            .news-content {
-                padding: 15px;
-            }
-            .news-title {
-                font-size: 17px;
-                line-height: 1.3;
-                margin-bottom: 8px;
-            }
-            .news-summary {
-                font-size: 14px;
-                line-height: 1.5;
-            }
-            .news-meta {
-                font-size: 11px;
-            }
-        }
-        .news-card:hover .news-title {
-            color: ${config.primaryColor};
-        }
-        .news-image {
-            position: relative;
-            width: 100%;
-            height: 200px;
-            overflow: hidden;
-            background: ${isDark ? '#0A0A0A' : '#F0F0F0'};
-        }
-        .news-image img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform 0.3s;
-        }
-        .news-card:hover .news-image img {
-            transform: scale(1.05);
-        }
-        .image-credit {
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 2px 8px;
-            font-size: 10px;
-        }
-        .news-content {
-            padding: 20px;
-        }
-        .trending {
-            display: inline-block;
-            margin-left: 10px;
-            font-size: 12px;
-            color: #FF6B6B;
-        }
-        .news-category {
-            color: ${config.primaryColor};
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            margin-bottom: 10px;
-        }
-        .news-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 10px;
-            line-height: 1.3;
-        }
-        .news-summary {
-            font-size: 14px;
-            opacity: 0.8;
-            margin-bottom: 15px;
-        }
-        .news-meta {
-            font-size: 12px;
-            opacity: 0.6;
+        .logo-container {
             display: flex;
-            justify-content: space-between;
-        }
-        .cta {
-            background: linear-gradient(135deg, ${config.primaryColor}, #FF0000);
-            color: white;
-            padding: 40px;
-            border-radius: 15px;
-            text-align: center;
-            margin: 40px 0;
-        }
-        .cta h2 {
-            font-size: 32px;
-            margin-bottom: 15px;
-        }
-        .cta-buttons {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            margin-top: 25px;
-        }
-        .btn {
-            padding: 12px 30px;
-            background: white;
-            color: ${config.primaryColor};
-            border-radius: 25px;
-            text-decoration: none;
-            font-weight: 600;
-            transition: transform 0.3s;
-        }
-        .btn:hover {
-            transform: scale(1.05);
-        }
-        @media (max-width: 768px) {
-            .news-grid { grid-template-columns: 1fr; }
-            .stats-bar { grid-template-columns: repeat(2, 1fr); }
-            .cta-buttons { flex-direction: column; }
-            
-            /* Enhanced Mobile Optimizations */
-            .container {
-                padding: 8px !important;
-                width: 100% !important;
-                max-width: 100% !important;
-                box-sizing: border-box !important;
-                overflow-x: hidden !important;
-            }
-            
-            /* Stats Mobile */
-            .stats-bar {
-                gap: 10px;
-                padding: 12px;
-                margin: 10px 0;
-                border-radius: 8px;
-            }
-            .stat-value {
-                font-size: 18px;
-            }
-            .stat-label {
-                font-size: 10px;
-            }
-            
-            /* News Cards Mobile */
-            .news-content {
-                padding: 15px;
-            }
-            .news-category {
-                font-size: 11px;
-            }
-            .news-title {
-                font-size: 16px;
-                line-height: 1.4;
-            }
-            .news-summary {
-                font-size: 13px;
-                line-height: 1.6;
-            }
-            .news-meta {
-                font-size: 11px;
-                gap: 10px;
-                flex-wrap: wrap;
-            }
-            .news-image {
-                height: 180px;
-                width: 100%;
-                max-width: 100%;
-            }
-            .news-image img {
-                width: 100%;
-                height: 100%;
-                object-fit: cover;
-            }
-            
-            /* Headlines */
-            h2 {
-                font-size: 22px !important;
-                margin: 20px 0 15px !important;
-            }
-            
-            /* Touch targets */
-            .news-card-link, button, a {
-                -webkit-tap-highlight-color: transparent;
-            }
-            
-            /* Prevent horizontal scroll */
-            body {
-                overflow-x: hidden;
-                width: 100%;
-            }
-            
-            /* CTA Mobile */
-            .cta {
-                padding: 25px 15px;
-                margin: 20px 0;
-            }
-            .cta h2 {
-                font-size: 20px;
-            }
-            .cta p {
-                font-size: 14px;
-            }
-        }
-        
-        /* Small phones */
-        @media (max-width: 380px) {
-            .logo { font-size: 18px; }
-            .stats-bar { gap: 8px; }
-            .stat-value { font-size: 16px; }
-            .news-title { font-size: 15px; }
-            .news-summary { font-size: 12px; }
+            align-items: center;
+            gap: 0.8rem;
         }
     </style>
 </head>
 <body>
     <header class="header">
-        <div class="header-content">
-            <div class="logo-section">
-                <div class="logo">${config.siteName}</div>
-                <div class="tagline">Tech & Finance • Quick Reads</div>
-            </div>
-            <div style="display: flex; align-items: center;">
-                <div class="live">● LIVE</div>
-                <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
-            </div>
+        <div class="logo-container">
+            <a href="/" class="logo">
+                <span class="main-text">AgamiNews</span>
+                <span class="sub-text">.in</span>
+            </a>
         </div>
     </header>
-    
-    <!-- Mobile Menu -->
-    <div id="mobileMenu" style="display: none; background: ${isDark ? '#1A1A1A' : '#F8F8F8'}; padding: 15px; border-bottom: 1px solid ${isDark ? '#333' : '#E0E0E0'};">
-        <a href="/" style="display: block; padding: 10px 0; color: inherit; text-decoration: none;">🏠 Home</a>
-        <a href="#" onclick="shareApp()" style="display: block; padding: 10px 0; color: inherit; text-decoration: none;">📤 Share App</a>
-    </div>
-    
-    <div class="container">
-        <div class="stats-bar">
-            <div class="stat">
-                <div class="stat-value">${(stats.totalViews || 0).toLocaleString()}</div>
-                <div class="stat-label">Total Views</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value">${(stats.todayViews || 0).toLocaleString()}</div>
-                <div class="stat-label">Today's Views</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value">${articles.length}</div>
-                <div class="stat-label">Live Articles</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value">${getActiveReaders(stats)}</div>
-                <div class="stat-label">Active Now</div>
-            </div>
+
+    <nav class="nav-tabs">
+        <a href="#latest" class="nav-tab active">LATEST</a>
+        <a href="#tech" class="nav-tab">TECHNOLOGY</a>
+        <a href="#business" class="nav-tab">BUSINESS</a>
+        <a href="#crypto" class="nav-tab">CRYPTO</a>
+        <a href="#ev" class="nav-tab">ELECTRIC VEHICLES</a>
+        <a href="#startups" class="nav-tab">STARTUPS</a>
+    </nav>
+
+    <div class="news-sources">
+        <div class="sources-container">
+            <a href="#" class="source-item">
+                <div class="source-logo"></div>
+                <span>TECH</span>
+            </a>
+            <a href="#" class="source-item">
+                <div class="source-logo" style="background: #1976d2;"></div>
+                <span>CRYPTO</span>
+            </a>
+            <a href="#" class="source-item">
+                <div class="source-logo" style="background: #e91e63;"></div>
+                <span>AI/ML</span>
+            </a>
+            <a href="#" class="source-item">
+                <div class="source-logo" style="background: #4caf50;"></div>
+                <span>STARTUPS</span>
+            </a>
+            <a href="#" class="source-item">
+                <div class="source-logo" style="background: #ff9800;"></div>
+                <span>BUSINESS</span>
+            </a>
+            <a href="#" class="source-item">
+                <div class="source-logo" style="background: #9c27b0;"></div>
+                <span>EVs</span>
+            </a>
         </div>
-        
-        <h2 style="margin: 30px 0 20px; font-size: 28px;">Latest News</h2>
-        
-        <div class="news-grid">
-            ${articles.map((article, index) => `
-                <a href="${article.url || `/article/${index}`}" class="news-card-link">
-                    <div class="news-card">
-                        ${article.image ? `
-                            <div class="news-image">
-                                <img src="${article.image.url || article.image}" alt="${article.title}" loading="lazy">
-                                ${article.image.credit ? `<div class="image-credit">${article.image.credit}</div>` : ''}
-                            </div>
-                        ` : ''}
-                        <div class="news-content">
-                            <div class="news-category">${article.category}</div>
-                            ${article.trending ? '<span class="trending">🔥 Trending</span>' : ''}
-                            <div class="news-title">${article.title}</div>
-                            <div class="news-summary">${article.preview || (article.fullContent ? article.fullContent.replace(/<[^>]*>/g, '').substring(0, 500) + '...' : '')}</div>
-                            <div class="news-meta">
-                                <span>🕒 ${article.date || 'Today'}</span>
-                                <span>👁️ ${(article.views || 0).toLocaleString()}</span>
-                                ${article.source ? `<span>📰 ${article.source}</span>` : ''}
-                            </div>
-                        </div>
+    </div>
+
+    <main>
+        ${articles.length > 0 ? `
+        <!-- Featured Story -->
+        <article class="featured-story">
+            <img src="${articles[0].image ? articles[0].image.url : 'https://via.placeholder.com/400x250/ff6b35/ffffff?text=AgamiNews'}" alt="${articles[0].title}" class="featured-image">
+            <div class="featured-overlay">
+                <h1 class="featured-title"><a href="/article/0" style="color: white; text-decoration: none;">${articles[0].title}</a></h1>
+            </div>
+        </article>
+        ` : ''}
+
+        <!-- News List -->
+        <section class="news-list">
+            ${articles.slice(1, 10).map((article, index) => `
+                <a href="/article/${index + 1}" class="news-item">
+                    <div class="news-content">
+                        <h2 class="news-title">${article.title}
+                            ${index === 0 ? '<span class="live-badge">NEW</span>' : ''}
+                        </h2>
                     </div>
+                    ${article.image ? `<img src="${article.image.url}" alt="${article.title}" class="news-image">` : '<img src="https://via.placeholder.com/80x60/ff6b35/ffffff?text=News" class="news-image">'}
                 </a>
             `).join('')}
+        </section>
+
+        <!-- Advertisement -->
+        <div class="advertisement">
+            <div class="ad-label">Advertisement</div>
+            <div class="ad-placeholder">Google AdSense Space</div>
         </div>
-        
-        <!-- Real Analytics Dashboard -->
-        <div style="background: ${isDark ? '#1A1A1A' : '#F8F8F8'}; border-radius: 15px; padding: 25px; margin: 30px 0;">
-            <h2 style="font-size: 20px; margin-bottom: 20px; color: ${config.primaryColor};">📊 Live Analytics</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                <div style="background: ${isDark ? '#0A0A0A' : '#FFF'}; padding: 15px; border-radius: 10px;">
-                    <div style="font-size: 12px; opacity: 0.7; margin-bottom: 5px;">Unique Visitors</div>
-                    <div style="font-size: 24px; font-weight: bold; color: ${config.primaryColor};">${stats.uniqueVisitorsCount || 0}</div>
-                </div>
-                <div style="background: ${isDark ? '#0A0A0A' : '#FFF'}; padding: 15px; border-radius: 10px;">
-                    <div style="font-size: 12px; opacity: 0.7; margin-bottom: 5px;">Peak Hour</div>
-                    <div style="font-size: 24px; font-weight: bold;">${getPeakHour(stats)}</div>
-                </div>
-                <div style="background: ${isDark ? '#0A0A0A' : '#FFF'}; padding: 15px; border-radius: 10px;">
-                    <div style="font-size: 12px; opacity: 0.7; margin-bottom: 5px;">Top Country</div>
-                    <div style="font-size: 24px; font-weight: bold;">${getTopCountry(stats)}</div>
-                </div>
-                <div style="background: ${isDark ? '#0A0A0A' : '#FFF'}; padding: 15px; border-radius: 10px;">
-                    <div style="font-size: 12px; opacity: 0.7; margin-bottom: 5px;">Mobile Traffic</div>
-                    <div style="font-size: 24px; font-weight: bold;">${getMobilePercent(stats)}%</div>
-                </div>
-            </div>
-            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid ${isDark ? '#333' : '#E0E0E0'};">
-                <div style="font-size: 12px; opacity: 0.7;">Top Referrers: ${getTopReferrers(stats)}</div>
-            </div>
-        </div>
-        
-        <div class="cta">
-            <h2>📱 Never Miss Breaking News</h2>
-            <p>Get instant updates on Telegram with AI-powered curation</p>
-            <div class="cta-buttons">
-                <a href="${config.telegramBot || '#'}" class="btn">💬 Join Telegram</a>
-                <a href="/api/stats" class="btn" style="background: transparent; border: 2px solid white; color: white;">📊 View Stats</a>
-            </div>
-        </div>
-    </div>
-    
-    <script>
-        // Mobile menu toggle
-        function toggleMobileMenu() {
-            const menu = document.getElementById('mobileMenu');
-            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-        }
-        
-        // Share app functionality
-        function shareApp() {
-            if (navigator.share) {
-                navigator.share({
-                    title: '${config.siteName}',
-                    text: 'Check out the latest Tech & Finance news!',
-                    url: 'https://agaminews.in'
-                }).catch(() => {});
-            } else {
-                // Fallback to copy URL
-                navigator.clipboard.writeText('https://agaminews.in');
-                alert('Link copied to clipboard!');
-            }
-        }
-        
-        // Add pull-to-refresh on mobile
-        let startY = 0;
-        let isPulling = false;
-        
-        document.addEventListener('touchstart', (e) => {
-            if (window.scrollY === 0) {
-                startY = e.touches[0].pageY;
-                isPulling = true;
-            }
-        });
-        
-        document.addEventListener('touchmove', (e) => {
-            if (isPulling && e.touches[0].pageY > startY + 100) {
-                // Show refresh indicator
-            }
-        });
-        
-        document.addEventListener('touchend', (e) => {
-            if (isPulling && e.changedTouches[0].pageY > startY + 100) {
-                location.reload();
-            }
-            isPulling = false;
-        });
-        
-        // Improve scroll performance on mobile
-        if ('ontouchstart' in window) {
-            document.body.style.cursor = 'pointer';
-        }
-    </script>
+
+        <!-- More News -->
+        <section class="news-list">
+            ${articles.slice(10, 20).map((article, index) => `
+                <a href="/article/${index + 11}" class="news-item">
+                    <div class="news-content">
+                        <h2 class="news-title">${article.title}</h2>
+                    </div>
+                    ${article.image ? `<img src="${article.image.url}" alt="${article.title}" class="news-image">` : '<img src="https://via.placeholder.com/80x60/ff6b35/ffffff?text=News" class="news-image">'}
+                </a>
+            `).join('')}
+        </section>
+    </main>
 </body>
 </html>`;
 
