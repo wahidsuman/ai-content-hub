@@ -5489,30 +5489,40 @@ async function renderArticlePage(env, article, allArticles, request) {
 // Serve article by SEO-friendly slug URL
 async function serveArticleBySlug(env, request, pathname) {
   try {
-    // Extract article ID from URL (last 6 digits)
-    const matches = pathname.match(/-(\d{6})$/);
-    if (!matches) {
-      throw new Error('Invalid article URL format');
-    }
+    // Extract trailing numeric ID if present (support 6+ digits)
+    const idMatch = pathname.match(/-(\d+)$/);
+    const idFromPath = idMatch ? idMatch[1] : null;
+    const lastSegment = pathname.split('/').pop() || '';
+    const slugFromPath = idFromPath ? lastSegment.slice(0, -(idFromPath.length + 1)) : lastSegment;
     
-    const articleId = matches[1];
     const articles = await env.NEWS_KV.get('articles', 'json') || [];
     
-    // Find article by ID
-    const article = articles.find(a => a.id === articleId);
+    let article = null;
+    if (idFromPath) {
+      // Prefer exact ID match (normalize to string)
+      article = articles.find(a => String(a.id) === String(idFromPath));
+      
+      // Fallback: if not found, try slug match
+      if (!article && slugFromPath) {
+        article = articles.find(a => a.slug === slugFromPath);
+      }
+    } else {
+      // No ID in path: try slug-only match (legacy links)
+      if (slugFromPath) {
+        article = articles.find(a => a.slug === slugFromPath);
+      }
+    }
     
     if (!article) {
       throw new Error('Article not found');
     }
     
-    // Verify URL matches (for security/SEO)
-    const expectedUrl = `/${article.category.toLowerCase()}-news/${article.slug}-${article.id}`;
-    if (pathname !== expectedUrl) {
-      // Redirect to canonical URL
-      return Response.redirect(new URL(expectedUrl, request.url).toString(), 301);
+    // Determine canonical URL (prefer stored url if present)
+    const canonicalUrl = article.url || `/${article.category.toLowerCase()}-news/${article.slug}-${article.id}`;
+    if (pathname !== canonicalUrl) {
+      return Response.redirect(new URL(canonicalUrl, request.url).toString(), 301);
     }
     
-    // Render the article (reuse existing rendering logic)
     return renderArticlePage(env, article, articles, request);
   } catch (error) {
     console.error('Error serving article by slug:', error);
@@ -5523,10 +5533,20 @@ async function serveArticleBySlug(env, request, pathname) {
 // Serve individual article page (legacy)
 async function serveArticle(env, request, pathname) {
   try {
-    const articleId = parseInt(pathname.split('/')[2]);
+    const pathPart = pathname.split('/')[2];
+    const articleId = parseInt(pathPart);
     
-    // Validate articleId
+    // Validate articleId; if invalid, try slug-based fallback
     if (isNaN(articleId) || articleId < 0) {
+      const articlesForSlug = await env.NEWS_KV.get('articles', 'json') || [];
+      const slugCandidate = decodeURIComponent(pathPart || '').trim();
+      if (slugCandidate) {
+        const bySlug = articlesForSlug.find(a => a.slug === slugCandidate);
+        if (bySlug) {
+          const redirectUrl = bySlug.url || `/${bySlug.category.toLowerCase()}-news/${bySlug.slug}-${bySlug.id}`;
+          return Response.redirect(new URL(redirectUrl, request.url).toString(), 301);
+        }
+      }
       throw new Error('Invalid article ID');
     }
     
