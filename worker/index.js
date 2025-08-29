@@ -2,9 +2,9 @@
 // Single file for easy management and deployment
 // IMPORTANT: Google Analytics ID G-ZW77WM2VPG must be on EVERY page!
 
-// Version: 2.5.0 - Fixed Fetch & Delete Menu
-// Last Updated: 2025-08-29T13:35:00Z
-// Cache Bust: ${Date.now()}
+// Version: 2.6.0 - Fixed Start Command & Menu
+// Last Updated: 2025-08-29T14:00:00Z
+// Deploy ID: ${Date.now()}
 
 export default {
   async fetch(request, env) {
@@ -1158,25 +1158,7 @@ async function handleTelegram(request, env) {
       }
       
       // Handle commands
-      if (text === '/start') {
-        await sendMessage(env, chatId, `
-🎉 *Welcome to AgamiNews Manager!*
-
-Your AI-powered news platform is ready! Use the buttons below to control everything.
-
-✨ *Quick Status:*
-• System: Active ✅
-• DALL-E 3: ${env.OPENAI_API_KEY ? 'Ready ✅' : 'Not configured ❌'}
-• Auto-publish: Every 3 hours
-
-Select an action:`, {
-          inline_keyboard: [
-            [{ text: '📊 Stats', callback_data: 'stats' }, { text: '🚀 Fetch News', callback_data: 'fetch' }],
-            [{ text: '📈 Strategy', callback_data: 'strategy' }, { text: '💵 Costs', callback_data: 'apiusage' }],
-            [{ text: '⚙️ Menu', callback_data: 'menu' }]
-          ]
-        });
-      } else if (text === '/menu') {
+      if (text === '/start' || text === '/menu') {
         await sendMenu(env, chatId);
       } else if (text === '/stats') {
         await sendStats(env, chatId);
@@ -1378,7 +1360,7 @@ async function sendMenu(env, chatId) {
   const nextHour = Math.ceil(now.getHours() / 3) * 3;
   const nextCronHour = nextHour === 24 ? 0 : nextHour;
   
-  await sendMessage(env, chatId, `🎯 *AgamiNews Control Panel*
+  await sendMessage(env, chatId, `🎯 *AgamiNews Control Panel* v2.6
 
 📊 Today: *${todayArticles}* articles | *$${todayCost.toFixed(2)}*
 📚 Total: *${articles.length}* articles
