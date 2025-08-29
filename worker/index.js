@@ -701,6 +701,27 @@ async function serveArticle(env, articleId) {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${article.title} - Agami News</title>
 <meta name="description" content="${article.seo?.metaDescription || article.description || ''}">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://agaminews.in/article/${articleIndex}">
+<meta property="og:title" content="${article.title}">
+<meta property="og:description" content="${article.seo?.metaDescription || article.description || ''}">
+<meta property="og:url" content="https://agaminews.in/article/${articleIndex}">
+<meta property="og:type" content="article">
+<meta property="og:image" content="${article.image?.url || 'https://agaminews.in/og-default.jpg'}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${article.title}">
+<meta name="twitter:description" content="${article.seo?.metaDescription || ''}">
+<meta name="twitter:image" content="${article.image?.url || 'https://agaminews.in/og-default.jpg'}">
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-XXXXXXXXXX');
+</script>
+<!-- Google Search Console Verification -->
+<meta name="google-site-verification" content="YOUR_VERIFICATION_CODE">
 <style>
   :root{
     --bg:#0b1020;--text:#e8ecf2;--muted:#a8b1c7;--card:#121835;
@@ -843,6 +864,16 @@ async function servePage(env, title, content) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${title} - Agami News</title>
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://agaminews.in${title.includes('Privacy') ? '/privacy' : title.includes('Terms') ? '/terms' : '/'}">
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-XXXXXXXXXX');
+</script>
 <style>
   :root{
     --bg:#0b1020;--text:#e8ecf2;--muted:#a8b1c7;--card:#121835;
@@ -1023,9 +1054,43 @@ async function serveWebsite(env) {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${seo.title || 'Agami News - Tech & Innovation Updates'}</title>
 <meta name="description" content="${seo.description || 'Latest technology news, cryptocurrency updates, and innovation insights.'}">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://agaminews.in/">
 <meta property="og:title" content="${seo.title || 'Agami News'}">
 <meta property="og:description" content="${seo.description || 'Your source for tech news and updates'}">
 <meta property="og:image" content="${seo.image || 'https://agaminews.in/og-image.jpg'}">
+<meta property="og:url" content="https://agaminews.in/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Agami News">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${seo.title || 'Agami News'}">
+<meta name="twitter:description" content="${seo.description || 'Tech news and updates'}">
+<meta name="twitter:image" content="${seo.image || 'https://agaminews.in/og-image.jpg'}">
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-XXXXXXXXXX');
+</script>
+<!-- Google Search Console Verification -->
+<meta name="google-site-verification" content="YOUR_VERIFICATION_CODE">
+<!-- Schema.org structured data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "Agami News",
+  "url": "https://agaminews.in",
+  "description": "Latest technology news, cryptocurrency updates, and innovation insights",
+  "publisher": {
+    "@type": "Organization",
+    "name": "Agami News",
+    "url": "https://agaminews.in"
+  }
+}
+</script>
 <style>
   :root{
     --bg:#0b1020;--text:#e8ecf2;--muted:#a8b1c7;--card:#121835;
