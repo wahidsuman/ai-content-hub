@@ -2,9 +2,9 @@
 // Single file for easy management and deployment
 // IMPORTANT: Google Analytics ID G-ZW77WM2VPG must be on EVERY page!
 
-// Version: 2.6.0 - Fixed Start Command & Menu
-// Last Updated: 2025-08-29T14:00:00Z
-// Deploy ID: ${Date.now()}
+// Version: 2.7.0 - Fixed Syntax Error
+// Last Updated: 2025-08-29T14:20:00Z
+// Deploy ID: 1735484400000
 
 export default {
   async fetch(request, env) {
