@@ -2484,81 +2484,6 @@ function getPerformanceRecommendations(articles, categoryViews) {
   return recs.join('\n') || '• Keep current strategy - good overall performance';
 }
 
-// Send detailed cost report
-async function sendCostReport(env, chatId) {
-  const stats = await env.NEWS_KV.get('stats', 'json') || {};
-  const today = new Date().toDateString();
-  
-  // Cost calculations
-  const COST_PER_ARTICLE = 0.03; // GPT-4 Turbo
-  const COST_PER_IMAGE = 0.008; // DALL-E 3 Standard (optimized for web)
-  const COST_PER_UNIT = COST_PER_ARTICLE + COST_PER_IMAGE;
-  
-  // Get monthly stats
-  const currentMonth = new Date().getMonth() + 1;
-  const currentYear = new Date().getFullYear();
-  const monthKey = `${currentYear}-${currentMonth}`;
-  
-  if (!stats.monthlyCosts) stats.monthlyCosts = {};
-  if (!stats.monthlyCosts[monthKey]) {
-    stats.monthlyCosts[monthKey] = {
-      articles: 0,
-      totalCost: 0
-    };
-  }
-  
-  // Today's costs
-  const todayArticles = stats.dailyArticlesPublished || 0;
-  const todayCost = todayArticles * COST_PER_UNIT;
-  
-  // Month-to-date
-  const monthArticles = stats.monthlyCosts[monthKey].articles || 0;
-  const monthCost = monthArticles * COST_PER_UNIT;
-  
-  // Projected monthly (based on daily average)
-  const dayOfMonth = new Date().getDate();
-  const avgDaily = monthArticles / dayOfMonth;
-  const projectedMonthly = avgDaily * 30;
-  const projectedCost = projectedMonthly * COST_PER_UNIT;
-  
-  await sendMessage(env, chatId, `
-💰 *Cost Report*
-
-📅 *Today (${new Date().toLocaleDateString('en-IN')}):*
-• Articles: ${todayArticles}
-• GPT-4: $${(todayArticles * COST_PER_ARTICLE).toFixed(2)}
-• DALL-E: $${(todayArticles * COST_PER_IMAGE).toFixed(2)}
-• Total: $${todayCost.toFixed(2)}
-
-📊 *Month-to-Date:*
-• Articles: ${monthArticles}
-• Total Cost: $${monthCost.toFixed(2)}
-• Daily Average: ${avgDaily.toFixed(1)} articles
-
-📈 *Projected Monthly:*
-• Articles: ~${Math.round(projectedMonthly)}
-• Estimated Cost: $${projectedCost.toFixed(2)}
-• Budget Status: ${projectedCost <= 20 ? '✅ Within budget' : '⚠️ Over budget'}
-
-💡 *Cost Breakdown:*
-• GPT-4 Turbo: $0.03/article
-• DALL-E 3: $0.008/image
-• Total per article: $0.04
-
-🎯 *Budget: $20.00/month*
-• Used: $${monthCost.toFixed(2)} (${Math.round(monthCost/20*100)}%)
-• Remaining: $${(20 - monthCost).toFixed(2)}
-• Days left: ${30 - dayOfMonth}
-
-${projectedCost > 20 ? '⚠️ *Warning:* Reduce daily articles to stay within budget' : '✅ *Status:* On track with budget'}
-  `);
-  
-  // Update monthly tracking
-  stats.monthlyCosts[monthKey].articles = monthArticles + todayArticles;
-  stats.monthlyCosts[monthKey].totalCost = (monthArticles + todayArticles) * COST_PER_UNIT;
-  await env.NEWS_KV.put('stats', JSON.stringify(stats));
-}
-
 // Handle delete specific article
 async function handleDeleteArticle(env, chatId, text) {
   // Get admin chat ID
@@ -3253,44 +3178,6 @@ async function sendAPIUsage(env, chatId) {
 
 💡 *Status:* Only using ${Math.round(costMonthly / 20 * 100)}% of budget!
 🚀 *Action:* Scaling up quality and quantity`, {
-    inline_keyboard: [
-      [{ text: '↩️ Back', callback_data: 'menu' }]
-    ]
-  });
-}
-
-async function sendSEOReport(env, chatId) {
-  const articles = await env.NEWS_KV.get('articles', 'json') || [];
-  const stats = await env.NEWS_KV.get('stats', 'json') || {};
-  
-  await sendMessage(env, chatId, `🚀 *SEO Report*
-
-*Site Status:*
-✅ Sitemap: Active (${articles.length + 6} pages)
-✅ Robots.txt: Configured
-✅ Meta Tags: Optimized
-✅ Structured Data: Implemented
-✅ Mobile-Friendly: Yes
-✅ SSL: Active
-
-*Performance:*
-📊 Total Views: ${stats.totalViews || 0}
-📈 Today's Views: ${stats.todayViews || 0}
-🔗 Indexed Pages: Growing
-
-*SEO Checklist:*
-✅ Title tags with keywords
-✅ Meta descriptions
-✅ Open Graph tags
-✅ Schema markup
-✅ Fast loading speed
-✅ Mobile responsive
-
-*Recommendations:*
-• Keep adding fresh content daily
-• Focus on long-tail keywords
-• Build quality backlinks
-• Monitor Search Console regularly`, {
     inline_keyboard: [
       [{ text: '↩️ Back', callback_data: 'menu' }]
     ]
