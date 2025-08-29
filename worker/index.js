@@ -4004,7 +4004,6 @@ function extractVisualKeywords(title) {
 }
 
 async function getArticleImage(title, category, env) {
-  try {
     const titleLower = title.toLowerCase();
     const visualKeywords = extractVisualKeywords(title);
     
@@ -4384,23 +4383,11 @@ async function getArticleImage(title, category, env) {
           console.error(`[DALL-E] API error: ${response.status} - ${response.statusText}`);
           console.error(`[DALL-E] Error details: ${errorText}`);
         }
-      } catch (error) {
-        console.error('[DALL-E] Generation error:', error.message);
-        console.error('[DALL-E] Stack:', error.stack);
-        // Even on error, return a specific placeholder rather than falling through
-        return {
-          url: `https://via.placeholder.com/1792x1024/CC0000/FFFFFF?text=${encodeURIComponent(title.substring(0, 50))}`,
-          credit: 'Placeholder Image',
-          type: 'placeholder',
-          isRelevant: false
-        };
-      }
     } catch (error) {
       console.error('[DALL-E] Final error in image generation:', error);
-    }
-    
-    // NO FALLBACK IMAGES - Try emergency DALL-E generation
-    console.log('[IMAGE] Primary DALL-E failed, attempting emergency generation for category:', category);
+      
+      // NO FALLBACK IMAGES - Try emergency DALL-E generation
+      console.log('[IMAGE] Primary DALL-E failed, attempting emergency generation for category:', category);
     
     const emergencyPrompts = {
       'Technology': 'BREAKING TECH NEWS: Futuristic AI visualization, glowing circuit boards, holographic displays, quantum computing, digital transformation, neon tech elements, urgent innovation update',
@@ -4451,47 +4438,7 @@ async function getArticleImage(title, category, env) {
       type: 'placeholder',
       isRelevant: false
     };
-    
-    // Final fallback if everything fails
-    console.error('All image generation attempts failed');
-    // Always generate with DALL-E as last resort
-    try {
-    const fallbackResponse = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${env.OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'dall-e-3',
-          prompt: 'BREAKING NEWS banner with dramatic lighting, modern news graphics, "LATEST UPDATE" text overlay, professional broadcast style, vibrant red and blue color scheme, urgent news aesthetic',
-          n: 1,
-          size: '1024x1024',
-          quality: 'standard',
-          style: 'vivid'
-        })
-      });
-      
-      if (fallbackResponse.ok) {
-        const fallbackData = await fallbackResponse.json();
-        return {
-          url: fallbackData.data[0].url,
-          credit: '🎨 DALL-E 3 Generated',
-          type: 'dalle-fallback',
-          isRelevant: true
-        };
-      }
-    } catch (fallbackError) {
-      console.error('DALL-E fallback also failed:', fallbackError);
     }
-    
-    // Absolute last resort - a data URL placeholder
-    return {
-      url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjQ1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjQ1MCIgZmlsbD0iIzFhMWExYSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IiNmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPkJSRUFLSU5HIE5FV1M8L3RleHQ+PC9zdmc+',
-      credit: 'AgamiNews',
-      type: 'placeholder',
-      isRelevant: false
-    };
 }
 
 // Helper functions for entity extraction
