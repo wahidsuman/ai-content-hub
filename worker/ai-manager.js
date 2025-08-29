@@ -43,7 +43,7 @@ class AIWebsiteManager {
       const redditCrypto = await fetch('https://www.reddit.com/r/cryptocurrency/top.json?limit=5');
       const redditData = await redditCrypto.json();
       allNews.push(...redditData.data.children.map(post => ({
-        category: 'Crypto',
+        category: 'CRYPTO',
         title: post.data.title,
         description: post.data.selftext?.substring(0, 200),
         url: post.data.url,
@@ -58,7 +58,7 @@ class AIWebsiteManager {
       const evReddit = await fetch('https://www.reddit.com/r/electricvehicles/top.json?limit=5');
       const evData = await evReddit.json();
       allNews.push(...evData.data.children.map(post => ({
-        category: 'Electric Vehicles',
+        category: 'TECHNOLOGY',
         title: post.data.title,
         description: post.data.selftext?.substring(0, 200),
         url: post.data.url,
@@ -78,7 +78,7 @@ class AIWebsiteManager {
         const story = await fetch(`https://hacker-news.firebaseio.com/v0/item/${hnIds[i]}.json`);
         const storyData = await story.json();
         allNews.push({
-          category: 'Tech',
+          category: 'TECHNOLOGY',
           title: storyData.title,
           description: `Score: ${storyData.score} | Comments: ${storyData.descendants}`,
           url: storyData.url,
@@ -90,7 +90,7 @@ class AIWebsiteManager {
       const devRes = await fetch('https://dev.to/api/articles?top=1&per_page=5');
       const devArticles = await devRes.json();
       allNews.push(...devArticles.map(article => ({
-        category: 'Tech',
+        category: 'TECHNOLOGY',
         title: article.title,
         description: article.description,
         url: article.url,
