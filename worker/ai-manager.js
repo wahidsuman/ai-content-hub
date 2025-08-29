@@ -782,13 +782,18 @@ Format as HTML with proper tags. Start with <h1>${finalTitle}</h1>`;
       for (const [name, imageUrl] of Object.entries(celebrities)) {
         if (queryLower.includes(name)) {
           console.log(`[IMAGE] Using real photo for ${name}`);
+          // Use Wikipedia's thumbnail service for optimized images (500px width)
+          const optimizedUrl = imageUrl.includes('upload.wikimedia.org') 
+            ? imageUrl.replace('/commons/', '/commons/thumb/').replace(/(\.\w+)$/, '/500px-$1')
+            : imageUrl;
+          
           return {
-            url: imageUrl,
+            url: optimizedUrl,
             photographer: 'Wikipedia Commons',
             photographerUrl: 'https://commons.wikimedia.org',
             alt: query,
             source: 'wikipedia',
-            credit: `Photo: ${name} (Wikipedia Commons)`
+            credit: `Photo: ${name} (Wikipedia)`
           };
         }
       }
@@ -823,8 +828,8 @@ Format as HTML with proper tags. Start with <h1>${finalTitle}</h1>`;
           model: 'dall-e-3',
           prompt: imagePrompt,
           n: 1,
-          size: '1792x1024',    // Wide format for better web display
-          quality: 'standard',  // Standard quality for web optimization
+          size: '1024x1024',    // Standard size for faster loading
+          quality: 'standard',  // Standard quality (NOT HD) for fast page load
           style: 'natural'      // Natural style ensures photorealistic output
         })
       });
