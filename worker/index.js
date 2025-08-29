@@ -204,39 +204,41 @@ export default {
       const istTime = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
       const hour = istTime.getHours();
       
-      let articlesToFetch = 2; // 2 articles per fetch (15-16 per day with 3-hour schedule)
+      // OPTIMIZED FOR 15 ARTICLES/DAY with 3-hour schedule (8 runs)
+      let articlesToFetch = 2; // Default 2 articles per run
       let shouldFetch = true;
       let priority = 'normal';
       
-      // Intelligent priority based on Indian news patterns (15 articles/day)
-      if (hour >= 6 && hour < 9) {
-        // Morning rush - 2 articles
-        articlesToFetch = 2;
-        priority = 'high';
-      } else if (hour >= 9 && hour < 12) {
-        // Market hours - business focus - 2 articles
-        articlesToFetch = 2;
-        priority = 'business';
-      } else if (hour >= 12 && hour < 15) {
-        // Lunch time - entertainment/sports - 2 articles
-        articlesToFetch = 2;
-        priority = 'entertainment';
-      } else if (hour >= 15 && hour < 18) {
-        // Market closing - business updates - 2 articles
-        articlesToFetch = 2;
-        priority = 'business';
-      } else if (hour >= 18 && hour < 21) {
-        // Evening - general news - 2 articles
-        articlesToFetch = 2;
-        priority = 'high';
-      } else if (hour >= 21 && hour < 24) {
-        // Night - 2 articles
-        articlesToFetch = 2;
-        priority = 'low';
-      } else {
-        // Late night/early morning (0-6 AM) - 1 article each at 0:00 and 3:00
+      // Smart distribution: 15 articles across 8 runs (every 3 hours)
+      // Schedule: 0:00, 3:00, 6:00, 9:00, 12:00, 15:00, 18:00, 21:00
+      if (hour === 0 || hour === 3) {
+        // Night/Early morning - 1 article each (total: 2)
         articlesToFetch = 1;
         priority = 'minimal';
+      } else if (hour === 6) {
+        // Morning rush - 3 articles (total: 5)
+        articlesToFetch = 3;
+        priority = 'high';
+      } else if (hour === 9) {
+        // Market opening - 2 articles (total: 7)
+        articlesToFetch = 2;
+        priority = 'business';
+      } else if (hour === 12) {
+        // Lunch time - 2 articles (total: 9)
+        articlesToFetch = 2;
+        priority = 'entertainment';
+      } else if (hour === 15) {
+        // Afternoon - 2 articles (total: 11)
+        articlesToFetch = 2;
+        priority = 'business';
+      } else if (hour === 18) {
+        // Evening prime time - 2 articles (total: 13)
+        articlesToFetch = 2;
+        priority = 'high';
+      } else if (hour === 21) {
+        // Night wrap-up - 2 articles (total: 15)
+        articlesToFetch = 2;
+        priority = 'general';
       }
       
       // Check daily limit (15 articles per day with $20 budget)
@@ -1605,8 +1607,27 @@ async function handleNaturalLanguage(env, chatId, text) {
 
 // New function: Handle fetch news
 async function handleFetchNews(env, chatId) {
+  // Check daily limit first
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  const today = new Date().toDateString();
+  
+  if (stats.lastReset !== today) {
+    stats.dailyArticlesPublished = 0;
+    stats.lastReset = today;
+  }
+  
+  if (stats.dailyArticlesPublished >= 15) {
+    await sendMessage(env, chatId, 
+      `⚠️ *Daily Limit Reached*\n\n` +
+      `Published: ${stats.dailyArticlesPublished}/15 articles today\n` +
+      `Next reset: Midnight IST\n` +
+      `Budget: Protected at $20/month`
+    );
+    return;
+  }
+  
   // Send initial message
-  await sendMessage(env, chatId, `🔄 *Fetching Latest News...*\n\n⏳ Generating high-quality article with AI...`);
+  await sendMessage(env, chatId, `🔄 *Fetching Latest News...*\n\n⏳ Generating article ${stats.dailyArticlesPublished + 1}/15 for today...`);
   
   try {
     console.log('[FETCH] Starting news fetch from Telegram command...');
