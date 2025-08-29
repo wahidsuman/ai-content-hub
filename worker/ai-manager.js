@@ -512,46 +512,53 @@ Provide comprehensive research that goes BEYOND surface-level reporting. Find th
     const headlineStyle = this.getHeadlineStyle(newsItem.category);
     
     // First, generate multiple headline options
-    const headlinePrompt = `You are a viral content expert who creates headlines that get millions of clicks.
+    const headlinePrompt = `You are a MASTER of viral headlines that get MILLIONS of clicks.
 
 ORIGINAL NEWS: "${newsItem.title}"
 CATEGORY: ${newsItem.category}
 KEY RESEARCH INSIGHTS: ${research.substring(0, 400)}
 
-CREATE 5 DIFFERENT HEADLINES using these psychological triggers:
+🔥 CREATE THE MOST IRRESISTIBLE HEADLINES using these PROVEN VIRAL FORMULAS:
 
-1. CURIOSITY GAP: Make readers NEED to know what happens
-   Example: "You Won't Believe What [Famous Person] Just Did With..."
+1. SHOCKING REVELATION: "[Celebrity/Leader] EXPOSED: The Secret [Action/Plan] That..."
+   Make it: SHOCKING + EXCLUSIVE + URGENT
 
-2. FEAR OF MISSING OUT (FOMO): Create urgency
-   Example: "Everyone Is Talking About This [Thing] - Here's What You Need to Know"
+2. BREAKING NEWS HOOK: "BREAKING: [Celebrity/Company] Just [Dramatic Action] - Internet Goes CRAZY"
+   Make it: IMMEDIATE + DRAMATIC + SOCIAL PROOF
 
-3. CONTROVERSY/SHOCK: Provocative but true
-   Example: "[Authority] Admits They Were Wrong About [Common Belief]"
+3. WARNING/ALERT: "⚠️ WARNING: [Topic] Could [Consequence] - Experts Say 'Act NOW'"
+   Make it: URGENT + AUTHORITATIVE + ACTIONABLE
 
-4. BENEFIT/VALUE: Clear value proposition
-   Example: "This Simple [Method] Could Save You [Specific Amount]"
+4. UNBELIEVABLE TWIST: "Plot Twist: [Common Belief] Was WRONG - [Shocking Truth] Revealed"
+   Make it: CONTRADICTORY + SURPRISING + DEFINITIVE
 
-5. EMOTIONAL TRIGGER: Strong emotional response
-   Example: "[Heartwarming/Shocking] Moment When [Unexpected Thing Happened]"
+5. EXCLUSIVE INSIDE INFO: "LEAKED: Inside [Celebrity/Company]'s [Secret Plan] - 'This Changes EVERYTHING'"
+   Make it: EXCLUSIVE + INSIDER + GAME-CHANGING
 
-CATEGORY-SPECIFIC REQUIREMENTS for ${newsItem.category}:
+🔥 CLICKBAIT POWER WORDS (USE 3-4 PER HEADLINE):
+⚡ URGENT: BREAKING, JUST NOW, HAPPENING, ALERT, EMERGENCY
+😱 SHOCKING: EXPOSED, BUSTED, CAUGHT, LEAKED, REVEALED
+💥 DRAMATIC: EXPLOSIVE, BOMBSHELL, INSANE, DESTROYS, SLAMS
+🎯 EXCLUSIVE: SECRET, HIDDEN, INSIDER, BEHIND-THE-SCENES
+💰 VALUE: MILLIONS, BILLIONS, MASSIVE, HUGE, RECORD-BREAKING
+
+CATEGORY-SPECIFIC VIRAL ANGLES for ${newsItem.category}:
 ${headlineStyle.guidelines}
 
-POWER WORDS TO USE: ${headlineStyle.powerWords.join(', ')}
+MAXIMUM CLICKABILITY FORMULA:
+✅ [POWER WORD] + [CELEBRITY/COMPANY] + [DRAMATIC ACTION] + [CONSEQUENCE]
+✅ Example: "BREAKING: Modi's SHOCKING Decision Leaves Opposition STUNNED"
+✅ Example: "LEAKED: Ambani's SECRET Plan That Could Change India FOREVER"
+✅ Example: "Kohli DESTROYS Critics With INSANE Performance - Fans Go WILD"
 
-RULES:
-- Maximum 65 characters
-- MUST be factually accurate
-- Create irresistible curiosity
-- Use numbers when possible
-- Include emotional triggers
-- Make it shareable
-- ${headlineStyle.tone} tone
+PSYCHOLOGICAL TRIGGERS TO ACTIVATE:
+- FOMO: "Everyone's Talking About..." / "You're Missing Out On..."
+- CURIOSITY GAP: "The REAL Reason..." / "What They're NOT Telling You..."
+- SOCIAL PROOF: "Millions Are..." / "Internet Can't Stop..."
+- AUTHORITY: "Experts SHOCKED..." / "Officials CONFIRM..."
+- CONTROVERSY: "Sparks OUTRAGE..." / "Divides Nation..."
 
-Provide 5 headlines, then choose the BEST one based on:
-- Click potential (1-10)
-- Shareability (1-10)
+Create 5 ULTRA-VIRAL headlines, then pick the ABSOLUTE MOST CLICKABLE one.
 - Accuracy (1-10)
 
 Return ONLY the best headline.`;
