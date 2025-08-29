@@ -373,18 +373,28 @@ async function approveSelectedArticles(manager, env, chatId, indices) {
 
 // Send main menu
 async function sendMainMenu(env, chatId) {
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  const usage = await env.NEWS_KV.get('usage_today') || 0;
+  
   const message = `
-🏠 *Main Menu - AI Website Manager*
+🏠 *AgamiNews AI Control Center*
 
-Welcome to your website control center!
-Choose an action below:
+🚀 *System Status:*
+• Articles Live: ${articles.length}
+• AI Images: DALL-E 3 ✅
+• Analytics: Google Active ✅
+• Today's Cost: $${usage}
 
-📰 *Content* - Fetch and publish news
-📊 *Analytics* - View performance stats
-💰 *Budget* - Monitor AI usage costs
-💡 *Optimize* - Get improvement suggestions
+📰 *Content* - AI-powered news with viral headlines
+🖼️ *Images* - DALL-E 3 generated (no stock photos!)
+📊 *Analytics* - Real-time Google Analytics
+🔗 *SEO* - Auto backlinks & meta tags
+💰 *Budget* - Stay under $10/month
+🗑️ *Admin* - Full delete/edit control
 
 Your website: [agaminews.in](https://agaminews.in)
+
+*Choose an action:*
   `;
   
   const keyboard = {
@@ -422,17 +432,35 @@ async function answerCallback(env, callbackId, text = null) {
 // Welcome message with buttons
 async function sendWelcomeMessage(env, chatId, firstName) {
   const message = `
-🎉 *Welcome ${firstName}!*
+🎉 *Welcome to AgamiNews AI Manager!*
 
-I'm your AI Website Manager for agaminews.in
+I'm your intelligent news manager powered by GPT-4 & DALL-E 3. Everything is automated!
 
-I can help you:
-• 📰 Fetch and publish news articles
-• 📊 Track website performance
-• 💰 Monitor costs (under $10/month)
-• 💡 Optimize for better results
+🤖 *What I Do:*
+• Fetch real news from 9+ sources every 2 hours
+• Generate AI images with DALL-E 3 (no stock photos!)
+• Create viral headlines that get clicks
+• Auto-generate backlinks for SEO
+• Track with Google Analytics (Active ✅)
+• Optimize for Google ranking
 
-*Quick Start:* Press "Get News" to begin!
+💰 *Current Status:*
+• AI Cost: ~$2-3/month (GPT-3.5 + DALL-E)
+• Budget: $10/month limit
+• News Sources: CoinGecko, Reddit, HackerNews ✅
+• Image AI: DALL-E 3 Standard ✅
+• Analytics: G-ZW77WM2VPG ✅
+
+📍 *Focus:* Tech, Crypto & EVs for Indian professionals
+
+🎯 *NEW Features:*
+• ✅ Clickable button commands
+• ✅ Viral headline generation
+• ✅ SEO meta tags & indexing
+• ✅ Automatic internal linking
+• ✅ Admin controls working
+
+*Quick Start:* Use the buttons below!
   `;
   
   const keyboard = {
@@ -629,17 +657,27 @@ async function handleDeleteMenu(env, chatId) {
 
 // Help message with buttons
 async function sendHelpMessage(env, chatId) {
+  const usage = await env.NEWS_KV.get('usage_today') || 0;
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  
   const message = `
-📚 *AI Manager Commands*
+📚 *AgamiNews AI Control Panel*
+
+🤖 *Powered by:* GPT-3.5 + DALL-E 3
+📊 *Analytics:* Google Analytics Active
+🔗 *SEO:* Auto-backlinks & Meta Tags
+📰 *Articles Published:* ${articles.length}
+💰 *Today's AI Cost:* $${usage}
+
+*All commands are now clickable buttons!*
+
+You can also type naturally:
+• "Fetch tech news"
+• "Delete article 5"
+• "Show performance"
+• "What's trending?"
 
 *Choose an action below:*
-
-💰 Budget: $${(await env.NEWS_KV.get('usage_today') || 0)} used today
-
-You can also type naturally! Examples:
-• "Get crypto news"
-• "Show me stats"
-• "What's my budget?"
   `;
   
   const keyboard = {
