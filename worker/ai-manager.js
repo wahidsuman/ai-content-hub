@@ -26,195 +26,161 @@ class AIWebsiteManager {
   async fetchDailyNews() {
     const allNews = [];
     
-    // STRATEGIC CONTENT MIX: Evergreen + Trending for Maximum Growth
+    // OPTIMIZED MIX: 14 Recent News + 1 Strategic Evergreen Daily
     
-    // 1. HIGH-VALUE INDIA CONTENT (Evergreen potential)
+    // 1. RECENT INDIA NEWS (6 articles - fresh daily content)
     try {
-      // Top trending topics with long-term value
-      const indiaReddit = await fetch('https://www.reddit.com/r/india/top.json?limit=20&t=week');
+      // Today's top India news
+      const indiaReddit = await fetch('https://www.reddit.com/r/india/hot.json?limit=15');
       const indiaData = await indiaReddit.json();
       
-      // Filter for high-engagement content (evergreen potential)
-      const valuableIndiaNews = indiaData.data.children
-        .filter(post => post.data.score > 100 || post.data.num_comments > 50)
-        .slice(0, 5)
+      // Get RECENT news (last 24 hours)
+      const recentIndiaNews = indiaData.data.children
+        .slice(0, 6)
         .map(post => ({
           category: 'INDIA',
           title: post.data.title,
-          description: post.data.selftext?.substring(0, 200) || 'In-depth India analysis',
+          description: post.data.selftext?.substring(0, 200) || 'Breaking India news',
           url: post.data.url,
-          source: 'India Insights',
+          source: 'India Today',
           priority: 'HIGH',
-          evergreen: post.data.score > 500 // Mark evergreen content
+          evergreen: false,
+          fresh: true
         }));
-      allNews.push(...valuableIndiaNews);
+      allNews.push(...recentIndiaNews);
       
-      // Indian Tech & Startups (High growth potential)
-      const techIndiaReddit = await fetch('https://www.reddit.com/r/indianstartups/top.json?limit=10&t=week');
-      const techIndiaData = await techIndiaReddit.json();
-      allNews.push(...techIndiaData.data.children
-        .filter(post => post.data.score > 50)
-        .slice(0, 3)
+      // ONE EVERGREEN TOPIC (for long-term SEO)
+      const evergreenSearch = await fetch('https://www.reddit.com/r/india/top.json?limit=10&t=month');
+      const evergreenData = await evergreenSearch.json();
+      
+      // Find the best evergreen candidate
+      const evergreenPost = evergreenData.data.children
+        .filter(post => {
+          const title = post.data.title.toLowerCase();
+          return (title.includes('guide') || title.includes('how to') || 
+                  title.includes('explained') || title.includes('complete') ||
+                  title.includes('everything') || post.data.score > 1000);
+        })
+        .slice(0, 1)
         .map(post => ({
-          category: 'TECHNOLOGY',
-          title: post.data.title,
-          description: 'Indian tech innovation and startup ecosystem',
+          category: 'INDIA',
+          title: `[Complete Guide] ${post.data.title}`,
+          description: 'Comprehensive analysis and insights',
           url: post.data.url,
-          source: 'Indian Tech',
-          priority: 'HIGH',
-          evergreen: true
-        })));
+          source: 'In-Depth Analysis',
+          priority: 'EVERGREEN',
+          evergreen: true,
+          fresh: false
+        }));
+      
+      if (evergreenPost.length > 0) {
+        allNews.push(...evergreenPost);
+      }
     } catch (e) {
-      console.log('India valuable content fetch error:', e);
+      console.log('India news fetch error:', e);
     }
 
-    // 2. EVERGREEN TECHNOLOGY (SEO goldmine)
+    // 2. RECENT TECHNOLOGY NEWS (4 articles - today's tech)
     try {
-      // High-value tech topics that stay relevant
+      // Today's top tech stories
       const hnRes = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json');
       const hnIds = await hnRes.json();
       
-      // Get top stories with staying power
+      // Get RECENT tech news
       const techStories = [];
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 4; i++) {
         const story = await fetch(`https://hacker-news.firebaseio.com/v0/item/${hnIds[i]}.json`);
         const storyData = await story.json();
-        if (storyData && storyData.title && storyData.score > 100) {
-          // Check for evergreen keywords
-          const evergreenKeywords = ['guide', 'how to', 'explained', 'tutorial', 'tips', 'best practices', 'comparison', 'vs', 'review'];
-          const isEvergreen = evergreenKeywords.some(keyword => 
-            storyData.title.toLowerCase().includes(keyword)
-          );
-          
+        if (storyData && storyData.title) {
           techStories.push({
             category: 'TECHNOLOGY',
             title: storyData.title,
-            description: `Comprehensive tech analysis with ${storyData.score} expert validations`,
+            description: `Breaking tech news with ${storyData.score} upvotes`,
             url: storyData.url || '',
-            source: 'Tech Deep Dive',
+            source: 'Tech News',
             priority: 'HIGH',
-            evergreen: isEvergreen || storyData.score > 500
+            evergreen: false,
+            fresh: true
           });
         }
       }
       allNews.push(...techStories);
+    } catch (e) {
+      console.log('Tech news fetch error:', e);
+    }
 
-      // AI & Future Tech (Always trending)
-      const aiReddit = await fetch('https://www.reddit.com/r/artificial/top.json?limit=5&t=week');
-      const aiData = await aiReddit.json();
-      allNews.push(...aiData.data.children
-        .filter(post => post.data.score > 100)
-        .slice(0, 2)
-        .map(post => ({
-          category: 'TECHNOLOGY',
-          title: post.data.title,
-          description: 'AI and future technology insights',
-          url: post.data.url,
-          source: 'AI Trends',
-          priority: 'HIGH',
-          evergreen: true
-        })));
-
-      // Business Strategy & Success Stories
-      const businessReddit = await fetch('https://www.reddit.com/r/entrepreneur/top.json?limit=5&t=week');
+    // 3. RECENT BUSINESS & CRYPTO (3 articles)
+    try {
+      // Today's business news
+      const businessReddit = await fetch('https://www.reddit.com/r/business/hot.json?limit=5');
       const businessData = await businessReddit.json();
       allNews.push(...businessData.data.children
-        .filter(post => post.data.score > 200)
         .slice(0, 2)
         .map(post => ({
           category: 'BUSINESS',
           title: post.data.title,
-          description: 'Business strategy and success insights',
+          description: post.data.selftext?.substring(0, 200) || 'Business update',
           url: post.data.url,
-          source: 'Business Insights',
-          priority: 'HIGH',
-          evergreen: true
+          source: 'Business News',
+          priority: 'MEDIUM',
+          evergreen: false,
+          fresh: true
         })));
+
+      // Latest crypto (if significant)
+      const cryptoRes = await fetch('https://api.coingecko.com/api/v3/news');
+      const cryptoNews = await cryptoRes.json();
+      if (cryptoNews.data && cryptoNews.data.length > 0) {
+        allNews.push(...cryptoNews.data.slice(0, 1).map(n => ({
+          category: 'CRYPTO',
+          title: n.title,
+          description: n.description,
+          url: n.url,
+          source: 'Crypto Update',
+          priority: 'MEDIUM',
+          evergreen: false,
+          fresh: true
+        })));
+      }
     } catch (e) {
-      console.log('Evergreen tech fetch error:', e);
+      console.log('Business news fetch error:', e);
     }
 
-    // 3. HIGH-ENGAGEMENT CONTENT (Viral potential)
+    // 4. RECENT ENTERTAINMENT & SPORTS (2 articles)
     try {
-      // Trending Entertainment (only if truly viral)
-      const bollywoodReddit = await fetch('https://www.reddit.com/r/BollyBlindsNGossip/top.json?limit=5&t=day');
+      // Today's entertainment
+      const bollywoodReddit = await fetch('https://www.reddit.com/r/bollywood/hot.json?limit=5');
       const bollywoodData = await bollywoodReddit.json();
-      const viralBollywood = bollywoodData.data.children
-        .filter(post => post.data.score > 500) // Only viral content
+      allNews.push(...bollywoodData.data.children
         .slice(0, 1)
         .map(post => ({
           category: 'ENTERTAINMENT',
           title: post.data.title,
-          description: 'Exclusive Bollywood insights',
+          description: 'Bollywood news update',
           url: post.data.url,
-          source: 'Bollywood Exclusive',
-          priority: 'MEDIUM',
-          viral: true
-        }));
-      if (viralBollywood.length > 0) allNews.push(...viralBollywood);
+          source: 'Entertainment',
+          priority: 'LOW',
+          evergreen: false,
+          fresh: true
+        })));
       
-      // Cricket/Sports (Major events only)
-      const cricketReddit = await fetch('https://www.reddit.com/r/Cricket/top.json?limit=5&t=week');
+      // Today's sports
+      const cricketReddit = await fetch('https://www.reddit.com/r/Cricket/hot.json?limit=5');
       const cricketData = await cricketReddit.json();
-      const majorSports = cricketData.data.children
-        .filter(post => post.data.score > 1000) // Major sports events
+      allNews.push(...cricketData.data.children
         .slice(0, 1)
         .map(post => ({
           category: 'SPORTS',
           title: post.data.title,
-          description: 'Major sports development',
+          description: 'Sports update',
           url: post.data.url,
-          source: 'Sports Update',
-          priority: 'MEDIUM',
-          evergreen: post.data.title.includes('record') || post.data.title.includes('history')
-        }));
-      if (majorSports.length > 0) allNews.push(...majorSports);
-    } catch (e) {
-      console.log('Viral content fetch error:', e);
-    }
-
-    // 4. CRYPTO & FINANCE (High search volume)
-    try {
-      // Only major crypto movements
-      const cryptoRes = await fetch('https://api.coingecko.com/api/v3/news');
-      const cryptoNews = await cryptoRes.json();
-      if (cryptoNews.data && cryptoNews.data.length > 0) {
-        // Filter for educational/evergreen crypto content
-        const valuableCrypto = cryptoNews.data
-          .filter(n => n.title.toLowerCase().includes('guide') || 
-                      n.title.toLowerCase().includes('explained') ||
-                      n.title.toLowerCase().includes('bitcoin') ||
-                      n.title.toLowerCase().includes('ethereum'))
-          .slice(0, 2)
-          .map(n => ({
-            category: 'CRYPTO',
-            title: n.title,
-            description: n.description,
-            url: n.url,
-            source: 'Crypto Insights',
-            priority: 'MEDIUM',
-            evergreen: true
-          }));
-        allNews.push(...valuableCrypto);
-      }
-
-      // Personal Finance (Always valuable)
-      const financeReddit = await fetch('https://www.reddit.com/r/IndiaInvestments/top.json?limit=5&t=week');
-      const financeData = await financeReddit.json();
-      allNews.push(...financeData.data.children
-        .filter(post => post.data.score > 50)
-        .slice(0, 2)
-        .map(post => ({
-          category: 'BUSINESS',
-          title: post.data.title,
-          description: 'Personal finance and investment insights for Indians',
-          url: post.data.url,
-          source: 'Finance Guide',
-          priority: 'HIGH',
-          evergreen: true
+          source: 'Sports News',
+          priority: 'LOW',
+          evergreen: false,
+          fresh: true
         })));
     } catch (e) {
-      console.log('Finance fetch error:', e);
+      console.log('Entertainment fetch error:', e);
     }
 
     return allNews;
@@ -587,9 +553,11 @@ Return ONLY the best headline.`;
     
     // Get category-specific writing style
     const writingStyle = this.getWritingStyle(newsItem.category);
+    const isEvergreen = newsItem.evergreen || newsItem.priority === 'EVERGREEN';
     
-    // PHASE 3: EXPERT-LEVEL ARTICLE WRITING
-    const prompt = `You are ${writingStyle.role} writing an in-depth article for AgamiNews.
+    // PHASE 3: OPTIMIZED ARTICLE WRITING (Evergreen vs Fresh)
+    const articleType = isEvergreen ? 'comprehensive evergreen guide' : 'breaking news story';
+    const prompt = `You are ${writingStyle.role} writing ${articleType} for AgamiNews.
 
 COMPREHENSIVE RESEARCH DATA:
 ${research}
