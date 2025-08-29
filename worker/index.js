@@ -4938,6 +4938,13 @@ async function renderArticlePage(env, article, allArticles, request) {
     <title>${article.title} - ${config.siteName}</title>
     <meta name="description" content="${article.preview || 'Read full article on AgamiNews'}">
     
+    <!-- CRITICAL SEO TAGS - GOOGLE INDEXING -->
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+    <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large">
+    <meta name="bingbot" content="index, follow, max-snippet:-1, max-image-preview:large">
+    <meta name="google" content="notranslate">
+    <meta name="google-site-verification" content="YOUR_VERIFICATION_CODE">
+    
     <!-- SEO Meta Tags -->
     <link rel="canonical" href="https://agaminews.in${article.url}" />
     <meta property="og:title" content="${article.title}">
