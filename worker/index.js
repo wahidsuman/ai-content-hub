@@ -1021,6 +1021,9 @@ async function serveWebsite(env, request) {
     </nav>
 
     <main>
+        <div id="category-filter" style="display:none; padding: 10px 15px; background: #fff; border-bottom: 1px solid #e0e0e0;">
+            <span style="font-size: 14px; color: #666;">Showing: <strong id="current-category">All Articles</strong></span>
+        </div>
         ${articles.length > 0 ? `
         <!-- Featured Story -->
         <article class="featured-story">
@@ -1034,11 +1037,12 @@ async function serveWebsite(env, request) {
         <!-- News List -->
         <section class="news-list">
             ${articles.slice(1, 10).map((article, index) => `
-                <a href="/article/${index + 1}" class="news-item">
+                <a href="/article/${index + 1}" class="news-item" data-category="${article.category || 'TECHNOLOGY'}">
                     <div class="news-content">
                         <h2 class="news-title">${article.title}
                             ${index === 0 ? '<span class="live-badge">NEW</span>' : ''}
                         </h2>
+                        <span class="news-category" style="font-size: 11px; color: #ff6b35; font-weight: bold; text-transform: uppercase;">${article.category || 'TECHNOLOGY'}</span>
                     </div>
                     ${article.image ? `<img src="${article.image.url}" alt="${article.title}" class="news-image">` : '<img src="https://via.placeholder.com/80x60/ff6b35/ffffff?text=News" class="news-image">'}
                 </a>
@@ -1054,15 +1058,57 @@ async function serveWebsite(env, request) {
         <!-- More News -->
         <section class="news-list">
             ${articles.slice(10, 20).map((article, index) => `
-                <a href="/article/${index + 11}" class="news-item">
+                <a href="/article/${index + 11}" class="news-item" data-category="${article.category || 'TECHNOLOGY'}">
                     <div class="news-content">
                         <h2 class="news-title">${article.title}</h2>
+                        <span class="news-category" style="font-size: 11px; color: #ff6b35; font-weight: bold; text-transform: uppercase;">${article.category || 'TECHNOLOGY'}</span>
                     </div>
                     ${article.image ? `<img src="${article.image.url}" alt="${article.title}" class="news-image">` : '<img src="https://via.placeholder.com/80x60/ff6b35/ffffff?text=News" class="news-image">'}
                 </a>
             `).join('')}
         </section>
     </main>
+    
+    <script>
+    // Category filtering
+    document.addEventListener('DOMContentLoaded', function() {
+        const navTabs = document.querySelectorAll('.nav-tab');
+        const newsItems = document.querySelectorAll('.news-item');
+        const categoryFilter = document.getElementById('category-filter');
+        const currentCategory = document.getElementById('current-category');
+        
+        navTabs.forEach(tab => {
+            tab.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Remove active class from all tabs
+                navTabs.forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                const category = this.textContent.trim();
+                
+                if (category === 'LATEST') {
+                    // Show all articles
+                    newsItems.forEach(item => item.style.display = 'flex');
+                    categoryFilter.style.display = 'none';
+                } else {
+                    // Filter by category
+                    categoryFilter.style.display = 'block';
+                    currentCategory.textContent = category;
+                    
+                    newsItems.forEach(item => {
+                        const itemCategory = item.getAttribute('data-category');
+                        if (itemCategory === category) {
+                            item.style.display = 'flex';
+                        } else {
+                            item.style.display = 'none';
+                        }
+                    });
+                }
+            });
+        });
+    });
+    </script>
 </body>
 </html>`;
 
