@@ -123,6 +123,197 @@ class AIWebsiteManager {
     return summaries;
   }
 
+  // Get category-specific writing style
+  getWritingStyle(category) {
+    const styles = {
+      'TECHNOLOGY': {
+        role: 'senior tech journalist with 10+ years covering Silicon Valley',
+        tone: 'Technical but accessible. Explain complex concepts clearly. Show deep understanding of tech ecosystem.',
+        personality: 'knowledgeable, slightly geeky, enthusiastic about innovation',
+        vocabulary: 'technical terms correctly, industry jargon appropriately, explain acronyms',
+        expertise: 'technical specifications, industry trends, competitive analysis, future implications',
+        instructions: `
+        - Open with the significance of the technology
+        - Explain technical details in layman terms
+        - Compare with existing solutions
+        - Discuss potential challenges and limitations
+        - Include developer/engineer perspective
+        - Reference tech history when relevant
+        - Use analogies to explain complex concepts`
+      },
+      'BUSINESS': {
+        role: 'senior business analyst from a top financial publication',
+        tone: 'Professional, analytical, data-driven. Focus on numbers and market impact.',
+        personality: 'authoritative, analytical, slightly skeptical',
+        vocabulary: 'financial terminology, market language, business metrics',
+        expertise: 'market analysis, financial implications, competitive landscape, investor perspective',
+        instructions: `
+        - Lead with market impact or financial significance
+        - Include relevant numbers and percentages
+        - Analyze competitive implications
+        - Consider investor perspective
+        - Discuss risks and opportunities
+        - Reference historical precedents
+        - Include expert market analysis`
+      },
+      'CRYPTO': {
+        role: 'crypto analyst and DeFi expert',
+        tone: 'Urgent but balanced. Exciting but include risk warnings. Technical but accessible.',
+        personality: 'enthusiastic, analytical, risk-aware',
+        vocabulary: 'blockchain terminology, DeFi concepts, trading language',
+        expertise: 'blockchain technology, market dynamics, regulatory landscape, technical analysis',
+        instructions: `
+        - Open with market movement or opportunity
+        - Explain blockchain/crypto concepts clearly
+        - Include price analysis if relevant
+        - Discuss risks prominently
+        - Consider regulatory implications
+        - Reference historical crypto events
+        - Balance hype with realistic analysis`
+      },
+      'ENTERTAINMENT': {
+        role: 'entertainment journalist with insider access',
+        tone: 'Witty, gossipy, fun. Light-hearted but informative. Slightly cheeky.',
+        personality: 'witty, well-connected, slightly sarcastic, pop-culture savvy',
+        vocabulary: 'entertainment industry terms, pop culture references, trendy language',
+        expertise: 'industry connections, behind-scenes knowledge, cultural context, trend analysis',
+        instructions: `
+        - Open with a hook or surprising detail
+        - Include behind-the-scenes insights
+        - Reference pop culture and trends
+        - Use humor appropriately
+        - Include fan perspectives
+        - Discuss cultural impact
+        - Add industry insider context`
+      },
+      'INDIA': {
+        role: 'senior Indian affairs correspondent',
+        tone: 'Proud but balanced. Progressive but respectful of tradition. Informative and inspiring.',
+        personality: 'patriotic, optimistic, culturally aware, progressive',
+        vocabulary: 'Indian context, local references, Hindi/regional terms where appropriate',
+        expertise: 'Indian politics, economy, culture, regional dynamics, historical context',
+        instructions: `
+        - Highlight Indian achievements and progress
+        - Include local context and impact
+        - Reference Indian culture appropriately
+        - Compare with global standards
+        - Include diverse regional perspectives
+        - Discuss challenges honestly
+        - End with optimistic outlook`
+      },
+      'SPORTS': {
+        role: 'veteran sports journalist and former athlete',
+        tone: 'Energetic, passionate, dramatic. Build excitement and emotion.',
+        personality: 'passionate, knowledgeable, dramatic, inspiring',
+        vocabulary: 'sports terminology, statistics, player nicknames, fan language',
+        expertise: 'game analysis, player psychology, historical records, tactical understanding',
+        instructions: `
+        - Open with the drama or key moment
+        - Include relevant statistics
+        - Analyze tactics and strategy
+        - Include player perspectives
+        - Reference historical moments
+        - Build narrative tension
+        - Celebrate human achievement`
+      },
+      'WORLD': {
+        role: 'international affairs correspondent',
+        tone: 'Serious, balanced, informative. Global perspective with local relevance.',
+        personality: 'serious, well-informed, balanced, globally aware',
+        vocabulary: 'diplomatic language, geopolitical terms, international relations',
+        expertise: 'geopolitics, international relations, global trends, diplomatic analysis',
+        instructions: `
+        - Lead with global significance
+        - Provide balanced perspectives
+        - Include multiple country viewpoints
+        - Explain complex geopolitics simply
+        - Connect to Indian interests
+        - Include expert diplomatic analysis
+        - Discuss long-term implications`
+      }
+    };
+    
+    return styles[category] || styles['TECHNOLOGY'];
+  }
+
+  // Get category-specific headline style
+  getHeadlineStyle(category) {
+    const styles = {
+      'TECHNOLOGY': {
+        tone: 'technical yet accessible',
+        powerWords: ['Revolutionary', 'Breakthrough', 'Game-Changing', 'Next-Gen', 'Unveiled', 'Disrupting'],
+        guidelines: 'Be technically accurate but exciting. Show expertise. Focus on innovation and impact.',
+        examples: [
+          'Revolutionary AI Chip Outperforms Nvidia by 300% in Latest Benchmarks',
+          'Apple\'s Secret Lab Reveals Next-Gen Tech That Changes Everything',
+          'Quantum Computing Breakthrough: Scientists Achieve "Impossible" Milestone'
+        ]
+      },
+      'BUSINESS': {
+        tone: 'professional and authoritative',
+        powerWords: ['Surges', 'Plummets', 'Dominates', 'Disrupts', 'Acquisition', 'Billion-Dollar'],
+        guidelines: 'Focus on numbers, impact, and market implications. Be decisive and clear.',
+        examples: [
+          'Tech Giant\'s $50B Acquisition Shakes Wall Street - What It Means for You',
+          'Market Alert: This Indicator Just Flashed Red for First Time Since 2008',
+          'Fortune 500 CEO Reveals Strategy That Doubled Revenue in 6 Months'
+        ]
+      },
+      'CRYPTO': {
+        tone: 'urgent and opportunity-focused',
+        powerWords: ['Explodes', 'Skyrockets', 'Crashes', 'Alert', 'Whale', 'Massive'],
+        guidelines: 'Create FOMO but stay factual. Highlight opportunities and risks.',
+        examples: [
+          'Bitcoin Whale Moves $500M - Analysts Predict What\'s Coming Next',
+          'This Altcoin Just Did 500% - Here\'s Why Experts Say It\'s Just Starting',
+          'Urgent: Major Exchange Hack - What You Need to Do Right Now'
+        ]
+      },
+      'INDIA': {
+        tone: 'proud and progressive',
+        powerWords: ['Historic', 'Landmark', 'Proud', 'Achievement', 'First-Ever', 'Record-Breaking'],
+        guidelines: 'Highlight Indian achievements, progress, and impact. Be patriotic but balanced.',
+        examples: [
+          'India Achieves Historic Milestone: World\'s First to Successfully...',
+          'Proud Moment: Indian Startup Beats Silicon Valley Giants',
+          'Breaking: Government\'s New Policy to Transform 100 Million Lives'
+        ]
+      },
+      'ENTERTAINMENT': {
+        tone: 'witty and gossipy',
+        powerWords: ['Shocking', 'Drama', 'Revealed', 'Exclusive', 'Spotted', 'Breaks Silence'],
+        guidelines: 'Be fun, engaging, slightly cheeky. Create buzz and excitement.',
+        examples: [
+          'Bollywood\'s Biggest Star Breaks Silence on Shocking Controversy',
+          'Exclusive: What Really Happened Behind the Scenes at...',
+          'Twitter Can\'t Handle This Celebrity\'s Latest Move - See Why'
+        ]
+      },
+      'SPORTS': {
+        tone: 'energetic and passionate',
+        powerWords: ['Crushes', 'Dominates', 'Epic', 'Thriller', 'Stunning', 'Comeback'],
+        guidelines: 'Build excitement and drama. Focus on human stories and achievements.',
+        examples: [
+          'Epic Comeback: Underdog Team Stuns Champions in Thriller Finish',
+          'Breaking Records: Kohli\'s Insane Stats Leave Cricket World Speechless',
+          'From Zero to Hero: The Incredible Journey That\'s Inspiring Millions'
+        ]
+      },
+      'WORLD': {
+        tone: 'serious and informative',
+        powerWords: ['Breaking', 'Crisis', 'Historic', 'Unprecedented', 'Global', 'Emergency'],
+        guidelines: 'Be factual and balanced. Focus on global impact and significance.',
+        examples: [
+          'Breaking: World Leaders Emergency Summit as Crisis Deepens',
+          'Historic Agreement: 195 Nations Unite for First Time Ever',
+          'Global Alert: What This Means for Every Country Including India'
+        ]
+      }
+    };
+    
+    return styles[category] || styles['TECHNOLOGY'];
+  }
+
   // Determine article category based on content
   determineCategory(title, description) {
     const text = (title + ' ' + description).toLowerCase();
@@ -167,7 +358,7 @@ class AIWebsiteManager {
     return 'TECHNOLOGY';
   }
 
-  // Generate SEO-optimized articles
+  // Generate SEO-optimized articles with category-specific styles
   async createArticle(newsItem, approved) {
     if (!approved) return null;
     
@@ -176,54 +367,91 @@ class AIWebsiteManager {
       newsItem.category = this.determineCategory(newsItem.title, newsItem.description || '');
     }
     
-    // First, generate a more clickable headline
-    const headlinePrompt = `Transform this news title into a highly clickable, engaging headline that drives curiosity and clicks while remaining accurate:
+    // First, do deeper research on the topic
+    const researchPrompt = `As an investigative journalist, research and expand on this news:
+Topic: ${newsItem.title}
+Initial Info: ${newsItem.description || 'Breaking news'}
+Category: ${newsItem.category}
+
+Provide:
+1. Key facts and context
+2. Why this matters now
+3. Impact and implications
+4. Expert perspectives (inferred)
+5. Related developments
+6. Unique angles not covered elsewhere
+
+Be factual but insightful. Add depth beyond the surface story.`;
+
+    const research = await this.callOpenAI(researchPrompt, 'gpt-4-turbo-preview', 500);
+    
+    // Generate category-specific headline
+    const headlineStyle = this.getHeadlineStyle(newsItem.category);
+    const headlinePrompt = `Create a ${headlineStyle.tone} headline for this news:
 
 Original: "${newsItem.title}"
 Category: ${newsItem.category}
+Research: ${research.substring(0, 200)}
 
-Requirements for the new headline:
-1. Use power words (shocking, revealed, breakthrough, exclusive, urgent, etc.)
-2. Create curiosity gap (tease information without giving everything away)
-3. Include numbers when relevant (7 Ways, 5 Reasons, etc.)
-4. Add emotional triggers (amazing, unbelievable, game-changing)
-5. Keep under 60 characters for SEO
-6. Use action words and active voice
-7. Make it newsworthy and timely
+Style Guidelines for ${newsItem.category}:
+${headlineStyle.guidelines}
 
-Examples of good headlines:
-- "Breaking: Major Tech Giant's Shocking AI Announcement Changes Everything"
-- "7 Hidden Features in Latest iPhone That Will Blow Your Mind"
-- "Exclusive: Tesla's Secret Project Revealed - Industry Experts Stunned"
-- "This Simple Crypto Strategy Made Investors 500% Returns (Here's How)"
+Requirements:
+1. MUST be completely original - not copied from source
+2. Create curiosity and urgency
+3. Use ${headlineStyle.powerWords.join(', ')}
+4. Keep under 65 characters
+5. Match the ${headlineStyle.tone} tone
+6. Be accurate but compelling
 
-Return ONLY the new headline, nothing else.`;
+Examples for ${newsItem.category}:
+${headlineStyle.examples.join('\n')}
+
+Return ONLY the new headline.`;
 
     const clickableTitle = await this.callOpenAI(headlinePrompt, 'gpt-3.5-turbo', 100);
     const finalTitle = clickableTitle.trim().replace(/^["']|["']$/g, '') || newsItem.title;
     
-    const prompt = `Create an SEO-optimized article about: ${newsItem.title}
+    // Get category-specific writing style
+    const writingStyle = this.getWritingStyle(newsItem.category);
     
-    Use this headline for the article: "${finalTitle}"
+    const prompt = `You are an experienced ${writingStyle.role} writing for AgamiNews.
     
-    Requirements:
-    1. 500-700 words
-    2. Include keywords naturally
-    3. Add engaging intro that delivers on the headline's promise
-    4. Use headers (H2, H3)
-    5. Add call-to-action
-    6. Meta description (155 chars)
-    7. Focus keywords: ${newsItem.category}
-    8. Make the content match the excitement of the headline
-    9. Include 2-3 internal links to related topics like:
-       - Link to homepage: <a href="https://agaminews.in">AgamiNews</a>
-       - Link to category: <a href="https://agaminews.in/category/${newsItem.category.toLowerCase().replace(/\s+/g, '-')}">${newsItem.category} News</a>
-       - Add contextual links naturally within the content
-    10. Add a "Related Articles" section at the end
+RESEARCH INSIGHTS:
+${research}
+
+HEADLINE TO USE: "${finalTitle}"
+
+WRITING INSTRUCTIONS for ${newsItem.category}:
+${writingStyle.instructions}
+
+TONE & STYLE:
+${writingStyle.tone}
+
+REQUIREMENTS:
+1. 600-800 words of COMPLETELY ORIGINAL content
+2. NEVER copy phrases from source material - rewrite everything
+3. Add unique insights and analysis not found elsewhere
+4. Include expert-like commentary showing deep understanding
+5. Use ${writingStyle.vocabulary}
+6. Structure with engaging headers (H2, H3)
+7. Hook readers in first paragraph - deliver on headline promise
+8. Include 2-3 internal links naturally:
+   - Homepage: <a href="https://agaminews.in">AgamiNews</a>
+   - Category: <a href="https://agaminews.in/${newsItem.category.toLowerCase()}">${newsItem.category} News</a>
+9. End with forward-looking conclusion
+10. Write like a human - vary sentence length, use transitions
+
+IMPORTANT: 
+- Be ${writingStyle.personality}
+- Show expertise through ${writingStyle.expertise}
+- Make it impossible to tell this is AI-generated
+- Add subtle personality quirks and opinions
+
+Format as HTML. Start with <h1> containing the headline.`;
     
-    Format as HTML with proper tags. Start with an <h1> tag containing the headline.`;
-    
-    const article = await this.callOpenAI(prompt, 'gpt-3.5-turbo', 1500);
+    // Use GPT-4 for high-quality, human-like articles
+    const article = await this.callOpenAI(prompt, 'gpt-4-turbo-preview', 2000);
     
     // Generate AI image with DALL-E
     const image = await this.getFreeImage(newsItem.title);
