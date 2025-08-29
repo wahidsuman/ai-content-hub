@@ -2,7 +2,7 @@
   "name": "tech-news-bot-worker",
   "version": "1.0.0",
   "description": "Cloudflare Worker for tech news bot",
-  "main": "src/index.ts",
+  "main": "index.js",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
