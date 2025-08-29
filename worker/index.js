@@ -1156,37 +1156,16 @@ async function handleTelegram(request, env) {
       // Handle commands
       if (text === '/start') {
         await sendMessage(env, chatId, `
-🎉 *Welcome to AgamiNews AI Manager!*
+🎉 *Welcome to AgamiNews Manager!*
 
-I'm your intelligent news manager powered by AI. I handle everything automatically!
+Your AI-powered news platform is ready! Use the buttons below to control everything.
 
-🤖 *What I Do:*
-• Fetch real news every 3 hours from 9 sources
-• Generate custom images with DALL-E 3
-• Write human-like summaries
-• Track performance & costs
-• Optimize for Google ranking
+✨ *Quick Status:*
+• System: Active ✅
+• DALL-E 3: ${env.OPENAI_API_KEY ? 'Ready ✅' : 'Not configured ❌'}
+• Auto-publish: Every 3 hours
 
-💰 *Current Status:*
-• API Cost: ~$1.50/month
-• Budget: $20/month (plenty left!)
-• News Sources: Active ✅
-• Image System: DALL-E 3 ${env.OPENAI_API_KEY ? '✅' : '❌'}
-
-📍 *Focus:* Tech + Finance for Indian professionals
-
-Commands:
-/menu - Full control panel
-/stats - Live statistics
-/fetch - Force news update NOW
-/status - System health check
-/help - Get help
-
-Or just talk to me naturally! Try:
-"Fetch news now"
-"Show me today's performance"
-"How many articles do we have?"
-        `, {
+Select an action:`, {
           inline_keyboard: [
             [{ text: '📊 Stats', callback_data: 'stats' }, { text: '🚀 Fetch News', callback_data: 'fetch' }],
             [{ text: '📈 Strategy', callback_data: 'strategy' }, { text: '💵 Costs', callback_data: 'apiusage' }],
@@ -1399,21 +1378,13 @@ async function sendMenu(env, chatId) {
   const nextHour = Math.ceil(now.getHours() / 3) * 3;
   const nextCronHour = nextHour === 24 ? 0 : nextHour;
   
-  await sendMessage(env, chatId, `🎯 *AgamiNews Premium Dashboard*
+  await sendMessage(env, chatId, `🎯 *AgamiNews Control Panel*
   
-📊 *Live Statistics:*
-• Articles Today: ${todayArticles}/15 
-• Total Articles: ${articles.length}
-• Today's Cost: $${todayCost.toFixed(2)}
-• Budget Used: ${Math.round(todayCost/20*100)}%
+📊 *Today:* ${todayArticles} articles | $${todayCost.toFixed(2)} spent
+📰 *Total:* ${articles.length} articles published
+⏰ *Next Run:* ${nextCronHour}:00
 
-⚡ *System Status:*
-• AI Model: GPT-4 Turbo
-• Images: DALL-E 3 (Optimized)
-• Last Auto-Run: ${lastCron}
-• Next Run: ${nextCronHour}:00
-
-🎯 *Quick Commands:*`, {
+Select an action:`, {
     inline_keyboard: [
       [
         { text: '📰 Fetch Article', callback_data: 'fetch' },
