@@ -1383,7 +1383,8 @@ Select action:`, {
         { text: '🔍 SEO', callback_data: 'seo_report' }
       ],
       [
-        { text: '🌐 Open Website', url: 'https://agaminews.in' }
+        { text: '✅ Verify AI', callback_data: 'verify_ai' },
+        { text: '🌐 Website', url: 'https://agaminews.in' }
       ]
     ]
   });
