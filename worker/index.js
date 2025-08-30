@@ -259,6 +259,53 @@ export default {
       } catch (e) {
         return new Response('Repair failed', { status: 500 });
       }
+    } else if (url.pathname === '/repair-lite') {
+      // Minimal repair: create stub article without OpenAI to ensure page opens
+      const key = url.searchParams.get('key');
+      const expected = env.ADMIN_SECRET || env.CRON_SECRET || 'agami2024';
+      if (!key || key !== expected) {
+        return new Response('Unauthorized', { status: 401 });
+      }
+      const urlParam = url.searchParams.get('url') || '';
+      let id = url.searchParams.get('id') || '';
+      let categoryLabel = url.searchParams.get('category') || '';
+      let slug = url.searchParams.get('slug') || '';
+      if (urlParam) {
+        try {
+          const u = new URL(urlParam);
+          const parts = u.pathname.split('/').filter(Boolean);
+          categoryLabel = categoryLabel || (parts[0] || 'news');
+          const last = parts[1] || '';
+          const m = last.match(/-(\d+)$/);
+          if (m) id = id || m[1];
+          slug = slug || last.replace(/-(\d+)$/, '');
+        } catch (_) {}
+      }
+      if (!id) return new Response('Missing id', { status: 400 });
+      const category = mapCategoryLabel(categoryLabel);
+      const baselineTitle = slug ? slug.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim() : `News ${id}`;
+      const article = {
+        id,
+        slug: generateSlug(baselineTitle),
+        title: baselineTitle,
+        preview: `Quick update: ${baselineTitle}`,
+        category,
+        source: 'AgamiNews',
+        originalSourceLink: urlParam,
+        image: { url: `/img/?src=${encodeURIComponent('https://via.placeholder.com/1280x720/0066CC/FFFFFF?text=AgamiNews')}&w=1200&q=70`, credit: 'Placeholder', type: 'placeholder' },
+        date: 'Just now',
+        timestamp: Date.now(),
+        views: 0,
+        trending: false,
+        fullContent: `<p><strong>${baselineTitle}</strong></p><p>This article is being prepared. Please check back shortly.</p>`,
+        url: `/${category.toLowerCase()}-news/${generateSlug(baselineTitle)}-${id}`
+      };
+      const list = await env.NEWS_KV.get('articles', 'json') || [];
+      const updated = [article, ...list].slice(0, 100);
+      await env.NEWS_KV.put('articles', JSON.stringify(updated));
+      await env.NEWS_KV.put('articlesTimestamp', Date.now().toString());
+      await env.NEWS_KV.put(`article_${id}`, JSON.stringify(article));
+      return Response.redirect(new URL(article.url, url.origin).toString(), 302);
     } else if (url.pathname === '/fetch-news') {
       // Disabled public endpoint - use Telegram bot instead
       return new Response('This endpoint is disabled. Use the Telegram bot to manage news.', { 
