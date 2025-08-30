@@ -632,7 +632,7 @@ export default {
                 `📰 *Source:* ${article.source || 'RSS Feed'}\n` +
                 `📸 *Image:* ${article.image?.type === 'generated' ? '🎨 AI Generated' : article.image?.type === 'personality' ? '👤 Real Photo' : '📷 Stock Photo'}\n` +
                 `📊 *Quality:* ${article.fullContent && article.fullContent.length > 3000 ? '✅ High' : '⚠️ Medium'} (${article.fullContent ? article.fullContent.length : 0} chars)\n` +
-                `🔗 *Link:* https://agaminews.in${article.url || `/article/${i}`}\n\n` +
+                `🔗 *Link:* https://agaminews.in${article.url}\n\n` +
                 `_Auto-published at ${new Date().toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})}_`
               );
               
@@ -1404,7 +1404,7 @@ async function serveWebsite(env, request) {
         <!-- News List -->
         <section class="news-list">
             ${articles.slice(1, 10).map((article, index) => `
-                <a href="${article.url || `/article/${index + 1}`}" class="news-item" data-category="${article.category || 'TECHNOLOGY'}">
+                <a href="${article.url}" class="news-item" data-category="${article.category || 'TECHNOLOGY'}">
                     <div class="news-content">
                         <h2 class="news-title">${article.title}
                             ${index === 0 ? '<span class="live-badge">NEW</span>' : ''}
@@ -1425,7 +1425,7 @@ async function serveWebsite(env, request) {
         <!-- More News -->
         <section class="news-list">
             ${articles.slice(10, 20).map((article, index) => `
-                <a href="${article.url || `/article/${index + 11}`}" class="news-item" data-category="${article.category || 'TECHNOLOGY'}">
+                <a href="${article.url}" class="news-item" data-category="${article.category || 'TECHNOLOGY'}">
                     <div class="news-content">
                         <h2 class="news-title">${article.title}</h2>
                         <span class="news-category" style="font-size: 11px; color: #ff6b35; font-weight: bold; text-transform: uppercase;">${article.category || 'TECHNOLOGY'}</span>
@@ -3331,7 +3331,7 @@ async function handleListArticles(env, chatId, page = 0) {
     
     message += `${globalIdx + 1}. ${emoji} *${article.title}*\n`;
     message += `   📂 ${article.category} | 👁 ${article.views || 0} views\n`;
-    message += `   🔗 [View Article](https://agaminews.in${article.url || `/article/${globalIdx}`})\n`;
+    message += `   🔗 [View Article](https://agaminews.in${article.url})\n`;
     message += `   🖼 Image: ${article.image?.url ? 'set' : 'missing'}\n\n`;
     // Compact per-article action: one Manage button opens submenu
     navButtons.push([{ text: `⚙️ Manage (${article.id})`, callback_data: `manage_id_${article.id}` }]);
@@ -4391,7 +4391,7 @@ async function fetchLatestNews(env) {
             `📸 *Image:* 🎨 DALL-E 3 Optimized (Fast Loading)\n` +
             `📊 *Quality:* ${article.fullContent && article.fullContent.length > 3000 ? '⭐⭐⭐⭐⭐ Premium' : article.fullContent && article.fullContent.length > 1500 ? '⭐⭐⭐⭐ High' : '⭐⭐⭐ Standard'} (${article.fullContent ? article.fullContent.length : 0} chars)\n` +
             `🤖 *AI Model:* GPT-4 Turbo\n` +
-            `🔗 *Link:* https://agaminews.in${article.url || `/article/${articleIndex}`}\n\n` +
+            `🔗 *Link:* https://agaminews.in${article.url}\n\n` +
             `_Quality journalism powered by AI_`
           );
           
@@ -6147,7 +6147,7 @@ async function renderArticlePage(env, article, allArticles, request) {
                 <div class="article-card">
                     <img src="${related.image?.url || related.image ? `/img/?src=${encodeURIComponent(related.image?.url || related.image)}&w=400&q=70` : 'https://via.placeholder.com/120x80/ff6600/ffffff?text=News'}" alt="${related.title}" loading="lazy">
                     <div class="article-card-content">
-                        <h3><a href="${related.url || `/article/${allArticles.indexOf(related)}`}" style="color: #333; text-decoration: none;">${related.title}</a></h3>
+                        <h3><a href="${related.url}" style="color: #333; text-decoration: none;">${related.title}</a></h3>
                         <div class="article-card-meta">${related.category} | ${related.date || 'Today'}</div>
                     </div>
                 </div>
@@ -7053,7 +7053,7 @@ async function serveArticle(env, request, pathname) {
                 <div class="article-card">
                     <img src="${related.image?.url || related.image || 'https://via.placeholder.com/120x80/ff6600/ffffff?text=News'}" alt="${related.title}">
                     <div class="article-card-content">
-                        <h3><a href="${related.url || `/article/${articles.indexOf(related)}`}" style="color: #333; text-decoration: none;">${related.title}</a></h3>
+                        <h3><a href="${related.url}" style="color: #333; text-decoration: none;">${related.title}</a></h3>
                         <div class="article-card-meta">${related.category} | ${related.date || 'Today'}</div>
                     </div>
                 </div>

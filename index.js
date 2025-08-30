@@ -1198,7 +1198,7 @@ async function serveWebsite(env, request) {
         
         <div class="news-grid">
             ${articles.map((article, index) => `
-                <a href="${article.url || `/article/${index}`}" class="news-card-link">
+                <a href="${article.url}" class="news-card-link">
                     <div class="news-card">
                         ${article.image ? `
                             <div class="news-image">
