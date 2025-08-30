@@ -1445,6 +1445,24 @@ async function handleTelegram(request, env) {
       } else if (text === '/reset') {
         // Reset counter command
         await handleResetCounter(env, chatId);
+      } else if (text && text.startsWith('/manage ')) {
+        // Open per-article management submenu by ID
+        const parts = text.split(/\s+/);
+        const id = parts[1];
+        if (!id) {
+          await sendMessage(env, chatId, '❌ Usage: `/manage <id>`');
+          return new Response('OK', { status: 200 });
+        }
+        const row1 = [
+          { text: '🔗 Open', callback_data: `open_id_${id}` },
+          { text: '🎨 AI ↻', callback_data: `img_ai_${id}` }
+        ];
+        const row2 = [
+          { text: '🖼 Set URL', callback_data: `img_url_${id}` },
+          { text: '🗑 Delete', callback_data: `delete_id_${id}` }
+        ];
+        await sendMessage(env, chatId, `Manage article ${id}:`, { inline_keyboard: [row1, row2, [{ text: '↩️ Back', callback_data: 'list_page_0' }]] });
+        return new Response('OK', { status: 200 });
       } else if (text === '/test') {
         // Test article generation
         await handleTestGeneration(env, chatId);
