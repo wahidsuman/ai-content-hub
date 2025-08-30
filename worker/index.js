@@ -4760,11 +4760,9 @@ function makeHeadlineHuman(title) {
   return title.trim();
 }
 
-// REMOVED - No summaries, only full articles
-// This function is deprecated and should never be called
-async function createHumanSummaryREMOVED(title, description, category, env) {
-  // Use GPT-4 for high-quality content if API key is available
-  if (env.OPENAI_API_KEY) {
+// [DELETED: Old createHumanSummaryREMOVED function removed - 200 lines of deprecated GPT-3.5 code]
+
+// Enhanced image system with personality recognition and sensitivity
     try {
       const prompt = `You are an investigative journalist creating deeply researched, comprehensive news summaries for educated Indian readers.
 
