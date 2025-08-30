@@ -3159,6 +3159,8 @@ async function handleListArticles(env, chatId, page = 0) {
   
   let message = `📚 *Articles List (Page ${page + 1}/${totalPages})*\n`;
   message += `_Total: ${articles.length} articles_\n\n`;
+  // Prepare keyboard rows (declare before use)
+  const navButtons = [];
   
   pageArticles.forEach((article, idx) => {
     const globalIdx = start + idx;
@@ -3184,7 +3186,6 @@ async function handleListArticles(env, chatId, page = 0) {
   });
   
   // Create navigation buttons
-  const navButtons = [];
   
   // First row: Previous/Next navigation
   const navRow = [];
