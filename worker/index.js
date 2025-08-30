@@ -3174,11 +3174,13 @@ async function handleListArticles(env, chatId, page = 0) {
     message += `   📂 ${article.category} | 👁 ${article.views || 0} views\n`;
     message += `   🔗 [View Article](https://agaminews.in${article.url || `/article/${globalIdx}`})\n`;
     message += `   🖼 Image: ${article.image?.url ? 'set' : 'missing'}\n\n`;
-    // Add row of image action buttons per article
-    navButtons.push([
-      { text: `🎨 AI ↻ (${article.id})`, callback_data: `img_ai_${article.id}` },
-      { text: `🖼 URL (${article.id})`, callback_data: `img_url_${article.id}` }
-    ]);
+    // Add row of action buttons per article
+    const openBtn = article.url ? { text: `🔗 Open (${article.id})`, url: `https://agaminews.in${article.url}` } : null;
+    const row1 = [ { text: `🎨 AI ↻ (${article.id})`, callback_data: `img_ai_${article.id}` }, { text: `🖼 URL (${article.id})`, callback_data: `img_url_${article.id}` } ];
+    const row2 = [ { text: `🗑 Delete (${article.id})`, callback_data: `delete_id_${article.id}` } ];
+    if (openBtn) navButtons.push([openBtn]);
+    navButtons.push(row1);
+    navButtons.push(row2);
   });
   
   // Create navigation buttons
@@ -3247,6 +3249,19 @@ async function handleCallback(env, query) {
   if (data.startsWith('delete_page_')) {
     const page = parseInt(data.replace('delete_page_', ''));
     await handleDeleteMenu(env, chatId, page);
+    return;
+  }
+  if (data.startsWith('delete_id_')) {
+    const id = data.replace('delete_id_', '');
+    const articles = await env.NEWS_KV.get('articles', 'json') || [];
+    const idx = articles.findIndex(a => String(a.id) === String(id));
+    if (idx !== -1) {
+      const deleted = articles.splice(idx, 1)[0];
+      await env.NEWS_KV.put('articles', JSON.stringify(articles));
+      await sendMessage(env, chatId, `🗑 Deleted: ${deleted.title?.substring(0, 60) || id}`);
+    } else {
+      await sendMessage(env, chatId, '❌ Article not found');
+    }
     return;
   }
   
