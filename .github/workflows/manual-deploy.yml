@@ -2,6 +2,11 @@ name: Manual Deploy to Cloudflare Workers
 
 on:
   workflow_dispatch: {}
+  push:
+    branches: [ main ]
+    paths:
+      - 'worker/**'
+      - '.github/workflows/manual-deploy.yml'
 
 jobs:
   deploy:
