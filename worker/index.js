@@ -118,6 +118,41 @@ export default {
           'Expires': '0'
         }
       });
+    } else if (url.pathname === '/fix-images-now') {
+      // Secure admin endpoint to regenerate and persist images to R2 for existing articles
+      const key = url.searchParams.get('key');
+      const expected = env.ADMIN_SECRET || env.CRON_SECRET || 'agami2024';
+      if (!key || key !== expected) {
+        return new Response('Unauthorized', { status: 401 });
+      }
+      const limit = Math.min(parseInt(url.searchParams.get('limit') || '10', 10) || 10, 25);
+      const start = Math.max(parseInt(url.searchParams.get('start') || '0', 10) || 0, 0);
+      const articles = (await env.NEWS_KV.get('articles', 'json')) || [];
+      let updated = 0;
+      let processed = 0;
+      for (let i = start; i < articles.length && processed < limit; i++) {
+        const a = articles[i];
+        if (!a) continue;
+        const urlStr = a.image?.url || a.image;
+        const needsFix = !urlStr || /oaidalleapiprodscus|images\.openai\.com|via\.placeholder|data:image|\/img\//i.test(urlStr);
+        if (needsFix) {
+          try {
+            const fresh = await getArticleImage(a.title || a.sourceMaterial?.originalTitle || 'News', a.category || 'India', env);
+            if (fresh && fresh.url) {
+              a.image = fresh;
+              updated++;
+            }
+          } catch (e) {
+            // skip on error
+          }
+          processed++;
+        }
+      }
+      await env.NEWS_KV.put('articles', JSON.stringify(articles));
+      await env.NEWS_KV.put('articlesTimestamp', Date.now().toString());
+      return new Response(JSON.stringify({ updated, processed, total: articles.length, nextStart: start + processed }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
     } else if (url.pathname === '/fetch-news') {
       // Disabled public endpoint - use Telegram bot instead
       return new Response('This endpoint is disabled. Use the Telegram bot to manage news.', { 
