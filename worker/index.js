@@ -7555,6 +7555,16 @@ async function handleAPI(request, env, pathname) {
     });
   }
   
+  if (pathname.startsWith('/api/article/')) {
+    const id = pathname.split('/').pop();
+    const articles = await env.NEWS_KV.get('articles', 'json') || [];
+    const a = articles.find(x => String(x.id) === String(id));
+    return new Response(JSON.stringify({
+      found: !!a,
+      article: a ? { id: a.id, title: a.title, url: a.url, hasContent: !!a.fullContent } : null
+    }), { headers: { 'Content-Type': 'application/json' } });
+  }
+  
   return new Response('Not found', { status: 404 });
 }
 
