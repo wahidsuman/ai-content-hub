@@ -3971,17 +3971,22 @@ async function serveImage(env, request, pathname) {
       return new Response('Missing src', { status: 400 });
     }
     // Basic allowlist (broadened for OpenAI DALL-E Azure blobs)
-    let origin = null;
-    try { origin = new URL(src); } catch (_) {}
-    const host = origin?.hostname || '';
+    let originUrl = null;
+    try {
+      // Support relative paths like /media/...
+      originUrl = src.startsWith('http') ? new URL(src) : new URL(src, request.url);
+    } catch (_) {}
+    const reqHost = new URL(request.url).hostname;
+    const host = originUrl?.hostname || '';
     const allowed = (
+      host === reqHost ||
       host.endsWith('images.openai.com') ||
       host.endsWith('blob.core.windows.net') ||
       host.endsWith('images.unsplash.com') ||
       host.endsWith('images.pexels.com') ||
       host.endsWith('via.placeholder.com')
     );
-    if (!origin || !allowed) {
+    if (!originUrl || !allowed) {
       return new Response('Forbidden', { status: 403 });
     }
 
@@ -4009,7 +4014,7 @@ async function serveImage(env, request, pathname) {
     const cache = caches.default;
     const cached = await cache.match(cacheKey);
     if (cached) return cached;
-    const upstream = await fetch(src, { cf: { cacheTtl: 60 * 60 * 24 * 30, cacheEverything: true } });
+    const upstream = await fetch(originUrl.toString(), { cf: { cacheTtl: 60 * 60 * 24 * 30, cacheEverything: true } });
     if (!upstream.ok) {
       // Graceful fallback placeholder to avoid broken images
       const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${Math.round(w*9/16)}'><rect width='100%' height='100%' fill='#eee'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='16' fill='#999'>Image unavailable</text></svg>`;
