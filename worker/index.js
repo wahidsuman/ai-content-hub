@@ -1035,7 +1035,7 @@ async function serveWebsite(env, request) {
         <article class="featured-story">
             <img src="${articles[0].image ? articles[0].image.url : 'https://via.placeholder.com/400x250/ff6b35/ffffff?text=AgamiNews'}" alt="${articles[0].title}" class="featured-image">
             <div class="featured-overlay">
-                <h1 class="featured-title"><a href="/article/0" style="color: white; text-decoration: none;">${articles[0].title}</a></h1>
+                <h1 class="featured-title"><a href="${articles[0].url || `/article/0`}" style="color: white; text-decoration: none;">${articles[0].title}</a></h1>
             </div>
         </article>
         ` : ''}
@@ -1043,7 +1043,7 @@ async function serveWebsite(env, request) {
         <!-- News List -->
         <section class="news-list">
             ${articles.slice(1, 10).map((article, index) => `
-                <a href="/article/${index + 1}" class="news-item" data-category="${article.category || 'TECHNOLOGY'}">
+                <a href="${article.url || `/article/${index + 1}`}" class="news-item" data-category="${article.category || 'TECHNOLOGY'}">
                     <div class="news-content">
                         <h2 class="news-title">${article.title}
                             ${index === 0 ? '<span class="live-badge">NEW</span>' : ''}
@@ -1064,7 +1064,7 @@ async function serveWebsite(env, request) {
         <!-- More News -->
         <section class="news-list">
             ${articles.slice(10, 20).map((article, index) => `
-                <a href="/article/${index + 11}" class="news-item" data-category="${article.category || 'TECHNOLOGY'}">
+                <a href="${article.url || `/article/${index + 11}`}" class="news-item" data-category="${article.category || 'TECHNOLOGY'}">
                     <div class="news-content">
                         <h2 class="news-title">${article.title}</h2>
                         <span class="news-category" style="font-size: 11px; color: #ff6b35; font-weight: bold; text-transform: uppercase;">${article.category || 'TECHNOLOGY'}</span>
