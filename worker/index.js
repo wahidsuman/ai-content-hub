@@ -3029,7 +3029,13 @@ async function handleListArticles(env, chatId, page = 0) {
     
     message += `${globalIdx + 1}. ${emoji} *${article.title}*\n`;
     message += `   📂 ${article.category} | 👁 ${article.views || 0} views\n`;
-    message += `   🔗 [View Article](https://agaminews.in${article.url || `/article/${globalIdx}`})\n\n`;
+    message += `   🔗 [View Article](https://agaminews.in${article.url || `/article/${globalIdx}`})\n`;
+    message += `   🖼 Image: ${article.image?.url ? 'set' : 'missing'}\n\n`;
+    // Add row of image action buttons per article
+    navButtons.push([
+      { text: `🎨 AI ↻ (${article.id})`, callback_data: `img_ai_${article.id}` },
+      { text: `🖼 URL (${article.id})`, callback_data: `img_url_${article.id}` }
+    ]);
   });
   
   // Create navigation buttons
@@ -3054,11 +3060,8 @@ async function handleListArticles(env, chatId, page = 0) {
     if (jumpRow.length > 0) navButtons.push(jumpRow);
   }
   
-  // Third row: Action buttons
-  navButtons.push([
-    { text: '🗑 Delete Articles', callback_data: 'delete_menu' },
-    { text: '📊 Stats', callback_data: 'stats' }
-  ]);
+  // Action buttons
+  navButtons.push([{ text: '🗑 Delete Articles', callback_data: 'delete_menu' }, { text: '📊 Stats', callback_data: 'stats' }]);
   
   // Fourth row: Back to menu
   navButtons.push([{ text: '↩️ Back to Menu', callback_data: 'menu' }]);
@@ -3084,6 +3087,19 @@ async function handleCallback(env, query) {
     return;
   }
   
+  // Image actions
+  if (data.startsWith('img_ai_')) {
+    const id = data.replace('img_ai_', '');
+    const ok = await regenerateArticleImageAI(env, id);
+    await sendMessage(env, chatId, ok ? `✅ AI image regenerated for ${id}` : '❌ Failed to regenerate image.');
+    return;
+  }
+  if (data.startsWith('img_url_')) {
+    const id = data.replace('img_url_', '');
+    await sendMessage(env, chatId, `🔗 Send the image URL for ID ${id} as:\n/setimage ${id} <url>\nOr upload a photo with caption:\n/setimage ${id}`);
+    return;
+  }
+
   // Handle delete pagination
   if (data.startsWith('delete_page_')) {
     const page = parseInt(data.replace('delete_page_', ''));
