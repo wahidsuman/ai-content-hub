@@ -5405,22 +5405,35 @@ function serve404Page(env, message = 'Page not found') {
 
 // Render article page (shared logic)
 async function renderArticlePage(env, article, allArticles, request) {
-  const config = await env.NEWS_KV.get('config', 'json') || {};
-  
-  // Track article view
-  const stats = await env.NEWS_KV.get('stats', 'json') || {};
-  if (!stats.articleViews) stats.articleViews = {};
-  stats.articleViews[article.id] = (stats.articleViews[article.id] || 0) + 1;
-  await env.NEWS_KV.put('stats', JSON.stringify(stats));
-  
-  // Get article index for navigation
-  const articleIndex = allArticles.findIndex(a => a.id === article.id);
-  
-  // Use stored content only to avoid on-request generation
-  const fullContent = article.fullContent || '<p><em>Content is preparing. Please refresh shortly.</em></p>';
-  
-  // Generate the HTML using existing article rendering
-  const isDark = config.theme === 'dark';
+  try {
+    const config = await env.NEWS_KV.get('config', 'json') || {};
+    
+    // Normalize article fields to avoid runtime errors
+    if (!article || typeof article !== 'object') {
+      throw new Error('Invalid article payload');
+    }
+    article.title = article.title || article.sourceMaterial?.originalTitle || 'Article';
+    article.category = article.category || 'News';
+    article.id = article.id || generateArticleId();
+    article.slug = article.slug || generateSlug(article.title);
+    article.url = article.url || `/${String(article.category).toLowerCase()}-news/${article.slug}-${article.id}`;
+    
+    // Track article view (best-effort)
+    try {
+      const stats = await env.NEWS_KV.get('stats', 'json') || {};
+      if (!stats.articleViews) stats.articleViews = {};
+      stats.articleViews[article.id] = (stats.articleViews[article.id] || 0) + 1;
+      await env.NEWS_KV.put('stats', JSON.stringify(stats));
+    } catch (_) {}
+    
+    // Get article index for navigation
+    const articleIndex = allArticles.findIndex(a => a && a.id === article.id);
+    
+    // Use stored content only to avoid on-request generation
+    const fullContent = article.fullContent || '<p><em>Content is preparing. Please refresh shortly.</em></p>';
+    
+    // Generate the HTML using existing article rendering
+    const isDark = config.theme === 'dark';
   
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -5833,12 +5846,16 @@ async function renderArticlePage(env, article, allArticles, request) {
 </body>
 </html>`;
 
-  return new Response(html, {
-    headers: { 
-      'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'public, max-age=60, s-maxage=300',
-    }
-  });
+    return new Response(html, {
+      headers: { 
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'public, max-age=60, s-maxage=300',
+      }
+    });
+  } catch (e) {
+    console.error('Render error:', e);
+    return new Response('<h1>Temporary error</h1><p>Please refresh.</p>', { status: 500, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+  }
 }
 
 // Serve article by SEO-friendly slug URL
@@ -5897,7 +5914,9 @@ async function serveArticleBySlug(env, request, pathname) {
     }
     
     // Determine canonical URL (prefer stored url if present)
-    const canonicalUrl = article.url || `/${article.category.toLowerCase()}-news/${article.slug}-${article.id}`;
+    const safeCategory = (article.category || 'news').toString();
+    const safeSlug = article.slug || generateSlug(article.title || 'article');
+    const canonicalUrl = article.url || `/${safeCategory.toLowerCase()}-news/${safeSlug}-${article.id}`;
     if (pathname !== canonicalUrl) {
       return Response.redirect(new URL(canonicalUrl, request.url).toString(), 301);
     }
