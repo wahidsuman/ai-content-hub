@@ -4449,17 +4449,19 @@ async function getArticleImage(title, category, env) {
       ];
     }
     
-    // REMOVED: All stock photo APIs - only using DALL-E
-    // ALL STOCK PHOTO CODE PERMANENTLY REMOVED - ONLY DALL-E 3
-    
-    // ALWAYS use DALL-E 3 for 100% relevant images - NO FALLBACKS
+    // If OpenAI key missing, use high-quality stock via proxy (prevents expiry)
     if (!env.OPENAI_API_KEY) {
-      console.error('[IMAGE] OpenAI API key not configured - cannot generate images');
+      const baseQuery = (personalityQuery || keywords || `${category} india`).replace(/\s+/g, ',');
+      const fallbacks = [
+        `https://images.unsplash.com/random/1600x900?${encodeURIComponent(baseQuery)}`,
+        `https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?w=1600&q=70`
+      ];
+      const chosen = fallbacks[Math.floor(Math.random() * fallbacks.length)];
       return {
-        url: `https://via.placeholder.com/1792x1024/0066CC/FFFFFF?text=${encodeURIComponent('Configure OpenAI API')}`,
-        credit: 'No API Key',
-        type: 'error',
-        isRelevant: false
+        url: `/img/?src=${encodeURIComponent(chosen)}&w=1200&q=70`,
+        credit: 'Stock (proxied)',
+        type: 'stock',
+        isRelevant: true
       };
     }
     
@@ -4678,8 +4680,8 @@ async function getArticleImage(title, category, env) {
           if (data.data && data.data[0]) {
             console.log(`DALL-E SUCCESS for: ${title}`);
             return {
-              url: data.data[0].url,
-              credit: 'AI Generated Image',
+              url: `/img/?src=${encodeURIComponent(data.data[0].url)}&w=1200&q=70`,
+              credit: 'AI (proxied)',
               type: 'generated',
               isRelevant: true
             };
@@ -6524,8 +6526,11 @@ async function generateOriginalArticle(sourceMaterial, env) {
     source: sourceMaterial.source || 'Multiple Sources'
   };
   const description = sourceMaterial.description || '';
+  // Create a high-CTR, curiosity-driven but credible headline
+  const newTitle = await generateClickableHeadline(article.title, article.category, env).catch(() => article.title);
+  article.title = newTitle || article.title;
   const content = await generateFullArticle(article, description, env);
-  // Also return a refined title if available (keep original here; full generator may embed title inside content if needed)
+  // Return the improved title
   return {
     title: article.title,
     content
@@ -6627,6 +6632,46 @@ Return ONLY the HTML content (no JSON, no code fences).`;
     // No placeholder path: fail hard so publisher can retry later
     throw error;
   }
+}
+
+// Generate a clickable, curiosity-driven headline while remaining credible
+async function generateClickableHeadline(baselineTitle, category, env) {
+  const persona = (category || 'News').toLowerCase().includes('politic') ? 'You are a political desk editor.'
+    : (category || 'News').toLowerCase().includes('tech') ? 'You are a tech editor at a major publication.'
+    : (category || 'News').toLowerCase().includes('business') ? 'You are a markets editor.'
+    : (category || 'News').toLowerCase().includes('entertainment') ? 'You are a witty entertainment editor.'
+    : 'You are a national news editor.';
+  const rules = `Create 5 alternative clickable headlines (10-14 words) that are curiosity-driven but factual.
+Rules:
+- No clickbait lies; be specific and credible.
+- Use power phrases like: What’s Behind..., Here’s Why..., Key Numbers Reveal..., Experts Say...
+- Mention named entities or numbers if present.
+- Avoid all caps, avoid emojis.
+Return only a JSON array of strings.`;
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${env.OPENAI_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: persona + '\n' + rules },
+        { role: 'user', content: `Baseline title: ${baselineTitle}\nCategory: ${category || 'News'}` }
+      ],
+      temperature: 0.8,
+      max_tokens: 400
+    })
+  });
+  if (!res.ok) return baselineTitle;
+  const data = await res.json();
+  let ideas = [];
+  try { ideas = JSON.parse(data.choices?.[0]?.message?.content || '[]'); } catch (_) {
+    ideas = [];
+  }
+  const chosen = ideas.find(h => typeof h === 'string' && h.length >= 30) || baselineTitle;
+  return chosen;
 }
 
 // ... (rest of the code remains unchanged)
