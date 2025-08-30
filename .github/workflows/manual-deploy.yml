@@ -16,12 +16,12 @@ jobs:
           node-version: '20'
 
       - name: Install Wrangler
-        run: npm i -g wrangler@3
+        run: npm install --no-fund --no-audit --save-dev wrangler@4
 
       - name: Print versions
         run: |
           node -v
-          wrangler --version
+          npx wrangler --version
 
       - name: Validate config
         run: |
@@ -33,5 +33,5 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: wrangler deploy --config worker/wrangler.toml --log-level debug
+        run: npx wrangler deploy --config worker/wrangler.toml --log-level warn
 
