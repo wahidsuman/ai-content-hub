@@ -4397,7 +4397,7 @@ async function getArticleImage(title, category, env) {
           isRelevant: false
         };
       }
-    }
+    
     
     // NO FALLBACK IMAGES - Try emergency DALL-E generation
     console.log('[IMAGE] Primary DALL-E failed, attempting emergency generation for category:', category);
