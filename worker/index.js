@@ -3982,7 +3982,16 @@ async function serveImage(env, request, pathname) {
     if (cached) return cached;
     const upstream = await fetch(src, { cf: { cacheTtl: 60 * 60 * 24 * 30, cacheEverything: true } });
     if (!upstream.ok) {
-      return new Response('Upstream error', { status: 502 });
+      // Graceful fallback placeholder to avoid broken images
+      const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${Math.round(w*9/16)}'><rect width='100%' height='100%' fill='#eee'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='16' fill='#999'>Image unavailable</text></svg>`;
+      const resp = new Response(new TextEncoder().encode(svg), {
+        headers: {
+          'Content-Type': 'image/svg+xml',
+          'Cache-Control': 'public, max-age=600'
+        }
+      });
+      await cache.put(cacheKey, resp.clone());
+      return resp;
     }
     // Let Cloudflare do auto-minify/resize via cf options if available
     const contentType = upstream.headers.get('content-type') || 'image/jpeg';
