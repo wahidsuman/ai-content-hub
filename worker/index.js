@@ -1617,8 +1617,75 @@ async function handleControlAction(env, callbackQuery) {
   // Answer callback to remove loading
   await answerCallback(env, callbackQuery.id);
   
-  // For now, just show the control centre again
-  await showControlCentre(env, chatId);
+  // Main menu actions
+  if (data === 'control' || data === 'refresh') {
+    await showControlCentre(env, chatId);
+  }
+  // AI Generator
+  else if (data === 'ai_menu') {
+    await sendMessage(env, chatId, `🤖 *AI Generator Module*\n\nSelect:\n• Auto Generate - Fetch trending news\n• Custom Topic - Specify topic\n\nUse: /topic [your topic] for quick generation`, {
+      inline_keyboard: [
+        [{ text: '🔄 Back to Control Centre', callback_data: 'control' }]
+      ]
+    });
+  }
+  else if (data === 'quick_publish') {
+    await sendMessage(env, chatId, `📰 *Quick Publish*\n\nFetching and publishing articles...`, {
+      inline_keyboard: [
+        [{ text: '🔄 Back to Control Centre', callback_data: 'control' }]
+      ]
+    });
+    // Trigger article fetch
+    await handleFetchNews(env, chatId);
+  }
+  // Analytics
+  else if (data === 'analytics_menu' || data === 'live_stats') {
+    const articles = await env.NEWS_KV.get('articles', 'json') || [];
+    const stats = await env.NEWS_KV.get('stats', 'json') || {};
+    await sendMessage(env, chatId, `📊 *Analytics*\n\n• Total Articles: ${articles.length}\n• Today Published: ${stats.dailyArticlesPublished || 0}\n• Total Views: ${articles.reduce((sum, a) => sum + (a.views || 0), 0).toLocaleString()}`, {
+      inline_keyboard: [
+        [{ text: '🔄 Back to Control Centre', callback_data: 'control' }]
+      ]
+    });
+  }
+  // Cost Monitor
+  else if (data === 'cost_monitor') {
+    const stats = await env.NEWS_KV.get('stats', 'json') || {};
+    const todayArticles = stats.dailyArticlesPublished || 0;
+    const todayCost = todayArticles * 0.075;
+    await sendMessage(env, chatId, `💰 *Cost Monitor*\n\n• Today's Articles: ${todayArticles}\n• Today's Cost: $${todayCost.toFixed(2)}\n• Monthly Projection: $${(todayCost * 30).toFixed(2)}`, {
+      inline_keyboard: [
+        [{ text: '🔄 Back to Control Centre', callback_data: 'control' }]
+      ]
+    });
+  }
+  // Content Library
+  else if (data === 'content_menu') {
+    await sendMessage(env, chatId, `📚 *Content Library*\n\nBrowse and manage articles`, {
+      inline_keyboard: [
+        [{ text: '📋 List Articles', callback_data: 'list' }],
+        [{ text: '🔄 Back to Control Centre', callback_data: 'control' }]
+      ]
+    });
+  }
+  // Handle old callbacks for compatibility
+  else if (data === 'list') {
+    await handleListArticles(env, chatId, 0);
+  }
+  else if (data === 'fetch') {
+    await handleFetchNews(env, chatId);
+  }
+  else if (data === 'stats') {
+    await sendStats(env, chatId);
+  }
+  // Default
+  else {
+    await sendMessage(env, chatId, `⚠️ Feature coming soon!\n\nFor now, use the website: https://agaminews.in`, {
+      inline_keyboard: [
+        [{ text: '🔄 Back to Control Centre', callback_data: 'control' }]
+      ]
+    });
+  }
 }
 
 async function checkIsAdmin(env, chatId) {
@@ -1745,44 +1812,8 @@ async function regenerateArticleImageAI(env, id) {
 }
 
 async function sendMenu(env, chatId) {
-  const stats = await env.NEWS_KV.get('stats', 'json') || {};
-  const articles = await env.NEWS_KV.get('articles', 'json') || [];
-  
-  // Calculate today's metrics
-  const todayArticles = stats.dailyArticlesPublished || 0;
-  const todayCost = todayArticles * 0.055; // Updated cost per article
-  
-  // Next cron time
-  const now = new Date();
-  const nextHour = Math.ceil(now.getHours() / 3) * 3;
-  const nextCronHour = nextHour === 24 ? 0 : nextHour;
-  
-  await sendMessage(env, chatId, `🎯 *AgamiNews Control Panel* v2.6
-
-📊 Today: *${todayArticles}* articles | *$${todayCost.toFixed(2)}*
-📚 Total: *${articles.length}* articles
-⏰ Next: ${nextCronHour}:00
-
-Select action:`, {
-    inline_keyboard: [
-      [
-        { text: '🚀 Fetch News', callback_data: 'fetch' },
-        { text: '📊 Statistics', callback_data: 'stats' }
-      ],
-      [
-        { text: '📚 List Articles', callback_data: 'list' },
-        { text: '🗑 Delete', callback_data: 'delete_menu' }
-      ],
-      [
-        { text: '💰 Costs', callback_data: 'cost_report' },
-        { text: '🔍 SEO', callback_data: 'seo_report' }
-      ],
-      [
-        { text: '✅ Verify AI', callback_data: 'verify_ai' },
-        { text: '🌐 Website', url: 'https://agaminews.in' }
-      ]
-    ]
-  });
+  // OLD MENU REDIRECTED TO NEW CONTROL CENTRE v1.0
+  await showControlCentre(env, chatId);
 }
 
 async function sendStats(env, chatId, section = 'overview') {
