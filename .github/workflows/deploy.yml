@@ -39,6 +39,14 @@ jobs:
           if [ -z "${{ env.OLD_KV_ID }}" ]; then echo "No OLD_KV_ID; skipping"; exit 0; fi
           node -e "const fs=require('fs'); let t=fs.readFileSync('worker/wrangler.toml','utf8'); const id=process.env.OLD_KV_ID; if(!id){process.exit(0)}; if(/binding\s*=\s*\"OLD_KV\"/.test(t)){ t=t.replace(/\[\[kv_namespaces\]\][\s\S]*?binding\s*=\s*\"OLD_KV\"[\s\S]*?id\s*=\s*\"[^\"]*\"/m, m=> m.replace(/id\s*=\s*\"[^\"]*\"/, 'id = \"'+id+'\"')); } else { t += `\n\n[[kv_namespaces]]\nbinding = \"OLD_KV\"\nid = \"${id}\"\n`; } fs.writeFileSync('worker/wrangler.toml', t); console.log('OLD_KV bound in wrangler.toml');"
 
+      - name: Detect R2 bucket and strip binding if missing
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -e
+          node -e "const {execSync}=require('child_process'); const fs=require('fs'); try { const out=execSync('npx wrangler r2 bucket list --json', {stdio:['ignore','pipe','inherit']}).toString(); const list=JSON.parse(out); const exists=list.some(b=>b.name==='agaminews-media'); if(!exists){ let t=fs.readFileSync('worker/wrangler.toml','utf8'); t=t.replace(/\n\[\[r2_buckets\]\][\s\S]*?preview_bucket_name[\s\S]*?\n/m, '\n'); fs.writeFileSync('worker/wrangler.toml', t); console.log('R2 bucket not found; removed r2_buckets binding from wrangler.toml'); } else { console.log('R2 bucket exists'); } } catch(e){ console.error('R2 list failed:', e.message); }"
+
       - name: Deploy to Cloudflare Workers (npx)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
