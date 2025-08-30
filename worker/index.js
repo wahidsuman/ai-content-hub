@@ -7152,57 +7152,170 @@ async function generateOriginalArticle(sourceMaterial, env) {
   };
 }
 
+// Enhanced research function to gather context from multiple perspectives
+async function gatherResearchContext(title, category, env) {
+  if (!env.OPENAI_API_KEY) return null;
+  
+  try {
+    const researchPrompt = `As a research assistant, provide comprehensive background on this news topic:
+    
+Title: ${title}
+Category: ${category}
+
+Provide:
+1. KEY FACTS: Core information and data points
+2. STAKEHOLDERS: Who is affected and how
+3. CONTEXT: Historical background and recent developments  
+4. PERSPECTIVES: Different viewpoints on this issue
+5. IMPLICATIONS: Potential consequences and future impact
+6. INDIAN CONTEXT: Specific relevance to Indian audiences
+
+Format as structured research notes, not an article. Focus on facts and multiple viewpoints.`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { 
+            role: 'system', 
+            content: 'You are a research analyst gathering comprehensive background information for journalists. Provide factual, balanced research with multiple perspectives.' 
+          },
+          { role: 'user', content: researchPrompt }
+        ],
+        temperature: 0.3,  // Lower temperature for factual research
+        max_tokens: 2000
+      })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return data.choices?.[0]?.message?.content || null;
+    }
+  } catch (error) {
+    console.error('Research gathering failed:', error);
+  }
+  
+  return null;
+}
+
 async function generateFullArticle(article, description, env) {
   console.log(`generateFullArticle called for: ${article.title}, API key: ${env.OPENAI_API_KEY ? 'present' : 'missing'}`);
   if (!env.OPENAI_API_KEY) {
     throw new Error('OpenAI API key missing - cannot generate article');
   }
+  
   try {
+    // Gather additional research context if not provided
+    let enhancedContext = description;
+    if (!description || description.length < 500) {
+      const research = await gatherResearchContext(article.title, article.category, env);
+      if (research) {
+        enhancedContext = description ? `${description}\n\nAdditional Research:\n${research}` : research;
+        console.log('Enhanced article with additional research context');
+      }
+    }
     const category = (article.category || 'News').toLowerCase();
-    // Persona by category
-    const persona = category.includes('politic') || category.includes('india') ? 'You are a seasoned political analyst for Indian audiences.'
-      : category.includes('tech') ? 'You are a hands-on technology reviewer and engineer.'
-      : category.includes('business') || category.includes('economy') ? 'You are a markets and macroeconomics analyst.'
-      : category.includes('entertainment') || category.includes('bollywood') ? 'You are a witty entertainment journalist with sharp cultural references.'
-      : category.includes('sports') ? 'You are a dynamic sports analyst and commentator.'
-      : 'You are an investigative journalist for Indian readers.';
+    
+    // Enhanced persona by category with specific expertise
+    const persona = category.includes('politic') || category.includes('india') ? 
+      `You are a seasoned political analyst with 20+ years covering Indian politics. You understand the nuances of coalition politics, electoral dynamics, and policy implications. Your analysis is sharp, balanced, and insightful. You write like veteran journalists from The Hindu or Indian Express - authoritative yet accessible.`
+      : category.includes('tech') ? 
+      `You are a hands-on technology expert who actually uses and understands the products you write about. You explain complex tech in simple terms while maintaining depth. Your style combines the technical accuracy of Ars Technica with the accessibility of The Verge. You're excited about innovation but skeptical of hype.`
+      : category.includes('business') || category.includes('economy') ? 
+      `You are a markets and macroeconomics analyst with deep understanding of Indian business landscape. You write like a Bloomberg or Economic Times senior correspondent - data-driven, insightful about market movements, and able to explain complex financial concepts clearly. You understand both global trends and local implications.`
+      : category.includes('entertainment') || category.includes('bollywood') ? 
+      `You are a witty entertainment journalist with sharp cultural observations and insider knowledge. Your writing sparkles with personality - think Variety meets Film Companion. You balance celebrity coverage with cultural criticism, and you're not afraid to be playful while maintaining journalistic integrity.`
+      : category.includes('sports') ? 
+      `You are a dynamic sports analyst who brings games to life through words. You combine statistical analysis with emotional storytelling, like The Athletic's best writers. You understand strategy, player psychology, and fan culture. Your enthusiasm is infectious but your analysis remains objective.`
+      : category.includes('science') || category.includes('health') ?
+      `You are a science communicator who makes complex research accessible without dumbing it down. You write like Ed Yong or Carl Zimmer - clear, engaging, and accurate. You understand peer review, can spot pseudoscience, and always contextualize findings for practical understanding.`
+      : `You are an investigative journalist with a commitment to truth and public interest. Your writing is thorough, balanced, and impactful. You dig deeper than surface-level reporting and always consider multiple perspectives.`;
 
-    // Curiosity-driven question framework
+    // Enhanced curiosity-driven question framework
     const curiosityRules = `CRITICAL ENGAGEMENT RULES:
-1) Begin with a HOOK QUESTION in the introduction (one sentence).
-2) Use question-form subheadings (H2/H3) to break sections at least 3 times.
-3) Add short rhetorical questions between paragraphs to build curiosity.
-4) End with an OPEN QUESTION that invites the reader to think or comment.
-5) Keep the tone conversational and engaging while remaining factual.`;
+1) HOOK QUESTION: Start with a compelling question that immediately grabs attention and sets up the story's stakes
+2) SECTION QUESTIONS: Use question-form subheadings (H2/H3) that guide the narrative and create anticipation
+3) RHETORICAL QUESTIONS: Weave in thought-provoking questions between paragraphs to maintain engagement
+4) OPEN-ENDED CONCLUSION: End with a forward-looking question that invites reflection or discussion
+5) CONVERSATIONAL TONE: Write as if explaining to a smart friend - engaging, clear, never condescending
 
-    // Strict structure and quality gates
+QUESTION TYPES TO USE:
+- "What if..." questions for speculation
+- "Why does..." questions for explanation  
+- "How can..." questions for solutions
+- "What happens when..." for consequences
+- "Could this mean..." for implications`;
+
+    // Enhanced structure with research depth
     const structure = `REQUIRED STRUCTURE:
-- Intro with hook question
-- 5–8 sections with H2/H3 subheadings that are phrased as questions
-- Clear paragraphs (HTML <p>) with occasional rhetorical questions
-- A concluding section that ends with an open question
+- HOOK: Opening with an irresistible question (1-2 sentences)
+- CONTEXT: Brief background that answers "Why now?" and "Why should I care?"
+- 5-8 SECTIONS with question-based H2/H3 subheadings that build the narrative
+- DATA & EVIDENCE: Specific numbers, dates, quotes, examples in every section
+- MULTIPLE PERSPECTIVES: At least 3 different viewpoints or expert opinions
+- IMPLICATIONS: Clear explanation of what this means for readers
+- CONCLUSION: Thoughtful ending with an open question
 
-MINIMUM QUALITY REQUIREMENTS:
-- Length: at least 1,500 words (≈ 9,000+ characters)
-- Include specific data points, dates, or figures where applicable
-- Provide at least 3 credible perspectives or expert-style quotes
-- Explain implications for Indian readers`;
+QUALITY REQUIREMENTS:
+- Length: 1,500-2,000 words of substantive content
+- Original insights: Don't just report, analyze and synthesize
+- Specific details: Names, numbers, dates, locations
+- Cultural relevance: Connect to Indian context where applicable
+- Fact-based: Every claim supported by evidence or logic`;
 
-    const systemPrompt = `${persona}\n${curiosityRules}\nOnly produce high-quality journalism suitable for publication.`;
+    // Writing style enhancements
+    const styleGuide = `WRITING STYLE:
+- Active voice preferred
+- Short sentences mixed with longer ones for rhythm
+- Vivid verbs and concrete nouns
+- Minimal adjectives, no clichés
+- Show don't tell - use examples
+- Transitions that maintain flow
+- Vary paragraph lengths (2-5 sentences)`;
+
+    const systemPrompt = `${persona}
+
+${curiosityRules}
+
+${styleGuide}
+
+You are writing for educated Indian readers who want depth, nuance, and original thinking. Never copy existing headlines or articles - create completely original content based on the topic. Research thoroughly, think critically, and write engagingly.`;
 
     const userPrompt = `ARTICLE BRIEF
 Title: ${article.title}
 Category: ${article.category}
-Raw context (optional): ${description || '(none)'}
+Context/Research: ${enhancedContext || 'Use your knowledge to provide comprehensive coverage'}
 
-Write a complete HTML article using only <p>, <h2>, <h3>, <strong>, <em>, <ul>, <li>.
-- Do NOT add a <title> tag or frontmatter.
-- Subheadings (H2/H3) MUST be framed as curiosity-driven questions.
-- Add rhetorical questions between paragraphs.
-- End with an open question in the final paragraph.
-- Keep tone conversational and engaging; maintain factual integrity.
+YOUR TASK:
+Write a deeply researched, original article that goes beyond surface-level reporting. 
 
-Return ONLY the HTML content (no JSON, no code fences).`;
+CRITICAL REQUIREMENTS:
+1. ORIGINAL CONTENT: Create entirely new content. Do NOT copy or paraphrase existing articles.
+2. HOOK QUESTION: Start with a compelling question that makes readers need to know more
+3. QUESTION SUBHEADINGS: Every H2/H3 must be a curiosity-driven question
+4. RHETORICAL QUESTIONS: Sprinkle thought-provoking questions throughout
+5. OPEN ENDING: Conclude with a question that sparks discussion
+
+HTML FORMAT:
+- Use only: <p>, <h2>, <h3>, <strong>, <em>, <ul>, <li>
+- No title tag or metadata
+- Clean, semantic HTML
+
+DEPTH REQUIREMENTS:
+- Multiple perspectives and viewpoints
+- Specific examples and case studies
+- Data points and statistics where relevant
+- Cultural and local context
+- Forward-looking analysis
+
+Remember: You're not just reporting news, you're providing insight, analysis, and value that readers can't get elsewhere.
+
+Return ONLY the HTML content.`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -7216,10 +7329,11 @@ Return ONLY the HTML content (no JSON, no code fences).`;
           { role: 'system', content: systemPrompt + '\n\n' + structure },
           { role: 'user', content: userPrompt }
         ],
-        temperature: 0.75,
-        max_tokens: 5000,
-        presence_penalty: 0.3,
-        frequency_penalty: 0.3
+        temperature: 0.8,  // Slightly higher for more creativity
+        max_tokens: 6000,  // Increased for longer articles
+        presence_penalty: 0.4,  // Encourage diverse vocabulary
+        frequency_penalty: 0.4,  // Reduce repetition
+        top_p: 0.95  // Focus on high-quality outputs
       })
     });
 
@@ -7251,14 +7365,39 @@ Return ONLY the HTML content (no JSON, no code fences).`;
 
 // Generate a clickable, curiosity-driven headline while remaining credible
 async function generateClickableHeadline(baselineTitle, category, env) {
-  const persona = (category || 'News').toLowerCase().includes('politic') ? 'You are a political desk editor.'
-    : (category || 'News').toLowerCase().includes('tech') ? 'You are a tech editor at a major publication.'
-    : (category || 'News').toLowerCase().includes('business') ? 'You are a markets editor.'
-    : (category || 'News').toLowerCase().includes('entertainment') ? 'You are a witty entertainment editor.'
-    : 'You are a national news editor.';
-  const rules = `Create 5 alternative clickable headlines (10-14 words) that are curiosity-driven but factual.
-Rules:
-- No clickbait lies; be specific and credible.
+  const persona = (category || 'News').toLowerCase().includes('politic') ? 
+    'You are a senior political editor at a major Indian publication. You craft headlines that capture political drama while maintaining credibility.'
+    : (category || 'News').toLowerCase().includes('tech') ? 
+    'You are a tech editor who understands both innovation and user impact. Your headlines make complex tech accessible and exciting.'
+    : (category || 'News').toLowerCase().includes('business') ? 
+    'You are a business desk editor who knows how to make financial news compelling. You balance market terminology with broad appeal.'
+    : (category || 'News').toLowerCase().includes('entertainment') ? 
+    'You are an entertainment editor with a gift for witty, engaging headlines. You capture celebrity appeal without sacrificing substance.'
+    : (category || 'News').toLowerCase().includes('sports') ?
+    'You are a sports editor who brings the excitement of the game to your headlines. You capture both action and emotion.'
+    : 'You are a senior news editor skilled at crafting headlines that inform and intrigue.';
+    
+  const rules = `Create 5 original, compelling headlines (10-14 words) that spark curiosity while remaining truthful.
+
+HEADLINE PRINCIPLES:
+- ORIGINAL: Never copy existing headlines - create fresh angles
+- SPECIFIC: Include concrete details, not vague promises
+- ACTIVE: Use strong verbs and active voice
+- TIMELY: Convey urgency or relevance
+- CLEAR: Instantly understandable, no confusion
+
+TECHNIQUES TO USE:
+- Questions that readers want answered
+- Surprising contrasts or paradoxes  
+- Specific numbers or data points
+- Emotional hooks without manipulation
+- Future implications of current events
+
+AVOID:
+- Clickbait lies or exaggeration
+- Vague words like "shocking" or "amazing"
+- ALL CAPS or excessive punctuation
+- Copying existing headlines
 - Use power phrases like: What's Behind..., Here's Why..., Key Numbers Reveal..., Experts Say...
 - Mention named entities or numbers if present.
 - Avoid all caps, avoid emojis.
