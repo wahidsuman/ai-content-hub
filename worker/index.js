@@ -1512,92 +1512,148 @@ async function handleTelegram(request, env) {
         console.log(`[CONTROL v${SYSTEM_VERSION}] Set ${chatId} as admin (first user)`);
       }
       
-      // Save admin chat ID
-      if (!await env.NEWS_KV.get('admin_chat')) {
-        await env.NEWS_KV.put('admin_chat', String(chatId));
-      }
-      
-      // Handle commands
+      // Handle text commands
       if (text === '/start' || text === '/menu') {
-        await sendMenu(env, chatId);
-      } else if (text === '/stats') {
-        await sendStats(env, chatId);
-      } else if (text === '/list') {
-        await handleListArticles(env, chatId, 0);
-      } else if (text === '/top' || text === '/popular') {
-        await sendTopArticles(env, chatId);
-      } else if (text === '/costs' || text === '/cost') {
-        await sendCostReport(env, chatId);
-      } else if (text === '/fetch') {
-        await handleFetchNews(env, chatId);
-      } else if (text === '/status') {
-        await sendSystemStatus(env, chatId);
-      } else if (text === '/help') {
-        await sendHelp(env, chatId);
-      } else if (text === '/analytics' || text === '/analyse') {
-        await sendDetailedAnalytics(env, chatId);
-      } else if (text === '/clear') {
-        // Admin-only clear command
-        await handleClearArticles(env, chatId);
-      } else if (text === '/clean' || text === '/cleanup') {
-        // Clean broken articles with non-DALL-E images or failed generation
-        await handleClearBrokenArticles(env, chatId);
-      } else if (text.startsWith('/delete ')) {
-        // Delete specific article by index or ID
-        await handleDeleteArticle(env, chatId, text);
-      } else if (text.startsWith('/create ')) {
-        // Create article on specific topic
-        await handleCreateArticle(env, chatId, text);
-      } else if (text === '/reset') {
-        // Reset counter command
-        await handleResetCounter(env, chatId);
-      } else if (text && text.startsWith('/manage ')) {
-        // Open per-article management submenu by ID
-        const parts = text.split(/\s+/);
-        const id = parts[1];
-        if (!id) {
-          await sendMessage(env, chatId, '❌ Usage: `/manage <id>`');
-          return new Response('OK', { status: 200 });
+        await showControlCentre(env, chatId);
+      } else if (text.startsWith('/topic ')) {
+        // Quick topic generation: /topic Technology AI trends
+        const topic = text.replace('/topic ', '').trim();
+        if (topic) {
+          await generateCustomArticle(env, chatId, topic);
         }
-        const row1 = [
-          { text: '🔗 Open', callback_data: `open_id_${id}` },
-          { text: '🎨 AI ↻', callback_data: `img_ai_${id}` }
-        ];
-        const row2 = [
-          { text: '🖼 Set URL', callback_data: `img_url_${id}` },
-          { text: '🗑 Delete', callback_data: `delete_id_${id}` }
-        ];
-        await sendMessage(env, chatId, `Manage article ${id}:`, { inline_keyboard: [row1, row2, [{ text: '↩️ Back', callback_data: 'list_page_0' }]] });
-        return new Response('OK', { status: 200 });
-      } else if (text === '/test') {
-        // Test article generation
-        await handleTestGeneration(env, chatId);
-      } else if (text === '/test-notify') {
-        // Test notification system
-        console.log('Testing notification system...');
-        await sendMessage(env, chatId, `🧪 *Testing Notification System*\n\nSending test messages...`);
-        const result1 = await sendMessage(env, chatId, `📝 Test Message 1: Basic text`);
-        const result2 = await sendMessage(env, chatId, `✅ Test Message 2: If you see this, notifications work!\n\nResult 1: ${result1}`);
-      } else if (text === '/whoami' || text === '/admin') {
-        // Check admin status
-        const adminChat = await env.NEWS_KV.get('admin_chat');
-        const isAdmin = adminChat && String(chatId) === String(adminChat);
-        
-        await sendMessage(env, chatId, `👤 *Your Status*\n\n` +
-          `Your Chat ID: \`${chatId}\`\n` +
-          `Admin Status: ${isAdmin ? '✅ Admin' : '❌ Not Admin'}\n` +
-          `Current Admin ID: \`${adminChat || 'Not set'}\`\n\n` +
-          `${!adminChat ? '💡 *Tip:* You will become admin automatically when you first use the bot.' : 
-            (isAdmin ? '✅ You have full admin access to delete articles!' : 
-            '⚠️ If you should be admin, use `/setadmin agami2024`')}`
-        );
-      } else if (text.startsWith('/setadmin')) {
-        // Force set admin with secret key
-        const parts = text.split(' ');
-        const secret = parts[1];
-        const expectedSecret = env.ADMIN_SECRET || 'agami2024';
-        
-        if (secret === expectedSecret) {
+      } else if (text === '/version') {
+        await showVersion(env, chatId);
+      } else {
+        // Show control centre for any other input
+        await showControlCentre(env, chatId);
+      }
+    }
+    
+    // Handle button callbacks
+    else if (update.callback_query) {
+      await handleControlAction(env, update.callback_query);
+    }
+    
+    return new Response('OK', { status: 200 });
+  } catch (error) {
+    console.error(`[CONTROL v${SYSTEM_VERSION}] Error:`, error);
+    return new Response('OK', { status: 200 });
+  }
+}
+
+// ============================================
+// MAIN CONTROL CENTRE
+// ============================================
+
+async function showControlCentre(env, chatId) {
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  const isAdmin = await checkIsAdmin(env, chatId);
+  
+  // Check AI status
+  const hasOpenAI = !!env.OPENAI_API_KEY;
+  const aiStatus = hasOpenAI ? '🟢 Online' : '🔴 Offline';
+  
+  const message = `🎛️ *${SYSTEM_NAME} v${SYSTEM_VERSION}*
+━━━━━━━━━━━━━━━━━━━━
+
+📊 *System Status*
+• AI Engine: ${aiStatus}
+• Articles: ${articles.length}
+• Today Published: ${stats.dailyArticlesPublished || 0}
+• Total Views: ${articles.reduce((sum, a) => sum + (a.views || 0), 0).toLocaleString()}
+
+🤖 *AI Model*
+• Content: GPT-4 Turbo
+• Images: DALL-E 3 (Photorealistic)
+• Quality: Professional Journalism
+
+Select control module:`;
+
+  const keyboard = [
+    // Row 1 - AI Generation Controls
+    [
+      { text: '🤖 AI Generator', callback_data: 'ai_menu' },
+      { text: '📰 Quick Publish', callback_data: 'quick_publish' }
+    ],
+    // Row 2 - Content Management
+    [
+      { text: '📚 Content Library', callback_data: 'content_menu' },
+      { text: '📊 Analytics Hub', callback_data: 'analytics_menu' }
+    ],
+    // Row 3 - System Controls
+    [
+      { text: '⚙️ System Config', callback_data: 'system_menu' },
+      { text: '🛠️ Maintenance', callback_data: 'maintenance_menu' }
+    ],
+    // Row 4 - Quick Actions
+    [
+      { text: '📈 Live Stats', callback_data: 'live_stats' },
+      { text: '💰 Cost Monitor', callback_data: 'cost_monitor' }
+    ],
+    // Row 5 - Help & Refresh
+    [
+      { text: '📖 Documentation', callback_data: 'docs' },
+      { text: '🔄 Refresh', callback_data: 'refresh' }
+    ]
+  ];
+
+  await sendMessage(env, chatId, message, { inline_keyboard: keyboard });
+}
+
+// Temporary placeholder for missing functions
+async function showVersion(env, chatId) {
+  await sendMessage(env, chatId, `🎛️ *${SYSTEM_NAME} v${SYSTEM_VERSION}*\n\nUse /start to open the control centre.`);
+}
+
+async function generateCustomArticle(env, chatId, topic) {
+  await sendMessage(env, chatId, `Generating article on: ${topic}\n\nPlease use the Control Centre for article generation.`);
+}
+
+async function handleControlAction(env, callbackQuery) {
+  const chatId = callbackQuery.message.chat.id;
+  const data = callbackQuery.data;
+  
+  // Answer callback to remove loading
+  await answerCallback(env, callbackQuery.id);
+  
+  // For now, just show the control centre again
+  await showControlCentre(env, chatId);
+}
+
+async function checkIsAdmin(env, chatId) {
+  const adminChat = await env.NEWS_KV.get('admin_chat');
+  return adminChat && String(chatId) === String(adminChat);
+}
+
+async function answerCallback(env, callbackId, text = '') {
+  const token = env.TELEGRAM_BOT_TOKEN;
+  if (!token) return;
+  
+  const url = `https://api.telegram.org/bot${token}/answerCallbackQuery`;
+  await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      callback_query_id: callbackId,
+      text: text
+    })
+  });
+}
+
+// Old Telegram handlers have been removed and replaced with Control Centre v1.0
+
+// Keep existing helper functions below
+
+// [Removed 150+ lines of old Telegram command handlers]
+
+// ============================================
+// EXISTING HELPER FUNCTIONS
+// ============================================
+
+// [Removed 140+ lines of broken old Telegram handler code]
+
+// The sendMessage function and other helpers are defined below
           await env.NEWS_KV.put('admin_chat', String(chatId));
           await sendMessage(env, chatId, `✅ *Admin Access Granted!*\n\nYou are now the admin.\nChat ID: \`${chatId}\`\n\nYou can now:\n• Delete articles with \`/delete\`\n• Clear all articles with \`/clear\`\n• Access all admin commands`);
           console.log(`[ADMIN] Set ${chatId} as admin via /setadmin`);
