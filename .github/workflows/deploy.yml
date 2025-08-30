@@ -26,8 +26,26 @@ jobs:
           node -v
           npx wrangler --version
 
+      - name: Discover OLD_KV id (__agaminews-workers_sites_assets)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -e
+          node -e "const {execSync}=require('child_process'); const fs=require('fs'); try { const out=execSync('npx wrangler kv:namespace list --json', {stdio:['ignore','pipe','inherit']}).toString(); const list=JSON.parse(out); const pick=(arr)=> arr.find(n=>n.title==='__agaminews-workers_sites_assets')||arr.find(n=>n.title && n.title.includes('workers_sites_assets') && n.title.includes('agami')); const ns=pick(list)||null; if(ns){ fs.appendFileSync(process.env.GITHUB_ENV, `OLD_KV_ID=${ns.id}\n`); console.log('Found OLD_KV_ID:', ns.id);} else { console.log('OLD_KV_ID not found; will skip migration bind'); } } catch(e){ console.error('List KV failed:', e.message); process.exit(0);}"
+
+      - name: Bind OLD_KV in wrangler.toml (if found)
+        run: |
+          if [ -z "${{ env.OLD_KV_ID }}" ]; then echo "No OLD_KV_ID; skipping"; exit 0; fi
+          node -e "const fs=require('fs'); let t=fs.readFileSync('worker/wrangler.toml','utf8'); const id=process.env.OLD_KV_ID; if(!id){process.exit(0)}; if(/binding\s*=\s*\"OLD_KV\"/.test(t)){ t=t.replace(/\[\[kv_namespaces\]\][\s\S]*?binding\s*=\s*\"OLD_KV\"[\s\S]*?id\s*=\s*\"[^\"]*\"/m, m=> m.replace(/id\s*=\s*\"[^\"]*\"/, 'id = \"'+id+'\"')); } else { t += `\n\n[[kv_namespaces]]\nbinding = \"OLD_KV\"\nid = \"${id}\"\n`; } fs.writeFileSync('worker/wrangler.toml', t); console.log('OLD_KV bound in wrangler.toml');"
+
       - name: Deploy to Cloudflare Workers (npx)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler deploy --config worker/wrangler.toml --log-level warn
+
+      - name: Run KV migration (copy)
+        run: |
+          sleep 5
+          curl -sS "https://agaminews.in/api/migrate-kv?mode=copy&key=agami2024" | sed -n '1,120p'
