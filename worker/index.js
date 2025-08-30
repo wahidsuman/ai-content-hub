@@ -5078,15 +5078,15 @@ async function getArticleImage(title, category, env) {
         
         // ULTRA-SPECIFIC PROMPTS based on exact news type
         
-        // POLITICAL FIGURES - Compelling, clickable visuals
+        // POLITICAL FIGURES - Professional photojournalism
         if (titleLower.includes('modi')) {
-          imagePrompt = `BREAKING NEWS VISUAL: Narendra Modi in dramatic moment at ${location || 'Parliament'}. ${action ? `Powerful ${action} gesture` : 'Decisive leadership moment'}. ${hasCurrency ? `MASSIVE ₹${numbers[0]} CRORE displayed prominently` : ''} Vibrant colors, dramatic lighting, Indian flag prominent. URGENT NEWS FEEL. High contrast, eye-catching composition that demands attention.`;
+          imagePrompt = `Professional news photograph: Prime Minister Narendra Modi at ${location || 'Parliament House, New Delhi'}. ${action ? `Captured during ${action}` : 'Official government event'}. ${hasCurrency ? `Budget announcement showing ₹${numbers[0]} crore allocation` : ''} Indian flag in background, official podium with government emblem. Shot with telephoto lens, natural lighting, press photography style. Similar to PTI or ANI news agency photos.`;
         }
         else if (titleLower.includes('rahul') || titleLower.includes('gandhi')) {
-          imagePrompt = `EXPLOSIVE POLITICAL MOMENT: Rahul Gandhi in POWERFUL stance at ${location || 'massive rally'}. ${action === 'announces' ? 'MAJOR ANNOUNCEMENT with dramatic gestures' : 'PASSIONATE speech to THOUSANDS'}. ${numbers.length ? `HUGE ${numbers[0]} displayed on massive screen` : ''}. Dramatic lighting, crowd energy, MUST-WATCH moment.`;
+          imagePrompt = `Documentary photograph: Rahul Gandhi at ${location || 'Congress headquarters or public rally'}. ${action === 'announces' ? 'Press conference with microphones' : 'Addressing gathering'}. ${numbers.length ? `Campaign banner showing ${numbers[0]} in background` : ''}. Natural daylight, journalistic composition, crowd visible but not exaggerated. Professional news photography similar to Reuters political coverage.`;
         }
         else if (titleLower.includes('kejriwal')) {
-          imagePrompt = `DELHI BREAKING NEWS: Arvind Kejriwal in ACTION at ${location || 'packed venue'}. ${action || 'Revolutionary announcement'} with MASSIVE crowd reaction. ${hasCurrency ? `SHOCKING ₹${numbers[0]} figure on giant display` : ''}. Electric atmosphere, dramatic angles, VIRAL moment captured.`;
+          imagePrompt = `News photograph: Delhi Chief Minister Arvind Kejriwal at ${location || 'Delhi Secretariat'}. ${action || 'Government announcement'} with press present. ${hasCurrency ? `Policy board showing ₹${numbers[0]} budget` : ''}. Official setting, AAP party symbol visible, professional lighting. Documentary style similar to Indian Express photography.`;
         }
         
         // SPECIFIC NEWS SCENARIOS - Exact visualization
@@ -5115,16 +5115,16 @@ async function getArticleImage(title, category, env) {
           imagePrompt = `Photorealistic scene: ${title}. Indian students in ${location || 'examination hall'}, ${action || 'writing exam'}. ${numbers.length ? `${numbers[0]} visible on board/banner` : ''}. School/college uniforms, answer sheets visible, invigilator in background. Natural lighting from windows.`;
         }
         else if (titleLower.includes('accident') || titleLower.includes('crash')) {
-          imagePrompt = `URGENT BREAKING NEWS: Emergency response in FULL ACTION at ${location || 'incident site'}. Multiple emergency vehicles with BRIGHT flashing lights creating dramatic scene. ${numbers.length ? `Critical ${numbers[0]} update on news banner` : ''}. Powerful but respectful coverage, dramatic lighting from emergency vehicles, compelling without being graphic.`;
+          imagePrompt = `Professional emergency response photograph at ${location || 'accident site'}. Emergency vehicles, ambulances, and police cars with lights on. ${numbers.length ? `Emergency response team, ${numbers[0]} visible on vehicle or sign` : ''}. Respectful distance maintained, no graphic content, focus on response efforts. Documentary photojournalism style, natural lighting with emergency vehicle lights.`;
         }
         else if (titleLower.includes('market') || titleLower.includes('sensex') || titleLower.includes('nifty')) {
-          imagePrompt = `MARKET ALERT - URGENT: ${titleLower.includes('crash') || titleLower.includes('fall') ? 'RED ALERT with DRAMATIC downward arrows' : 'GREEN SURGE with EXPLOSIVE upward movement'}. SENSEX ${numbers[0] || '50000'} in MASSIVE digits. ${hasPercentage ? `SHOCKING ${numbers.find(n => n.includes('%')) || '10%'} change` : ''}. Traders in ACTION, screens GLOWING, MUST-SEE market moment. High energy, impossible to ignore.`;
+          imagePrompt = `Financial market photograph: ${titleLower.includes('crash') || titleLower.includes('fall') ? 'Red downward trend on trading screens' : 'Green upward trend on market displays'}. BSE/NSE trading floor or modern trading terminal. SENSEX at ${numbers[0] || '50000'} shown on electronic board. ${hasPercentage ? `${numbers.find(n => n.includes('%')) || '5%'} change displayed` : ''}. Professional traders at workstations, multiple monitors showing charts. Business photojournalism style, similar to Bloomberg or Economic Times.`;
         }
         else if (titleLower.includes('budget') || titleLower.includes('economy')) {
           imagePrompt = `Official government photo: ${title}. Finance Minister holding budget briefcase at North Block steps. ${hasCurrency ? `₹${numbers[0]} lakh crore budget figure on briefcase or backdrop` : ''}. Indian flag, government officials, media photographers. Golden hour lighting.`;
         }
         else if (titleLower.includes('cricket') || titleLower.includes('match')) {
-          imagePrompt = `CRICKET SENSATION: ${titleLower.includes('win') ? 'VICTORY CELEBRATION explosion' : 'NAIL-BITING action'} at ${location || 'PACKED stadium'}. ${numbers.length ? `INCREDIBLE ${numbers[0]}/${numbers[1] || '3'} on GIANT screen` : 'THRILLING score'}. Players in MID-ACTION, crowd going WILD, Indian flags EVERYWHERE. EXPLOSIVE moment, maximum drama, MUST-WATCH cricket visual.`;
+          imagePrompt = `Professional cricket photography: ${titleLower.includes('win') ? 'Victory celebration on field' : 'Match action shot'} at ${location || 'cricket stadium'}. ${numbers.length ? `Scoreboard showing ${numbers[0]}/${numbers[1] || '3'}` : 'Score visible on stadium display'}. Players in Indian blue jerseys, authentic cricket action, crowd in background with Indian flags. Sports photojournalism, telephoto lens capture, similar to ESPN Cricinfo or Getty Sports.`;
         }
         else if (titleLower.includes('bollywood') || titleLower.includes('film')) {
           imagePrompt = `Entertainment news photo: ${title}. ${location || 'Mumbai'} film event, red carpet or movie poster launch. ${hasCurrency ? `₹${numbers[0]} crore box office collection displayed` : ''}. Paparazzi, film posters, spotlights. Glamorous but journalistic style.`;
@@ -5239,18 +5239,18 @@ async function getArticleImage(title, category, env) {
           }
         }
         
-        // ENHANCE ALL PROMPTS FOR MAXIMUM ATTRACTION
-        imagePrompt = `${imagePrompt}\n\nCRITICAL REQUIREMENTS:
-        • Make this image IMPOSSIBLE to ignore
-        • Use VIBRANT, eye-catching colors
-        • Create DRAMATIC composition
-        • Add visual URGENCY and importance
-        • Include BOLD text overlays if relevant
-        • Make viewer WANT to click immediately
-        • Professional but COMPELLING visual
-        • ${visualKeywords.length > 0 ? `HIGHLIGHT: ${visualKeywords.join(', ')}` : ''}
+        // ENHANCE FOR PHOTOREALISTIC PROFESSIONAL JOURNALISM
+        imagePrompt = `${imagePrompt}\n\nPHOTOREALISTIC REQUIREMENTS:
+        • PHOTOJOURNALISM STYLE: Shot with professional DSLR camera
+        • REALISTIC LIGHTING: Natural lighting, no artificial effects
+        • AUTHENTIC COMPOSITION: Documentary photography style
+        • NO CARTOONISH ELEMENTS: Completely realistic, news agency quality
+        • PROFESSIONAL FRAMING: Rule of thirds, proper depth of field
+        • NEWS PHOTOGRAPHY: Similar to Reuters, AP, or Getty Images
+        • HIGH DETAIL: Sharp focus, realistic textures and shadows
+        • ${visualKeywords.length > 0 ? `KEY ELEMENTS: ${visualKeywords.join(', ')}` : ''}
         
-        STYLE: Trending news thumbnail, viral social media post quality, maximum visual impact.`;
+        STYLE: Professional news agency photography (Reuters, AP, Getty Images, PTI, ANI quality).`;
         
         // Log the prompt for debugging
         console.log(`[DALL-E] Attractive prompt for "${title}"`);
@@ -5265,8 +5265,8 @@ async function getArticleImage(title, category, env) {
             model: 'dall-e-3',
             prompt: imagePrompt,
             n: 1,
-            size: '1024x1024', // Optimized for web performance
-            quality: 'standard', // Faster generation and loading
+            size: '1792x1024', // HD widescreen format for better article headers
+            quality: 'hd', // Higher quality for professional look
             style: 'natural' // Photorealistic news photography
           })
         });
@@ -5295,15 +5295,15 @@ async function getArticleImage(title, category, env) {
         console.log('[IMAGE] Primary DALL-E failed, attempting emergency generation for category:', category);
         
         const emergencyPrompts = {
-      'Technology': 'BREAKING TECH NEWS: Futuristic AI visualization, glowing circuit boards, holographic displays, quantum computing, digital transformation, neon tech elements, urgent innovation update',
-      'Business': 'MARKET ALERT: Stock market surge, financial graphs shooting upward, business success story, corporate breakthrough, economic boom visualization, money flow dynamics',
-      'India': 'INDIA BREAKING NEWS: Modern Indian cityscape, vibrant colors, technological progress, cultural landmarks, developing nation success, urgent India update',
-      'World': 'WORLD NEWS ALERT: Global breaking news, earth visualization, international crisis or breakthrough, world map with hotspots, urgent global update',
-      'Sports': 'SPORTS SENSATION: Dramatic sports moment, victory celebration, stadium excitement, athletic achievement, record-breaking performance, urgent sports update',
-      'Entertainment': 'ENTERTAINMENT EXCLUSIVE: Celebrity news, red carpet moment, movie premiere excitement, music industry breakthrough, entertainment spotlight'
+      'Technology': 'Professional technology photograph: Modern data center with server racks, or tech company office with employees at computers. Clean, well-lit, documentary style photography.',
+      'Business': 'Business photography: BSE/NSE building exterior or trading floor with professionals. Financial district skyline, office buildings. Professional business photojournalism.',
+      'India': 'Documentary photograph of India: Modern Indian cityscape showing development, India Gate or prominent landmark, busy street scene. Natural lighting, journalistic style.',
+      'World': 'International news photograph: UN headquarters, international conference, or world landmark. Professional news agency style photography.',
+      'Sports': 'Sports photography: Cricket or football stadium during match, players in action, sports venue. Professional sports photojournalism, telephoto lens style.',
+      'Entertainment': 'Entertainment industry photograph: Film studio, cinema hall, or media event setup. Professional entertainment journalism photography.'
     };
     
-    const emergencyPrompt = emergencyPrompts[category] || 'URGENT BREAKING NEWS: Major news development, dramatic news graphics, "BREAKING" text overlay, urgent update visualization';
+    const emergencyPrompt = emergencyPrompts[category] || 'Professional news photograph: Government building, press conference setup, or news event. Documentary photojournalism style.';
     
     try {
       const emergencyResponse = await fetch('https://api.openai.com/v1/images/generations', {
@@ -5314,10 +5314,10 @@ async function getArticleImage(title, category, env) {
         },
         body: JSON.stringify({
           model: 'dall-e-3',
-          prompt: `${emergencyPrompt}, maximum visual impact, eye-catching thumbnail, vivid colors, professional news graphics, trending style, must attract viewers`,
+          prompt: `${emergencyPrompt} Photorealistic, professional DSLR photography, natural lighting, news agency quality. No cartoonish elements, completely realistic.`,
           n: 1,
-          size: '1024x1024',
-          quality: 'standard',
+          size: '1792x1024',
+          quality: 'hd',
           style: 'natural'
         })
       });
