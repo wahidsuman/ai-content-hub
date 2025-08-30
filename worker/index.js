@@ -480,8 +480,8 @@ export default {
           return Response.redirect(new URL(bySlug.url, request.url).toString(), 301);
         }
       }
-      // Fallback to old handler
-      return await serveArticle(env, request, url.pathname);
+      // No matching article: respond 404 (do not serve legacy page)
+      return serve404Page(env, 'Article not found');
     } else if (url.pathname.includes('-news/')) {
       // SEO-friendly URL format: /category-news/slug
       return await serveArticleBySlug(env, request, url.pathname);
