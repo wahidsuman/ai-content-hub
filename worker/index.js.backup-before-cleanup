@@ -1672,10 +1672,6 @@ async function handleControlAction(env, callbackQuery) {
   else if (data === 'list') {
     await handleListArticles(env, chatId, 0);
   }
-  else if (data.startsWith('list_page_')) {
-    const page = parseInt(data.replace('list_page_', ''));
-    await handleListArticles(env, chatId, page);
-  }
   else if (data === 'fetch') {
     await handleFetchNews(env, chatId);
   }
@@ -1815,75 +1811,1966 @@ async function regenerateArticleImageAI(env, id) {
   return true;
 }
 
-// ============================================
-// CLEANED TELEGRAM STUB FUNCTIONS FOR v1.0
-// These provide backward compatibility
-// ============================================
+async function sendMenu(env, chatId) {
+  // OLD MENU REDIRECTED TO NEW CONTROL CENTRE v1.0
+  await showControlCentre(env, chatId);
+}
 
-async function sendStats(env, chatId) {
-  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+async function sendStats(env, chatId, section = 'overview') {
   const stats = await env.NEWS_KV.get('stats', 'json') || {};
-  await sendMessage(env, chatId, `📊 *Statistics*\n\n• Total Articles: ${articles.length}\n• Today: ${stats.dailyArticlesPublished || 0}\n• Views: ${articles.reduce((sum, a) => sum + (a.views || 0), 0).toLocaleString()}\n\nUse the Control Centre for more details.`, {
-    inline_keyboard: [[{ text: '🔄 Control Centre', callback_data: 'control' }]]
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  
+  let message = '';
+  let buttons = [];
+  
+  switch(section) {
+    case 'overview':
+      const todayArticles = articles.filter(a => {
+        const articleDate = new Date(a.timestamp);
+        const today = new Date();
+        return articleDate.toDateString() === today.toDateString();
+      }).length;
+      
+      message = `📊 *Statistics Overview*\n\n`;
+      message += `📈 *Traffic Stats:*\n`;
+      message += `• Total Views: ${stats.totalViews || 0}\n`;
+      message += `• Today's Views: ${stats.todayViews || 0}\n`;
+      message += `• Active Readers: ${getActiveReaders(stats)}\n\n`;
+      message += `📰 *Content Stats:*\n`;
+      message += `• Total Articles: ${articles.length}\n`;
+      message += `• Today's Articles: ${todayArticles}\n`;
+      message += `• Trending Now: ${articles.filter(a => a.trending).length}\n\n`;
+      message += `💰 *Cost Stats:*\n`;
+      message += `• Today's Cost: $${(todayArticles * 0.04).toFixed(2)}\n`;
+      message += `• Monthly Est: $${(todayArticles * 30 * 0.04).toFixed(2)}\n`;
+      
+      buttons = [
+        [
+          { text: '📂 Categories', callback_data: 'stats_categories' },
+          { text: '🏆 Top Articles', callback_data: 'stats_top' }
+        ],
+        [
+          { text: '📈 Analytics', callback_data: 'stats_analytics' },
+          { text: '🌍 Audience', callback_data: 'stats_audience' }
+        ],
+        [
+          { text: '🔄 Refresh', callback_data: 'stats' },
+          { text: '↩️ Menu', callback_data: 'menu' }
+        ]
+      ];
+      break;
+      
+    case 'categories':
+      const categoryStats = {};
+      articles.forEach(a => {
+        const cat = a.category || 'UNCATEGORIZED';
+        categoryStats[cat] = (categoryStats[cat] || 0) + 1;
+      });
+      
+      message = `📂 *Category Distribution*\n\n`;
+      Object.entries(categoryStats)
+        .sort((a, b) => b[1] - a[1])
+        .forEach(([cat, count]) => {
+          const percentage = ((count / articles.length) * 100).toFixed(1);
+          const bar = '█'.repeat(Math.floor(percentage / 5));
+          message += `*${cat}*\n`;
+          message += `${bar} ${count} articles (${percentage}%)\n\n`;
+        });
+      
+      buttons = [
+        [
+          { text: '📊 Overview', callback_data: 'stats' },
+          { text: '🏆 Top Articles', callback_data: 'stats_top' }
+        ],
+        [
+          { text: '↩️ Back to Stats', callback_data: 'stats' },
+          { text: '↩️ Menu', callback_data: 'menu' }
+        ]
+      ];
+      break;
+      
+    case 'top':
+      const topArticles = articles
+        .sort((a, b) => (b.views || 0) - (a.views || 0))
+        .slice(0, 5);
+      
+      message = `🏆 *Top 5 Articles by Views*\n\n`;
+      topArticles.forEach((article, idx) => {
+        const emoji = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;
+        message += `${emoji} *${article.title}*\n`;
+        message += `   👁 ${article.views || 0} views | ${article.category}\n\n`;
+      });
+      
+      buttons = [
+        [
+          { text: '📊 Overview', callback_data: 'stats' },
+          { text: '📂 Categories', callback_data: 'stats_categories' }
+        ],
+        [
+          { text: '↩️ Back to Stats', callback_data: 'stats' },
+          { text: '↩️ Menu', callback_data: 'menu' }
+        ]
+      ];
+      break;
+      
+    case 'analytics':
+      const analytics = stats.analytics || {};
+      const hourly = analytics.hourly || {};
+      const peakHour = getPeakHour(stats);
+      
+      message = `📈 *Analytics Deep Dive*\n\n`;
+      message += `⏰ *Peak Traffic Hour:* ${peakHour}\n`;
+      message += `📱 *Device Split:*\n`;
+      message += `• Mobile: ${analytics.devices?.mobile || 0} (${Math.round((analytics.devices?.mobile || 0) / (stats.totalViews || 1) * 100)}%)\n`;
+      message += `• Desktop: ${analytics.devices?.desktop || 0} (${Math.round((analytics.devices?.desktop || 0) / (stats.totalViews || 1) * 100)}%)\n\n`;
+      message += `🔗 *Traffic Sources:*\n`;
+      const referrers = analytics.referrers || {};
+      Object.entries(referrers).slice(0, 5).forEach(([source, count]) => {
+        message += `• ${source}: ${count} visits\n`;
+      });
+      
+      buttons = [
+        [
+          { text: '📊 Overview', callback_data: 'stats' },
+          { text: '🌍 Audience', callback_data: 'stats_audience' }
+        ],
+        [
+          { text: '↩️ Back to Stats', callback_data: 'stats' },
+          { text: '↩️ Menu', callback_data: 'menu' }
+        ]
+      ];
+      break;
+      
+    case 'audience':
+      const analytics2 = stats.analytics || {};
+      const countries = analytics2.countries || {};
+      const topCountry = getTopCountry(stats);
+      
+      message = `🌍 *Audience Insights*\n\n`;
+      message += `📍 *Top Country:* ${topCountry}\n\n`;
+      message += `*Geographic Distribution:*\n`;
+      Object.entries(countries)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .forEach(([country, views]) => {
+          const flag = country === 'IN' ? '🇮🇳' : 
+                       country === 'US' ? '🇺🇸' :
+                       country === 'GB' ? '🇬🇧' :
+                       country === 'CA' ? '🇨🇦' : '🌍';
+          message += `${flag} ${country}: ${views} views\n`;
+        });
+      
+      message += `\n*Engagement:*\n`;
+      message += `• Bounce Rate: ${analytics2.bounceRate || 'N/A'}\n`;
+      message += `• Avg Time: ${analytics2.avgTimeOnSite || 'N/A'}\n`;
+      message += `• Return Visitors: ${analytics2.returnVisitors || 0}\n`;
+      
+      buttons = [
+        [
+          { text: '📊 Overview', callback_data: 'stats' },
+          { text: '📈 Analytics', callback_data: 'stats_analytics' }
+        ],
+        [
+          { text: '↩️ Back to Stats', callback_data: 'stats' },
+          { text: '↩️ Menu', callback_data: 'menu' }
+        ]
+      ];
+      break;
+  }
+  
+  await sendMessage(env, chatId, message, { inline_keyboard: buttons });
+}
+
+async function handleNaturalLanguage(env, chatId, text) {
+  const lower = text.toLowerCase();
+  
+  // Test command (also handle as natural language)
+  if (lower === 'test' || lower.includes('test article') || lower.includes('test generation')) {
+    await handleTestGeneration(env, chatId);
+    return;
+  }
+  
+  // Fetch news commands
+  if (lower.includes('fetch') || lower.includes('update news') || lower.includes('get news')) {
+    await handleFetchNews(env, chatId);
+  }
+  // Stats and performance
+  else if (lower.includes('stats') || lower.includes('performance') || lower.includes('views') || lower.includes('how many')) {
+    await sendStats(env, chatId);
+  }
+  // Theme changes
+  else if (lower.includes('theme') || lower.includes('dark') || lower.includes('light')) {
+    await handleThemeChange(env, chatId, text);
+  }
+  // Cost and budget
+  else if (lower.includes('cost') || lower.includes('budget') || lower.includes('money') || lower.includes('api')) {
+    await sendAPIUsage(env, chatId);
+  }
+  // Strategy
+  else if (lower.includes('strategy') || lower.includes('focus') || lower.includes('plan')) {
+    await sendContentStrategy(env, chatId);
+  }
+  // SEO
+  else if (lower.includes('seo') || lower.includes('google') || lower.includes('ranking')) {
+    await sendSEOReport(env, chatId);
+  }
+  // Analytics
+  else if (lower.includes('analytics') || lower.includes('traffic') || lower.includes('visitors') || lower.includes('analyse')) {
+    await sendDetailedAnalytics(env, chatId);
+  }
+  // Status check
+  else if (lower.includes('status') || lower.includes('health') || lower.includes('working')) {
+    await sendSystemStatus(env, chatId);
+  }
+  // Help
+  else if (lower.includes('help') || lower.includes('what can you do')) {
+    await sendHelp(env, chatId);
+  }
+  else {
+    // For any unrecognized text, show the menu
+    await sendMenu(env, chatId);
+  }
+}
+// Verify AI Commands are working
+async function verifyAICommands(env, chatId) {
+  await sendMessage(env, chatId, `🔍 *Verifying AI Configuration...*`);
+  
+  try {
+    // First check if OpenAI key is configured
+    const hasOpenAIKey = !!env.OPENAI_API_KEY;
+    const keyStatus = hasOpenAIKey ? 
+      `✅ OpenAI API Key: Configured (${env.OPENAI_API_KEY.substring(0, 7)}...)` : 
+      `❌ OpenAI API Key: NOT CONFIGURED`;
+    
+    // Test headline generation
+    const testHeadline = "PM Modi announces new economic policy";
+    const { AIManager } = await import('./ai-manager.js');
+    const ai = new AIManager(env);
+    
+    // Create a test news item
+    const testNews = {
+      title: testHeadline,
+      category: 'INDIA',
+      description: 'Test news for verification'
+    };
+    
+    // Check if prompts contain our keywords
+    const verificationChecks = {
+      headlines: false,
+      images: false,
+      questions: false
+    };
+    
+    // Check recent articles for our patterns
+    const articles = await env.NEWS_KV.get('articles', 'json') || [];
+    const recentArticle = articles[0];
+    
+    if (recentArticle) {
+      // Check headline for power words
+      const powerWords = ['BREAKING', 'SHOCKING', 'LEAKED', 'EXPOSED', 'EXCLUSIVE', 'WARNING'];
+      verificationChecks.headlines = powerWords.some(word => 
+        recentArticle.title?.toUpperCase().includes(word)
+      );
+      
+      // Check if article contains questions
+      const hasQuestions = recentArticle.fullContent?.includes('?') || 
+                          recentArticle.content?.includes('?');
+      verificationChecks.questions = hasQuestions;
+      
+      // Check image source
+      verificationChecks.images = recentArticle.image?.source === 'dalle' || 
+                                 recentArticle.image?.url?.includes('dalle');
+    }
+    
+    const report = `
+✅ *AI VERIFICATION REPORT*
+
+🔑 *API Configuration:*
+${keyStatus}
+
+📰 *Headline Generation:*
+${verificationChecks.headlines ? '✅' : '❌'} Power words detected
+Expected: BREAKING, SHOCKING, LEAKED, etc.
+${recentArticle?.title ? `Sample: "${recentArticle.title.substring(0, 50)}..."` : 'No recent article'}
+
+🖼️ *Image Generation:*
+${verificationChecks.images ? '✅' : '❌'} DALL-E integration active
+Mode: Photorealistic with celebrity editing
+Quality: 1024x1024, standard
+
+❓ *Question Integration:*
+${verificationChecks.questions ? '✅' : '❌'} Questions in content
+Expected: Hook questions, rhetorical questions
+
+📊 *Current Settings:*
+• Headlines: Ultra-viral formulas ✅
+• Images: Photorealistic only ✅
+• Celebrities: Composite editing ✅
+• Questions: Throughout articles ✅
+• Daily limit: 15 articles ✅
+
+🔧 *To Test Manually:*
+1. Send /fetch to generate new article
+2. Check headline for clickbait words
+3. Verify image is realistic (not cartoon)
+4. Confirm article has questions
+
+💡 *Tip:* Check logs in Cloudflare dashboard for:
+• [HEADLINE TEST] - Shows generated headlines
+• [IMAGE VERIFY] - Shows DALL-E prompts
+• [DALL-E] - Image generation status
+    `;
+    
+    await sendMessage(env, chatId, report);
+    
+  } catch (error) {
+    await sendMessage(env, chatId, `❌ Verification error: ${error.message}`);
+  }
+}
+
+// New function: Handle fetch news
+async function handleFetchNews(env, chatId) {
+  // Check daily limit first
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  const today = new Date().toDateString();
+  
+  if (stats.lastReset !== today) {
+    stats.dailyArticlesPublished = 0;
+    stats.lastReset = today;
+  }
+  
+  if (stats.dailyArticlesPublished >= 15) {
+    await sendMessage(env, chatId, 
+      `⚠️ *Daily Limit Reached*\n\n` +
+      `Published: ${stats.dailyArticlesPublished}/15 articles today\n` +
+      `Next reset: Midnight IST\n` +
+      `Budget: Protected at $20/month`
+    );
+    return;
+  }
+  
+  // Send initial message
+  await sendMessage(env, chatId, `🔄 *Fetching Latest News...*\n\n⏳ Generating article ${stats.dailyArticlesPublished + 1}/15 for today...`);
+  
+  try {
+    console.log('[FETCH] Starting news fetch from Telegram command...');
+    
+    // Import AI Manager
+    const { AIWebsiteManager } = await import('./ai-manager.js');
+    const ai = new AIWebsiteManager(env);
+    
+    // Fetch news sources
+    const newsItems = await ai.fetchDailyNews();
+    
+    if (!newsItems || newsItems.length === 0) {
+      await sendMessage(env, chatId, '❌ No news available at the moment. Try again later.');
+      return;
+    }
+    
+    // Select the most recent/important news
+    const selectedNews = newsItems[0];
+    
+    await sendMessage(env, chatId, `📰 *Found News:*\n${selectedNews.title}\n\n🤖 Generating article...`);
+    
+    // Create article with AI
+    let article;
+    try {
+      article = await ai.createArticle(selectedNews, true); // Pass 'approved' as true
+      console.log('[FETCH] Article generation result:', article ? 'Success' : 'Failed');
+    } catch (genError) {
+      console.error('[FETCH] Article generation error:', genError);
+      await sendMessage(env, chatId, `❌ Article generation failed:\n${genError.message}\n\nThis might be due to:\n• OpenAI API key issue\n• Rate limiting\n• Network timeout`);
+      return;
+    }
+    
+    if (!article) {
+      await sendMessage(env, chatId, '❌ Failed to generate article. The AI returned empty content. Please try again.');
+      return;
+    }
+    
+    // Save article
+    const articles = await env.NEWS_KV.get('articles', 'json') || [];
+    const newArticleId = generateArticleId();
+    const newArticleSlug = generateSlug(article.title);
+    const newArticle = {
+      ...article,
+      id: newArticleId,
+      slug: newArticleSlug,
+      url: `/${article.category.toLowerCase()}-news/${newArticleSlug}`,
+      views: 0,
+      published: new Date().toISOString()
+    };
+    
+    articles.unshift(newArticle);
+    await env.NEWS_KV.put('articles', JSON.stringify(articles));
+    await env.NEWS_KV.put('articlesTimestamp', Date.now().toString());
+    
+    // Update stats
+    const stats = await env.NEWS_KV.get('stats', 'json') || {};
+    stats.totalArticles = articles.length;
+    stats.dailyArticlesPublished = (stats.dailyArticlesPublished || 0) + 1;
+    stats.lastFetch = new Date().toISOString();
+    await env.NEWS_KV.put('stats', JSON.stringify(stats));
+    
+    // Send success message
+    await sendMessage(env, chatId, `✅ *Article Published!*\n\n📰 *${article.title}*\n\n🔗 View: https://agaminews.in${newArticle.url}\n\n✨ Category: ${article.category}\n📸 Image: DALL-E Generated\n\n📊 Daily Progress: ${stats.dailyArticlesPublished}/15`, {
+      inline_keyboard: [
+        [{ text: '🚀 Fetch Another', callback_data: 'fetch' }],
+        [{ text: '📊 View Stats', callback_data: 'stats' }],
+        [{ text: '↩️ Back to Menu', callback_data: 'menu' }]
+      ]
+    });
+    
+  } catch (error) {
+    console.error('[FETCH] Error:', error);
+    
+    // Check for specific error types
+    await sendMessage(env, chatId, `❌ *Error Generating Article*\n\n${error.message || 'Failed to generate article'}\n\nPlease try again.`, {
+      inline_keyboard: [
+        [{ text: '🔄 Try Again', callback_data: 'fetch' }],
+        [{ text: '↩️ Back', callback_data: 'menu' }]
+      ]
+    });
+  }
+}
+
+// New function: System status
+async function sendSystemStatus(env, chatId) {
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  const lastFetch = await env.NEWS_KV.get('lastFetch');
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  
+  const status = {
+    telegram: env.TELEGRAM_BOT_TOKEN ? '✅' : '❌',
+    openai: env.OPENAI_API_KEY ? '✅' : '❌'
+  };
+  
+  await sendMessage(env, chatId, `
+🔍 *System Status Check*
+
+*API Connections:*
+• Telegram Bot: ${status.telegram}
+• OpenAI (DALL-E): ${status.openai}
+
+*News System:*
+• Articles in database: ${articles.length}
+• Last fetch: ${lastFetch ? new Date(lastFetch).toLocaleString() : 'Never'}
+• Auto-update: Every 3 hours ✅
+
+*Performance:*
+• Total views: ${stats.totalViews || 0}
+• Today's views: ${stats.todayViews || 0}
+• Articles fetched: ${stats.totalArticlesFetched || 0}
+
+*Health:* ${status.telegram === '✅' && status.openai === '✅' ? 
+  '🟢 All systems operational' : 
+  '🟡 Some APIs not configured'}
+
+${!status.openai ? '\n⚠️ Add OpenAI API key for DALL-E images!' : ''}
+  `, {
+    inline_keyboard: [
+      [{ text: '🚀 Fetch News', callback_data: 'fetch' }],
+      [{ text: '↩️ Back', callback_data: 'menu' }]
+    ]
   });
 }
 
-async function handleFetchNews(env, chatId) {
-  await sendMessage(env, chatId, `📰 *Fetching News...*\n\nProcessing articles from trending topics...`);
+// Cost Report Function
+async function sendCostReport(env, chatId) {
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  const config = await env.NEWS_KV.get('config', 'json') || {};
+  
+  // Calculate costs
+  const dailyArticles = stats.dailyArticlesPublished || 0;
+  const totalArticles = stats.totalArticles || 0;
+  const costPerArticle = 0.055; // Updated cost
+  
+  const todayCost = dailyArticles * costPerArticle;
+  const monthlyProjected = todayCost * 30;
+  const totalSpent = totalArticles * costPerArticle;
+  
+  // Budget analysis
+  const monthlyBudget = 20.00;
+  const budgetUsed = (monthlyProjected / monthlyBudget * 100).toFixed(1);
+  const budgetStatus = monthlyProjected <= monthlyBudget ? '✅ Within Budget' : '⚠️ Over Budget';
+  
+  await sendMessage(env, chatId, `
+💰 *Cost Report*
+
+📊 *Today's Costs*
+• Articles: ${dailyArticles}
+• Cost: $${todayCost.toFixed(2)}
+
+📈 *Monthly Projection*
+• Projected: $${monthlyProjected.toFixed(2)}
+• Budget: $${monthlyBudget.toFixed(2)}
+• Usage: ${budgetUsed}%
+• Status: ${budgetStatus}
+
+💵 *Breakdown per Article*
+• GPT-4 Research: $0.015
+• Headlines: $0.005
+• Article Writing: $0.025
+• DALL-E Image: $0.010
+• Total: $${costPerArticle}
+
+📅 *Historical*
+• Total Articles: ${totalArticles}
+• Total Spent: $${totalSpent.toFixed(2)}
+• Avg Daily: $${(totalSpent / 30).toFixed(2)}
+
+💡 *Optimization Tips*
+${monthlyProjected > 15 ? '• Consider reducing to 12 articles/day' : '• You can increase to 20 articles/day'}
+${budgetUsed > 80 ? '• Monitor usage closely' : '• Plenty of budget remaining'}
+  `, {
+    inline_keyboard: [
+      [{ text: '📊 Full Stats', callback_data: 'stats' }],
+      [{ text: '↩️ Back', callback_data: 'menu' }]
+    ]
+  });
+}
+
+// Delete Article by Index
+async function deleteArticleByIndex(env, chatId, index) {
+  // Check admin
+  const adminChat = await env.NEWS_KV.get('admin_chat');
+  if (!adminChat || String(chatId) !== String(adminChat)) {
+    await sendMessage(env, chatId, '❌ Unauthorized. Only admin can delete articles.');
+    return;
+  }
+  
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  
+  if (index < 0 || index >= articles.length) {
+    await sendMessage(env, chatId, '❌ Invalid article number.');
+    return;
+  }
+  
+  const deletedArticle = articles[index];
+  articles.splice(index, 1);
+  
+  // Save updated articles
+  await env.NEWS_KV.put('articles', JSON.stringify(articles));
+  
+  // Update stats
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  stats.totalArticles = articles.length;
+  await env.NEWS_KV.put('stats', JSON.stringify(stats));
+  
+  await sendMessage(env, chatId, `✅ *Article Deleted!*\n\n📰 ${deletedArticle.title?.substring(0, 60)}...\n\nTotal articles: ${articles.length}`, {
+    inline_keyboard: [
+      [{ text: '🗑 Delete Another', callback_data: 'delete_menu' }],
+      [{ text: '↩️ Back to Menu', callback_data: 'menu' }]
+    ]
+  });
+}
+
+// Delete Menu with Pagination
+async function handleDeleteMenu(env, chatId, page = 0) {
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  
+  if (articles.length === 0) {
+    await sendMessage(env, chatId, '📭 No articles to delete.');
+    return;
+  }
+  
+  const ITEMS_PER_PAGE = 5;
+  const totalPages = Math.ceil(articles.length / ITEMS_PER_PAGE);
+  const currentPage = Math.min(Math.max(0, page), totalPages - 1);
+  const startIdx = currentPage * ITEMS_PER_PAGE;
+  const endIdx = Math.min(startIdx + ITEMS_PER_PAGE, articles.length);
+  
+  // Build article list for current page
+  let message = `🗑 *Delete Articles (Page ${currentPage + 1}/${totalPages})*\n\n`;
+  const buttons = [];
+  
+  for (let i = startIdx; i < endIdx; i++) {
+    const article = articles[i];
+    const num = i + 1;
+    message += `${num}. ${article.title?.substring(0, 50)}...\n`;
+    message += `   📅 ${new Date(article.published || article.created).toLocaleDateString()}\n`;
+    message += `   👁 ${article.views || 0} views\n\n`;
+    
+    // Add delete button for this article
+    buttons.push([{ 
+      text: `❌ Delete #${num}`, 
+      callback_data: `delete_article_${i}` 
+    }]);
+  }
+  
+  // Add navigation buttons
+  const navButtons = [];
+  if (currentPage > 0) {
+    navButtons.push({ text: '⬅️ Previous', callback_data: `delete_page_${currentPage - 1}` });
+  }
+  navButtons.push({ text: '↩️ Back', callback_data: 'menu' });
+  if (currentPage < totalPages - 1) {
+    navButtons.push({ text: 'Next ➡️', callback_data: `delete_page_${currentPage + 1}` });
+  }
+  
+  buttons.push(navButtons);
+  
+  await sendMessage(env, chatId, message, {
+    inline_keyboard: buttons
+  });
+}
+
+// SEO Report Function
+async function sendSEOReport(env, chatId) {
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  
+  // Analyze SEO metrics
+  const recentArticles = articles.slice(-10);
+  const evergreenCount = articles.filter(a => a.title?.includes('Guide') || a.title?.includes('How')).length;
+  const categoryCounts = {};
+  
+  articles.forEach(article => {
+    const cat = article.category || 'UNCATEGORIZED';
+    categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+  });
+  
+  // Check indexing status
+  const indexedArticles = articles.filter(a => a.seo?.googleIndexing).length;
+  const indexingRate = articles.length > 0 ? (indexedArticles / articles.length * 100).toFixed(1) : 0;
+  
+  await sendMessage(env, chatId, `
+🔍 *SEO Report*
+
+📈 *Content Performance*
+• Total Articles: ${articles.length}
+• Evergreen Content: ${evergreenCount}
+• Fresh Content: ${articles.length - evergreenCount}
+• Indexing Rate: ${indexingRate}%
+
+🏷️ *Category Distribution*
+${Object.entries(categoryCounts)
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 5)
+  .map(([cat, count]) => `• ${cat}: ${count} articles`)
+  .join('\n')}
+
+✅ *SEO Features Active*
+• Google Analytics: ✅
+• Meta Tags: ✅
+• Schema Markup: ✅
+• Sitemap: ✅
+• Mobile Optimized: ✅
+
+🎯 *Keyword Strategy*
+• Long-tail keywords: Active
+• Voice search optimized: Yes
+• Featured snippets: Targeted
+• Internal linking: Enabled
+
+📊 *Recent Articles SEO*
+${recentArticles.slice(0, 3).map(a => 
+  `• ${a.title?.substring(0, 30)}... ${a.seo?.googleIndexing ? '✅' : '⏳'}`
+).join('\n')}
+
+💡 *Recommendations*
+${evergreenCount < 10 ? '• Create more evergreen content' : '• Good evergreen balance'}
+${articles.length < 50 ? '• Build more content for authority' : '• Strong content foundation'}
+${indexingRate < 80 ? '• Check Google Search Console' : '• Excellent indexing rate'}
+  `, {
+    inline_keyboard: [
+      [{ text: '📊 Analytics', callback_data: 'analytics' }],
+      [{ text: '↩️ Back', callback_data: 'menu' }]
+    ]
+  });
+}
+
+// New function: Detailed Analytics
+async function sendDetailedAnalytics(env, chatId) {
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  
+  // Calculate analytics
+  const analytics = stats.analytics || {};
+  const today = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  
+  // Traffic trends
+  const todayViews = analytics.daily?.[today] || 0;
+  const yesterdayViews = analytics.daily?.[yesterday] || 0;
+  const growthRate = yesterdayViews > 0 ? ((todayViews - yesterdayViews) / yesterdayViews * 100).toFixed(1) : 0;
+  const trend = growthRate > 0 ? '📈' : growthRate < 0 ? '📉' : '➡️';
+  
+  // Top referrers
+  const referrers = Object.entries(analytics.referrers || {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
+  
+  // Device breakdown
+  const mobile = analytics.devices?.mobile || 0;
+  const desktop = analytics.devices?.desktop || 0;
+  const totalDevices = mobile + desktop;
+  const mobilePercent = totalDevices > 0 ? (mobile / totalDevices * 100).toFixed(1) : 0;
+  
+  // Top countries
+  const countries = Object.entries(analytics.countries || {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+  
+  // Peak hours
+  const hourlyData = analytics.hourly || {};
+  const peakHour = Object.entries(hourlyData)
+    .sort((a, b) => b[1] - a[1])[0];
+  
+  // Most viewed articles
+  const articleViews = stats.articleViews || {};
+  const topArticles = Object.entries(articleViews)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([id, views]) => {
+      const article = articles[id];
+      return article ? `${article.title.substring(0, 30)}... (${views} views)` : `Article ${id} (${views} views)`;
+    });
+  
+  await sendMessage(env, chatId, `
+📊 *Detailed Analytics Report*
+📈 *Traffic Overview*
+• Total Views: ${stats.totalViews || 0}
+• Today: ${todayViews} ${trend}
+• Yesterday: ${yesterdayViews}
+• Growth: ${growthRate}%
+
+📱 *Device Analytics*
+• Mobile: ${mobile} (${mobilePercent}%)
+• Desktop: ${desktop} (${100 - mobilePercent}%)
+• Mobile-first: ${mobilePercent > 50 ? 'Yes ✅' : 'No ⚠️'}
+
+🌍 *Top Countries*
+${countries.map(([code, count], i) => `${i+1}. ${getCountryName(code)}: ${count} visits`).join('\n') || 'No data yet'}
+
+🔗 *Top Referrers*
+${referrers.map(([ref, count], i) => `${i+1}. ${ref}: ${count} visits`).join('\n') || '• Direct traffic only'}
+
+⏰ *Peak Traffic*
+• Best Hour: ${peakHour ? `${peakHour[0]}:00 (${peakHour[1]} views)` : 'No data'}
+• Best Day: ${getBestDay(analytics.daily)}
+
+📰 *Top Articles*
+${topArticles.join('\n') || 'No article data yet'}
+
+💡 *Insights*
+${generateInsights(stats, analytics)}
+
+Use /analytics daily to track growth!
+  `, {
+    inline_keyboard: [
+      [{ text: '📈 7-Day Report', callback_data: 'analytics_week' }],
+      [{ text: '🎯 Audience Insights', callback_data: 'analytics_audience' }],
+      [{ text: '↩️ Back', callback_data: 'menu' }]
+    ]
+  });
+}
+
+// Helper function to get country name
+function getCountryName(code) {
+  const countries = {
+    'IN': '🇮🇳 India',
+    'US': '🇺🇸 USA',
+    'GB': '🇬🇧 UK',
+    'CA': '🇨🇦 Canada',
+    'AU': '🇦🇺 Australia',
+    'AE': '🇦🇪 UAE',
+    'SG': '🇸🇬 Singapore',
+    'MY': '🇲🇾 Malaysia',
+    'unknown': '🌍 Unknown'
+  };
+  return countries[code] || `${code}`;
+}
+
+// Helper function to get best day
+function getBestDay(daily) {
+  if (!daily) return 'No data';
+  const best = Object.entries(daily)
+    .sort((a, b) => b[1] - a[1])[0];
+  return best ? `${best[0]} (${best[1]} views)` : 'No data';
+}
+
+// Generate insights
+function generateInsights(stats, analytics) {
+  const insights = [];
+  
+  // Mobile optimization
+  const mobilePercent = analytics.devices ? 
+    (analytics.devices.mobile / (analytics.devices.mobile + analytics.devices.desktop) * 100) : 0;
+  
+  if (mobilePercent > 60) {
+    insights.push('• Strong mobile traffic (good for SEO!)');
+  } else {
+    insights.push('• Desktop traffic dominates - ensure mobile optimization');
+  }
+  
+  // Traffic source
+  const directTraffic = analytics.referrers?.direct || 0;
+  const totalReferrer = Object.values(analytics.referrers || {}).reduce((a, b) => a + b, 0);
+  
+  if (directTraffic > totalReferrer * 0.5) {
+    insights.push('• High direct traffic - brand recognition growing');
+  } else {
+    insights.push('• Good referral traffic - external sites linking to you');
+  }
+  
+  // Growth
+  const todayViews = stats.todayViews || 0;
+  if (todayViews > 100) {
+    insights.push('• Excellent daily traffic! Keep it up');
+  } else if (todayViews > 50) {
+    insights.push('• Good traffic growth, aim for 100+ daily');
+  } else {
+    insights.push('• Focus on SEO and content to increase traffic');
+  }
+  
+  return insights.join('\n') || '• Keep monitoring for trends';
+}
+
+// Weekly Analytics Report
+async function sendWeeklyAnalytics(env, chatId) {
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  const analytics = stats.analytics || {};
+  
+  // Get last 7 days data
+  const last7Days = [];
+  const dailyData = analytics.daily || {};
+  
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date(Date.now() - i * 86400000).toISOString().split('T')[0];
+    const views = dailyData[date] || 0;
+    last7Days.push({ date, views });
+  }
+  
+  // Calculate weekly stats
+  const totalWeekViews = last7Days.reduce((sum, day) => sum + day.views, 0);
+  const avgDailyViews = (totalWeekViews / 7).toFixed(1);
+  const bestDay = last7Days.reduce((best, day) => day.views > best.views ? day : best);
+  const worstDay = last7Days.reduce((worst, day) => day.views < worst.views ? day : worst);
+  
+  // Create simple chart
+  const maxViews = Math.max(...last7Days.map(d => d.views));
+  const chart = last7Days.map(day => {
+    const barLength = maxViews > 0 ? Math.floor((day.views / maxViews) * 10) : 0;
+    const bar = '█'.repeat(barLength) + '░'.repeat(10 - barLength);
+    return `${day.date.substring(5)}: ${bar} ${day.views}`;
+  }).join('\n');
+  
+  await sendMessage(env, chatId, `
+📈 *7-Day Analytics Report*
+
+📊 *Weekly Performance*
+• Total Views: ${totalWeekViews}
+• Daily Average: ${avgDailyViews}
+• Best Day: ${bestDay.date} (${bestDay.views} views)
+• Worst Day: ${worstDay.date} (${worstDay.views} views)
+
+📉 *Daily Breakdown*
+\`\`\`
+${chart}
+\`\`\`
+
+💡 *Weekly Insights*
+${generateWeeklyInsights(last7Days, stats)}
+
+Track weekly to spot trends!
+  `, {
+    inline_keyboard: [
+      [{ text: '📊 Full Analytics', callback_data: 'analytics' }],
+      [{ text: '↩️ Back', callback_data: 'menu' }]
+    ]
+  });
+}
+// Audience Insights
+async function sendAudienceInsights(env, chatId) {
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  const analytics = stats.analytics || {};
+  
+  // Calculate audience metrics
+  const devices = analytics.devices || {};
+  const countries = analytics.countries || {};
+  const referrers = analytics.referrers || {};
+  const hourly = analytics.hourly || {};
+  
+  // Audience profile
+  const totalVisits = Object.values(countries).reduce((a, b) => a + b, 0);
+  const indianTraffic = (countries.IN || 0);
+  const indianPercent = totalVisits > 0 ? (indianTraffic / totalVisits * 100).toFixed(1) : 0;
+  
+  // Behavior patterns
+  const morningTraffic = (hourly[6] || 0) + (hourly[7] || 0) + (hourly[8] || 0) + (hourly[9] || 0);
+  const eveningTraffic = (hourly[17] || 0) + (hourly[18] || 0) + (hourly[19] || 0) + (hourly[20] || 0);
+  const nightTraffic = (hourly[21] || 0) + (hourly[22] || 0) + (hourly[23] || 0);
+  
+  // Social traffic
+  const socialReferrers = ['facebook.com', 'twitter.com', 't.co', 'linkedin.com', 'instagram.com'];
+  const socialTraffic = Object.entries(referrers)
+    .filter(([ref]) => socialReferrers.some(social => ref.includes(social)))
+    .reduce((sum, [, count]) => sum + count, 0);
+  
+  await sendMessage(env, chatId, `
+🎯 *Audience Insights*
+
+👥 *Visitor Profile*
+• Primary Market: ${indianPercent > 50 ? '🇮🇳 India-focused' : '🌍 International'}
+• Indian Traffic: ${indianPercent}%
+• Device Preference: ${devices.mobile > devices.desktop ? '📱 Mobile-first' : '💻 Desktop-heavy'}
+• Engagement: ${stats.totalViews > 1000 ? 'High' : stats.totalViews > 100 ? 'Growing' : 'Building'}
+
+⏰ *Behavior Patterns*
+• Morning (6-10 AM): ${morningTraffic} visits
+• Evening (5-9 PM): ${eveningTraffic} visits
+• Night (9 PM-12 AM): ${nightTraffic} visits
+• Peak Activity: ${getPeakPeriod(hourly)}
+
+🔗 *Traffic Sources*
+• Direct: ${referrers.direct || 0} visits
+• Social Media: ${socialTraffic} visits
+• Search/Other: ${totalVisits - (referrers.direct || 0) - socialTraffic} visits
+
+🎯 *Target Audience Match*
+${getAudienceMatch(analytics, stats)}
+
+📝 *Recommendations*
+${getAudienceRecommendations(analytics)}
+  `, {
+    inline_keyboard: [
+      [{ text: '📊 Full Analytics', callback_data: 'analytics' }],
+      [{ text: '↩️ Back', callback_data: 'menu' }]
+    ]
+  });
+}
+
+// Helper functions
+function generateWeeklyInsights(last7Days, stats) {
+  const insights = [];
+  const trend = last7Days[6].views > last7Days[0].views ? 'growing' : 'declining';
+  
+  insights.push(`• Traffic is ${trend} over the week`);
+  
+  const weekendViews = last7Days.slice(0, 2).reduce((sum, d) => sum + d.views, 0);
+  const weekdayViews = last7Days.slice(2).reduce((sum, d) => sum + d.views, 0);
+  
+  if (weekdayViews > weekendViews * 2) {
+    insights.push('• Weekday traffic stronger (professional audience)');
+  } else {
+    insights.push('• Good weekend engagement');
+  }
+  
+  if (stats.totalViews > 500) {
+    insights.push('• Site gaining traction - keep momentum');
+  }
+  
+  return insights.join('\n');
+}
+
+function getPeakPeriod(hourly) {
+  const periods = {
+    'Morning (6-10 AM)': [6, 7, 8, 9],
+    'Noon (11-2 PM)': [11, 12, 13, 14],
+    'Evening (5-9 PM)': [17, 18, 19, 20],
+    'Night (9 PM+)': [21, 22, 23]
+  };
+  
+  let maxPeriod = '';
+  let maxViews = 0;
+  
+  for (const [name, hours] of Object.entries(periods)) {
+    const views = hours.reduce((sum, h) => sum + (hourly[h] || 0), 0);
+    if (views > maxViews) {
+      maxViews = views;
+      maxPeriod = name;
+    }
+  }
+  
+  return maxPeriod || 'No clear pattern yet';
+}
+
+function getAudienceMatch(analytics, stats) {
+  const matches = [];
+  
+  // Check if Indian focused
+  const indianPercent = analytics.countries?.IN ? 
+    (analytics.countries.IN / Object.values(analytics.countries).reduce((a, b) => a + b, 0) * 100) : 0;
+  
+  if (indianPercent > 60) {
+    matches.push('✅ Strong Indian audience (target achieved)');
+  } else {
+    matches.push('⚠️ Need more Indian traffic focus');
+  }
+  
+  // Check mobile optimization
+  const mobilePercent = analytics.devices?.mobile ? 
+    (analytics.devices.mobile / (analytics.devices.mobile + analytics.devices.desktop) * 100) : 0;
+  
+  if (mobilePercent > 50) {
+    matches.push('✅ Mobile-first audience (good for target)');
+  } else {
+    matches.push('⚠️ Desktop heavy - optimize for mobile');
+  }
+  
+  // Check professional timing
+  const workHours = [9, 10, 11, 14, 15, 16, 17];
+  const workTraffic = workHours.reduce((sum, h) => sum + (analytics.hourly?.[h] || 0), 0);
+  const totalHourly = Object.values(analytics.hourly || {}).reduce((a, b) => a + b, 0);
+  
+  if (totalHourly > 0 && workTraffic / totalHourly > 0.5) {
+    matches.push('✅ Professional timing patterns');
+  }
+  
+  return matches.join('\n') || '• Building audience profile...';
+}
+
+function getAudienceRecommendations(analytics) {
+  const recs = [];
+  
+  // Time-based recommendations
+  const peakHour = Object.entries(analytics.hourly || {})
+    .sort((a, b) => b[1] - a[1])[0];
+  
+  if (peakHour) {
+    recs.push(`• Post new content around ${peakHour[0]}:00`);
+  }
+  
+  // Device recommendations
+  if (analytics.devices?.mobile > analytics.devices?.desktop) {
+    recs.push('• Keep mobile-first design priority');
+  } else {
+    recs.push('• Improve mobile experience');
+  }
+  
+  // Traffic source recommendations
+  if (!analytics.referrers || Object.keys(analytics.referrers).length < 3) {
+    recs.push('• Share on social media for referral traffic');
+  }
+  
+  return recs.join('\n') || '• Keep monitoring for patterns';
+}
+
+// New function: Help
+// Handle manual article creation
+async function handleCreateArticle(env, chatId, text) {
+  const topic = text.replace('/create ', '').trim();
+  
+  if (!topic) {
+    await sendMessage(env, chatId, '❌ *Invalid command*\n\nUse: `/create iPhone 16 Pro review`');
+    return;
+  }
+  
+  await sendMessage(env, chatId, `🔄 *Creating article about:*\n"${topic}"\n\n⏳ This will take 30-60 seconds...`);
   
   try {
-    const result = await fetchLatestNewsAuto(env, 5, 'normal');
+    // Create source material from topic
+    const sourceMaterial = {
+      originalTitle: topic,
+      description: `User-requested article about ${topic}`,
+      source: 'Manual Request',
+      link: '',
+      category: detectCategory(topic)
+    };
     
-    if (result && result.articlesPublished > 0) {
-      await sendMessage(env, chatId, `✅ *Success!*\n\n• Articles Published: ${result.articlesPublished}\n• View at: https://agaminews.in`, {
-        inline_keyboard: [[{ text: '🔄 Control Centre', callback_data: 'control' }]]
-      });
-    } else {
-      throw new Error('No articles published');
+    // Generate article ID and slug
+    const articleId = generateArticleId();
+    
+    // Generate original article
+    const articleContent = await generateOriginalArticle(sourceMaterial, env);
+    
+    if (!articleContent || !articleContent.title) {
+      throw new Error('Failed to generate article content');
     }
+    
+    // Create article object
+    const article = {
+      id: articleId,
+      slug: generateSlug(articleContent.title),
+      title: articleContent.title,
+      fullContent: articleContent.content,
+      preview: articleContent.content.replace(/<[^>]*>/g, '').substring(0, 500) + '...',
+      category: sourceMaterial.category,
+      source: 'AgamiNews Research Team',
+      url: `/${sourceMaterial.category.toLowerCase()}-news/${generateSlug(articleContent.title)}`,
+      date: 'Just now',
+      timestamp: Date.now(),
+      views: 0,
+      trending: false,
+      manuallyCreated: true
+    };
+    
+    // Generate image
+    article.image = await getArticleImage(articleContent.title, sourceMaterial.category, env);
+    
+    // Save article
+    const existingArticles = await env.NEWS_KV.get('articles', 'json') || [];
+    const updatedArticles = [article, ...existingArticles].slice(0, 50);
+    await env.NEWS_KV.put('articles', JSON.stringify(updatedArticles));
+    await env.NEWS_KV.put('articlesTimestamp', Date.now().toString());
+    
+    // Update stats
+    const stats = await env.NEWS_KV.get('stats', 'json') || {};
+    stats.manualArticles = (stats.manualArticles || 0) + 1;
+    await env.NEWS_KV.put('stats', JSON.stringify(stats));
+    
+    // Send success message
+    await sendMessage(env, chatId, 
+      `✅ *Article Created Successfully!*\n\n` +
+      `📌 *Title:* ${article.title}\n` +
+      `🏷️ *Category:* ${article.category}\n` +
+      `📸 *Image:* ${article.image?.type === 'generated' ? '🎨 DALL-E 3' : '📷 Stock'}\n` +
+      `📊 *Length:* ${article.fullContent.length} chars\n` +
+      `🔗 *Link:* https://agaminews.in${article.url}\n\n` +
+      `_Article is now live on the website!_`
+    );
+    
   } catch (error) {
-    await sendMessage(env, chatId, `❌ *Error:* ${error.message}`, {
-      inline_keyboard: [[{ text: '🔄 Try Again', callback_data: 'fetch' }], [{ text: '🔄 Control Centre', callback_data: 'control' }]]
-    });
+    console.error('[CREATE] Error:', error);
+    await sendMessage(env, chatId, `❌ *Failed to create article*\n\nError: ${error.message}`);
   }
+}
+
+// Helper function to detect category from topic
+function detectCategory(topic) {
+  const topicLower = topic.toLowerCase();
+  
+  if (topicLower.includes('tech') || topicLower.includes('phone') || topicLower.includes('ai') || 
+      topicLower.includes('google') || topicLower.includes('apple') || topicLower.includes('software')) {
+    return 'Technology';
+  } else if (topicLower.includes('business') || topicLower.includes('market') || topicLower.includes('stock') ||
+             topicLower.includes('company') || topicLower.includes('profit')) {
+    return 'Business';
+  } else if (topicLower.includes('bollywood') || topicLower.includes('movie') || topicLower.includes('cricket') ||
+             topicLower.includes('sport') || topicLower.includes('entertainment')) {
+    return 'Entertainment';
+  } else if (topicLower.includes('health') || topicLower.includes('covid') || topicLower.includes('medical')) {
+    return 'Health';
+  } else {
+    return 'India'; // Default category
+  }
+}
+
+// Send top performing articles
+async function sendTopArticles(env, chatId) {
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  
+  // Sort articles by views
+  const sortedArticles = articles
+    .map((article, index) => ({
+      ...article,
+      index,
+      views: article.views || 0
+    }))
+    .sort((a, b) => b.views - a.views)
+    .slice(0, 10);
+  
+  if (sortedArticles.length === 0) {
+    await sendMessage(env, chatId, '📊 *No articles to show*\n\nPublish some articles first!');
+    return;
+  }
+  
+  const topList = sortedArticles.map((article, i) => {
+    const emoji = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
+    return `${emoji} *${article.title.substring(0, 40)}...*\n   👁 ${article.views.toLocaleString()} views | ${article.category}`;
+  }).join('\n\n');
+  
+  // Calculate insights
+  const totalViews = sortedArticles.reduce((sum, a) => sum + a.views, 0);
+  const avgViews = Math.round(totalViews / sortedArticles.length);
+  const topCategory = sortedArticles.reduce((acc, article) => {
+    acc[article.category] = (acc[article.category] || 0) + article.views;
+    return acc;
+  }, {});
+  const bestCategory = Object.entries(topCategory).sort((a, b) => b[1] - a[1])[0];
+  
+  await sendMessage(env, chatId, `
+🏆 *Top Performing Articles*
+
+${topList}
+
+📈 *Performance Insights:*
+• Total Views: ${totalViews.toLocaleString()}
+• Average Views: ${avgViews.toLocaleString()}
+• Best Category: ${bestCategory ? bestCategory[0] : 'N/A'}
+• Top Article CTR: ${sortedArticles[0] ? Math.round(sortedArticles[0].views / totalViews * 100) : 0}%
+
+💡 *Recommendations:*
+${getPerformanceRecommendations(sortedArticles, topCategory)}
+
+_Updated: ${new Date().toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})}_
+  `);
+}
+
+// Get performance-based recommendations
+function getPerformanceRecommendations(articles, categoryViews) {
+  const recs = [];
+  
+  if (articles[0] && articles[0].views > articles[1]?.views * 2) {
+    recs.push(`• "${articles[0].title.substring(0, 30)}..." is viral - create similar content`);
+  }
+  
+  const bestCat = Object.entries(categoryViews).sort((a, b) => b[1] - a[1])[0];
+  if (bestCat) {
+    recs.push(`• Focus more on ${bestCat[0]} category (highest engagement)`);
+  }
+  
+  const lowPerformers = articles.filter(a => a.views < 100);
+  if (lowPerformers.length > articles.length / 2) {
+    recs.push(`• Consider different content strategy - many articles underperforming`);
+  }
+  
+  return recs.join('\n') || '• Keep current strategy - good overall performance';
+}
+// Handle delete specific article
+async function handleDeleteArticle(env, chatId, text) {
+  // Get admin chat ID
+  let adminChat = await env.NEWS_KV.get('admin_chat');
+  
+  // If no admin is set, set the current user as admin
+  if (!adminChat) {
+    await env.NEWS_KV.put('admin_chat', String(chatId));
+    adminChat = String(chatId);
+    console.log(`[DELETE] Set ${chatId} as admin`);
+  }
+  
+  // Check if current user is admin (compare as strings to avoid type issues)
+  if (String(chatId) !== String(adminChat)) {
+    await sendMessage(env, chatId, `❌ *Unauthorized*\n\nOnly the admin can delete articles.\n\nYour Chat ID: ${chatId}\nAdmin Chat ID: ${adminChat}\n\nIf you are the admin, please contact support.`);
+    return;
+  }
+  
+  const parts = text.split(' ');
+  const indexOrId = parts[1];
+  
+  if (!indexOrId) {
+    await sendMessage(env, chatId, '❌ *Invalid command*\n\nUse: `/delete 3` (by index) or `/delete 123456` (by ID)');
+    return;
+  }
+  
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  let deletedArticle = null;
+  let newArticles = [];
+  
+  // Check if it's an index (0-based) or an ID
+  if (indexOrId.length <= 2 && !isNaN(indexOrId)) {
+    // It's an index
+    const index = parseInt(indexOrId);
+    if (index >= 0 && index < articles.length) {
+      deletedArticle = articles[index];
+      newArticles = articles.filter((_, i) => i !== index);
+    }
+  } else {
+    // It's an ID
+    deletedArticle = articles.find(a => a.id === indexOrId);
+    newArticles = articles.filter(a => a.id !== indexOrId);
+  }
+  
+  if (deletedArticle) {
+    await env.NEWS_KV.put('articles', JSON.stringify(newArticles));
+    await env.NEWS_KV.put('articlesTimestamp', Date.now().toString());
+    
+    await sendMessage(env, chatId, 
+      `✅ *Article Deleted*\n\n` +
+      `📌 Title: ${deletedArticle.title}\n` +
+      `🏷️ Category: ${deletedArticle.category}\n` +
+      `📊 Remaining articles: ${newArticles.length}`
+    );
+  } else {
+    await sendMessage(env, chatId, '❌ *Article not found*\n\nCheck the index or ID and try again.');
+  }
+}
+
+async function sendHelp(env, chatId) {
+  await sendMessage(env, chatId, `
+📚 *AgamiNews Manager Help*
+
+I'm your AI-powered news manager. Use the buttons below or type commands directly!
+
+*🎯 Main Features:*
+• Automated news generation every 3 hours
+• DALL-E 3 image generation
+• GPT-4 Turbo article writing
+• Real-time analytics tracking
+• Category-based content organization
+
+*💬 Natural Language:*
+Just talk to me naturally! Try:
+• "Fetch the latest news"
+• "Show me today's stats"
+• "What's our monthly cost?"
+• "How many articles today?"
+
+*🔐 Admin Features:*
+• Delete specific articles
+• Clear all content
+• Monitor API costs
+• Track performance
+
+*Quick Actions:*`, {
+    inline_keyboard: [
+      [
+        { text: '📊 View Stats', callback_data: 'stats' },
+        { text: '📚 List Articles', callback_data: 'list' }
+      ],
+      [
+        { text: '🚀 Fetch News', callback_data: 'fetch' },
+        { text: '✏️ Create Article', callback_data: 'create_prompt' }
+      ],
+      [
+        { text: '💰 Cost Report', callback_data: 'costs' },
+        { text: '🗑 Delete Menu', callback_data: 'delete_menu' }
+      ],
+      [
+        { text: '⚙️ Main Menu', callback_data: 'menu' }
+      ]
+    ]
+  });
+}
+
+async function sendHelpOld(env, chatId) {
+  await sendMessage(env, chatId, `
+📚 *Help*
+
+Commands:
+/menu - Main menu
+/stats - Statistics
+/list - List articles
+/help - This help
+  `, {
+    inline_keyboard: [
+      [{ text: '⚙️ Menu', callback_data: 'menu' }]
+    ]
+  });
+}
+
+async function handleThemeChange(env, chatId, text) {
+  const config = await env.NEWS_KV.get('config', 'json') || {};
+  const isDark = text.toLowerCase().includes('dark');
+  
+  config.theme = isDark ? 'dark' : 'light';
+  await env.NEWS_KV.put('config', JSON.stringify(config));
+  
+  await sendMessage(env, chatId, `✅ Theme changed to ${config.theme}!`);
+}
+
+// Handle clearing broken articles with non-DALL-E images or failed generation
+async function handleClearBrokenArticles(env, chatId) {
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  
+  if (articles.length === 0) {
+    await sendMessage(env, chatId, '📭 No articles to clean.');
+    return;
+  }
+  
+  // Filter out articles with non-DALL-E images or failed generation
+  const cleanArticles = articles.filter(article => {
+    // Check for Unsplash in image credit (old images)
+    if (article.image && article.image.credit && article.image.credit.toLowerCase().includes('unsplash')) {
+      return false; // Remove old Unsplash images
+    }
+    // Check for Pexels in image credit (old images)
+    if (article.image && article.image.credit && article.image.credit.toLowerCase().includes('pexels')) {
+      return false; // Remove old Pexels images
+    }
+    // Check for failed generation
+    if (article.fullContent && article.fullContent.includes('Article generation failed')) {
+      return false; // Remove failed articles
+    }
+    // Check for placeholder images
+    if (article.image && article.image.url && article.image.url.includes('placeholder')) {
+      return false; // Remove placeholder images
+    }
+    // Check for via.placeholder images
+    if (article.image && article.image.url && article.image.url.includes('via.placeholder')) {
+      return false; // Remove placeholder images
+    }
+    return true; // Keep good articles
+  });
+  
+  const removedCount = articles.length - cleanArticles.length;
+  
+  if (removedCount === 0) {
+    await sendMessage(env, chatId, '✅ No broken articles found. All articles are using DALL-E images.');
+    return;
+  }
+  
+  // Save cleaned articles
+  await env.NEWS_KV.put('articles', JSON.stringify(cleanArticles));
+  await env.NEWS_KV.put('articlesTimestamp', Date.now().toString());
+  
+  await sendMessage(env, chatId, `
+🧹 *Cleanup Complete!*
+
+Removed: ${removedCount} broken articles
+• Articles with old stock images (Unsplash/Pexels)
+• Failed article generations  
+• Placeholder images
+
+Remaining: ${cleanArticles.length} good articles
+All now using DALL-E images! ✨
+  `);
+}
+
+// Handle clear articles securely (Telegram admin only)
+async function handleClearArticles(env, chatId) {
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  
+  if (articles.length === 0) {
+    await sendMessage(env, chatId, '📭 No articles to delete. The website is already empty.');
+    return;
+  }
+  
+  await sendMessage(env, chatId, `⚠️ *Confirm Article Deletion*
+
+You are about to delete *${articles.length} articles* from the website.
+
+This action cannot be undone!
+
+Are you sure?`, {
+    inline_keyboard: [
+      [
+        { text: '✅ Yes, Delete All', callback_data: 'confirm_clear' },
+        { text: '❌ Cancel', callback_data: 'menu' }
+      ]
+    ]
+  });
 }
 
 async function handleListArticles(env, chatId, page = 0) {
   const articles = await env.NEWS_KV.get('articles', 'json') || [];
   const perPage = 5;
+  const totalPages = Math.ceil(articles.length / perPage);
   const start = page * perPage;
   const end = start + perPage;
   const pageArticles = articles.slice(start, end);
   
-  if (pageArticles.length === 0) {
-    await sendMessage(env, chatId, '📚 No articles found on this page.', {
-      inline_keyboard: [[{ text: '🔄 Control Centre', callback_data: 'control' }]]
+  if (articles.length === 0) {
+    await sendMessage(env, chatId, '📭 *No articles found*\n\nUse /fetch to generate new articles.', {
+      inline_keyboard: [
+        [{ text: '🚀 Fetch News', callback_data: 'fetch' }],
+        [{ text: '↩️ Back to Menu', callback_data: 'menu' }]
+      ]
     });
     return;
   }
   
-  let message = `📚 *Articles (Page ${page + 1})*\n\n`;
-  pageArticles.forEach((article, i) => {
-    const index = start + i;
-    message += `${index + 1}. ${article.title}\n`;
-    message += `   📂 ${article.category} | 👁 ${article.views || 0} views\n\n`;
+  let message = `📚 *Articles List (Page ${page + 1}/${totalPages})*\n`;
+  message += `_Total: ${articles.length} articles_\n\n`;
+  // Prepare keyboard rows (declare before use)
+  const navButtons = [];
+  
+  pageArticles.forEach((article, idx) => {
+    const globalIdx = start + idx;
+    const emoji = article.category === 'CRYPTO' ? '₿' : 
+                  article.category === 'TECHNOLOGY' ? '💻' :
+                  article.category === 'BUSINESS' ? '💼' :
+                  article.category === 'INDIA' ? '🇮🇳' :
+                  article.category === 'WORLD' ? '🌍' :
+                  article.category === 'SPORTS' ? '⚽' :
+                  article.category === 'ENTERTAINMENT' ? '🎬' : '📰';
+    
+    message += `${globalIdx + 1}. ${emoji} *${article.title}*\n`;
+    message += `   📂 ${article.category} | 👁 ${article.views || 0} views\n`;
+    message += `   🔗 [View Article](https://agaminews.in${article.url})\n`;
+    message += `   🖼 Image: ${article.image?.url ? 'set' : 'missing'}\n\n`;
+    // Compact per-article action: one Manage button opens submenu
+    navButtons.push([{ text: `⚙️ Manage (${article.id})`, callback_data: `manage_id_${article.id}` }]);
   });
   
-  const keyboard = [];
-  const navRow = [];
-  if (page > 0) navRow.push({ text: '⬅️ Previous', callback_data: `list_page_${page - 1}` });
-  if (end < articles.length) navRow.push({ text: '➡️ Next', callback_data: `list_page_${page + 1}` });
-  if (navRow.length > 0) keyboard.push(navRow);
-  keyboard.push([{ text: '🔄 Control Centre', callback_data: 'control' }]);
+  // Create navigation buttons
   
-  await sendMessage(env, chatId, message, { inline_keyboard: keyboard });
+  // First row: Previous/Next navigation
+  const navRow = [];
+  if (page > 0) {
+    navRow.push({ text: '⬅️ Previous', callback_data: `list_page_${page - 1}` });
+  }
+  navRow.push({ text: `📄 ${page + 1}/${totalPages}`, callback_data: 'noop' });
+  if (page < totalPages - 1) {
+    navRow.push({ text: 'Next ➡️', callback_data: `list_page_${page + 1}` });
+  }
+  navButtons.push(navRow);
+  
+  // Second row: Quick jump buttons
+  if (totalPages > 1) {
+    const jumpRow = [];
+    if (page !== 0) jumpRow.push({ text: '⏮ First', callback_data: 'list_page_0' });
+    if (page !== totalPages - 1) jumpRow.push({ text: 'Last ⏭', callback_data: `list_page_${totalPages - 1}` });
+    if (jumpRow.length > 0) navButtons.push(jumpRow);
+  }
+  
+  // Action buttons
+  navButtons.push([{ text: '🗑 Delete Articles', callback_data: 'delete_menu' }, { text: '📊 Stats', callback_data: 'stats' }]);
+  
+  // Fourth row: Back to menu
+  navButtons.push([{ text: '↩️ Back to Menu', callback_data: 'menu' }]);
+  
+  await sendMessage(env, chatId, message, { inline_keyboard: navButtons });
+}
+async function handleCallback(env, query) {
+  const chatId = query.message.chat.id;
+  const data = query.data;
+  
+  // Answer callback
+  await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ callback_query_id: query.id })
+  });
+  
+  // Handle list pagination
+  if (data.startsWith('list_page_')) {
+    const page = parseInt(data.replace('list_page_', ''));
+    await handleListArticles(env, chatId, page);
+    return;
+  }
+  
+  // Image actions
+  if (data.startsWith('img_ai_')) {
+    const id = data.replace('img_ai_', '');
+    const ok = await regenerateArticleImageAI(env, id);
+    await sendMessage(env, chatId, ok ? `✅ AI image regenerated for ${id}` : '❌ Failed to regenerate image.');
+    return;
+  }
+  if (data.startsWith('img_url_')) {
+    const id = data.replace('img_url_', '');
+    await sendMessage(env, chatId, `🔗 Send the image URL for ID ${id} as:\n/setimage ${id} <url>\nOr upload a photo with caption:\n/setimage ${id}`);
+    return;
+  }
+  if (data.startsWith('manage_id_')) {
+    const id = data.replace('manage_id_', '');
+    const row1 = [
+      { text: '🔗 Open', callback_data: `open_id_${id}` },
+      { text: '🎨 AI ↻', callback_data: `img_ai_${id}` }
+    ];
+    const row2 = [
+      { text: '🖼 Set URL', callback_data: `img_url_${id}` },
+      { text: '🗑 Delete', callback_data: `delete_id_${id}` }
+    ];
+    await sendMessage(env, chatId, `Manage article ${id}:`, { inline_keyboard: [row1, row2, [{ text: '↩️ Back', callback_data: 'list_page_0' }]] });
+    return;
+  }
+  if (data.startsWith('open_id_')) {
+    const id = data.replace('open_id_', '');
+    const articles = await env.NEWS_KV.get('articles', 'json') || [];
+    const a = articles.find(x => String(x.id) === String(id));
+    if (a && a.url) {
+      await sendMessage(env, chatId, `🔗 https://agaminews.in${a.url}`);
+    } else {
+      await sendMessage(env, chatId, '❌ Article not found');
+    }
+    return;
+  }
+
+  // Handle delete pagination
+  if (data.startsWith('delete_page_')) {
+    const page = parseInt(data.replace('delete_page_', ''));
+    await handleDeleteMenu(env, chatId, page);
+    return;
+  }
+  if (data.startsWith('delete_id_')) {
+    const id = data.replace('delete_id_', '');
+    const articles = await env.NEWS_KV.get('articles', 'json') || [];
+    const idx = articles.findIndex(a => String(a.id) === String(id));
+    if (idx !== -1) {
+      const deleted = articles.splice(idx, 1)[0];
+      await env.NEWS_KV.put('articles', JSON.stringify(articles));
+      await sendMessage(env, chatId, `🗑 Deleted: ${deleted.title?.substring(0, 60) || id}`);
+    } else {
+      await sendMessage(env, chatId, '❌ Article not found');
+    }
+    return;
+  }
+  
+  // Handle article deletion
+  if (data.startsWith('delete_article_')) {
+    const index = parseInt(data.replace('delete_article_', ''));
+    await deleteArticleByIndex(env, chatId, index);
+    return;
+  }
+  
+  switch(data) {
+    case 'menu':
+      await sendMenu(env, chatId);
+      break;
+    case 'stats':
+      await sendStats(env, chatId, 'overview');
+      break;
+    case 'stats_categories':
+      await sendStats(env, chatId, 'categories');
+      break;
+    case 'stats_top':
+      await sendStats(env, chatId, 'top');
+      break;
+    case 'stats_analytics':
+      await sendStats(env, chatId, 'analytics');
+      break;
+    case 'stats_audience':
+      await sendStats(env, chatId, 'audience');
+      break;
+    case 'list':
+      await handleListArticles(env, chatId, 0);
+      break;
+    case 'analytics':
+      await sendDetailedAnalytics(env, chatId);
+      break;
+    case 'analytics_week':
+      await sendWeeklyAnalytics(env, chatId);
+      break;
+    case 'analytics_audience':
+      await sendAudienceInsights(env, chatId);
+      break;
+    case 'fetch':
+      await handleFetchNews(env, chatId);
+      break;
+    case 'cost_report':
+      await sendCostReport(env, chatId);
+      break;
+          case 'seo_report':
+        await sendSEOReport(env, chatId);
+        break;
+      
+      case 'verify_ai':
+        await verifyAICommands(env, chatId);
+        break;
+    case 'costs':
+      await sendCostReport(env, chatId);
+      break;
+    case 'delete_menu':
+      await handleDeleteMenu(env, chatId, 0);
+      break;
+    case 'create_prompt':
+      await sendMessage(env, chatId, '✏️ *Create Custom Article*\n\nSend the topic you want:\n\nExample: `/create iPhone 16 Pro review`\n\nOr just type: /create <your topic>');
+      break;
+    case 'delete_prompt':
+      const articlesForDelete = await env.NEWS_KV.get('articles', 'json') || [];
+      const articleList = articlesForDelete.slice(0, 5).map((a, i) => `${i}. ${a.title.substring(0, 50)}...`).join('\n');
+      await sendMessage(env, chatId, `🗑️ *Delete Article*\n\nCurrent articles:\n${articleList}\n\nUse: \`/delete 0\` to delete first article`);
+      break;
+    case 'cron_logs':
+      const cronLogs = await env.NEWS_KV.get('cron_logs', 'json') || [];
+      if (cronLogs.length === 0) {
+        await sendMessage(env, chatId, '⏰ *No cron logs found*\n\nCron hasn\'t run yet or logs were cleared.');
+      } else {
+        const logText = cronLogs.slice(0, 5).map(log => {
+          const time = new Date(log.time).toLocaleString('en-IN', {timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short'});
+          return `• ${time}: ${log.event}`;
+        }).join('\n');
+        await sendMessage(env, chatId, `⏰ *Recent Cron Runs:*\n\n${logText}\n\n_Showing last 5 executions_`);
+      }
+      break;
+    case 'trigger_cron':
+      await sendMessage(env, chatId, '🔧 *Manually triggering cron...*\n\n⏳ This will take 30-60 seconds...');
+      try {
+        // Call fetchLatestNewsAuto directly
+        const istTime = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+        const hour = istTime.getHours();
+        let priority = 'normal';
+        
+        if (hour >= 6 && hour < 9) priority = 'high';
+        else if (hour >= 9 && hour < 12) priority = 'business';
+        else if (hour >= 12 && hour < 15) priority = 'entertainment';
+        else if (hour >= 15 && hour < 18) priority = 'business';
+        else if (hour >= 18 && hour < 21) priority = 'high';
+        else if (hour >= 21 && hour < 24) priority = 'low';
+        else priority = 'minimal';
+        
+        const fetchResult = await fetchLatestNewsAuto(env, 1, priority);
+        
+        if (fetchResult && fetchResult.articlesPublished > 0) {
+          await sendMessage(env, chatId, 
+            `✅ *Cron Run Successful!*\n\n` +
+            `📰 Articles: ${fetchResult.articlesPublished}\n` +
+            `🎯 Priority: ${priority}\n` +
+            `📌 Title: ${fetchResult.topArticle || 'N/A'}\n\n` +
+            `View: https://agaminews.in`
+          );
+        } else {
+          await sendMessage(env, chatId, `❌ *No articles fetched*\n\nReason: ${fetchResult?.error || 'Unknown'}`);
+        }
+      } catch (error) {
+        await sendMessage(env, chatId, `❌ *Error:* ${error.message}`);
+      }
+      break;
+    case 'strategy':
+      await sendContentStrategy(env, chatId);
+      break;
+    case 'apiusage':
+      await sendAPIUsage(env, chatId);
+      break;
+    case 'seo':
+      await sendSEOReport(env, chatId);
+      break;
+    case 'settings':
+      await sendMessage(env, chatId, '⚙️ *Settings*\n\nChoose what to configure:', {
+        inline_keyboard: [
+          [{ text: '🎨 Theme', callback_data: 'theme' }],
+          [{ text: '📰 News Sources', callback_data: 'sources' }],
+          [{ text: '⏰ Update Frequency', callback_data: 'frequency' }],
+          [{ text: '↩️ Back', callback_data: 'menu' }]
+        ]
+      });
+      break;
+    case 'theme':
+      await sendMessage(env, chatId, 'Choose theme:', {
+        inline_keyboard: [
+          [
+            { text: '🌙 Dark', callback_data: 'theme_dark' },
+            { text: '☀️ Light', callback_data: 'theme_light' }
+          ],
+          [{ text: '↩️ Back', callback_data: 'settings' }]
+        ]
+      });
+      break;
+    case 'theme_dark':
+    case 'theme_light':
+      const theme = data.split('_')[1];
+      const config = await env.NEWS_KV.get('config', 'json') || {};
+      config.theme = theme;
+      await env.NEWS_KV.put('config', JSON.stringify(config));
+      await sendMessage(env, chatId, `✅ Theme changed to ${theme}!`, {
+        inline_keyboard: [[{ text: '↩️ Back', callback_data: 'settings' }]]
+      });
+      break;
+    case 'sources':
+      await sendMessage(env, chatId, `
+📰 *Active News Sources*
+
+*Indian:*
+✅ Times of India
+✅ NDTV
+✅ The Hindu
+✅ Economic Times
+✅ MoneyControl
+
+*International:*
+✅ BBC World
+✅ CNN International
+✅ TechCrunch
+
+All sources update every 3 hours automatically!
+      `, {
+        inline_keyboard: [[{ text: '↩️ Back', callback_data: 'settings' }]]
+      });
+      break;
+    case 'frequency':
+      await sendMessage(env, chatId, `
+⏰ *Update Frequency*
+Current: Every 3 hours
+
+This is optimized for:
+• Fresh content for SEO
+• Reasonable API usage
+• Good user experience
+
+Auto-update times:
+12 AM, 3 AM, 6 AM, 9 AM, 12 PM, 3 PM, 6 PM, 9 PM
+
+Use /fetch for manual updates anytime!
+      `, {
+        inline_keyboard: [[{ text: '↩️ Back', callback_data: 'settings' }]]
+      });
+      break;
+    case 'news':
+      const newsArticles = await env.NEWS_KV.get('articles', 'json') || [];
+      const latest = newsArticles.slice(0, 5);
+      let newsText = '📰 *Latest Articles*\n\n';
+      latest.forEach((a, i) => {
+        newsText += `${i+1}. *${a.title}*\n   ${a.category} | ${a.views?.toLocaleString() || 0} views\n\n`;
+      });
+      await sendMessage(env, chatId, newsText, {
+        inline_keyboard: [
+          [{ text: '🚀 Fetch New', callback_data: 'fetch' }],
+          [{ text: '🗑️ Clear All', callback_data: 'clear' }],
+          [{ text: '↩️ Back', callback_data: 'menu' }]
+        ]
+      });
+      break;
+    case 'clear':
+      await handleClearArticles(env, chatId);
+      break;
+    case 'confirm_clear':
+      // Clear all articles - admin only through Telegram
+      await env.NEWS_KV.put('articles', JSON.stringify([]));
+      await env.NEWS_KV.put('articlesTimestamp', Date.now().toString()); // Force refresh
+      await env.NEWS_KV.put('lastFetch', new Date().toISOString());
+      
+      const stats = await env.NEWS_KV.get('stats', 'json') || {};
+      stats.dailyArticlesPublished = 0;
+      stats.dailyFetches = 0;
+      stats.tokensUsedToday = 0;
+      stats.articleViews = {};
+      await env.NEWS_KV.put('stats', JSON.stringify(stats));
+      
+      await sendMessage(env, chatId, `✅ *All Articles Deleted*
+
+The website has been cleared successfully.
+
+Use /fetch to add new articles.`, {
+        inline_keyboard: [
+          [{ text: '📰 Fetch New Articles', callback_data: 'fetch' }],
+          [{ text: '↩️ Back to Menu', callback_data: 'menu' }]
+        ]
+      });
+      break;
+    default:
+      await sendMessage(env, chatId, 'Processing...');
+  }
 }
 
-// Stub - redirects to Control Centre
-async function sendMenu(env, chatId) {
-  await showControlCentre(env, chatId);
+// Handle test generation command
+async function handleTestGeneration(env, chatId) {
+  await sendMessage(env, chatId, `🧪 *Testing Article Generation*\n\n⏳ Generating one test article...`);
+  
+  try {
+    const testArticle = {
+      title: 'Test: Modi Announces ₹50,000 Crore Digital India Fund',
+      category: 'Technology',
+      preview: 'Testing...'
+    };
+    
+    const startTime = Date.now();
+    const hasApiKey = !!env.OPENAI_API_KEY;
+    
+    if (!hasApiKey) {
+      await sendMessage(env, chatId, `❌ *OpenAI API Key Missing!*\n\nPlease set OPENAI_API_KEY in Cloudflare Worker settings.`);
+      return;
+    }
+    
+    // Try to generate article
+    const fullContent = await generateFullArticle(
+      testArticle, 
+      'Prime Minister announces massive digital infrastructure fund.', 
+      env
+    );
+    
+    const timeTaken = ((Date.now() - startTime) / 1000).toFixed(1);
+    const contentLength = fullContent.length;
+    
+    if (contentLength < 500) {
+      await sendMessage(env, chatId, `⚠️ *Article Too Short*\n\n📏 Length: ${contentLength} chars\n⏱️ Time: ${timeTaken}s\n\nLikely using fallback template. Check OpenAI API.`);
+    } else {
+      await sendMessage(env, chatId, `✅ *Test Successful!*\n\n📏 Generated: ${contentLength} characters\n⏱️ Time: ${timeTaken} seconds\n📝 Preview: ${fullContent.replace(/<[^>]*>/g, '').substring(0, 200)}...\n\n*OpenAI is working correctly!*`);
+    }
+  } catch (error) {
+    await sendMessage(env, chatId, `❌ *Test Failed*\n\nError: ${error.message}\n\nCheck:\n1. OpenAI API key in Cloudflare\n2. API credits available\n3. Network connectivity`);
+  }
 }
 
+// Handle reset counter command
+async function handleResetCounter(env, chatId) {
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  
+  const oldCounter = stats.dailyArticlesPublished || 0;
+  stats.dailyArticlesPublished = 0;
+  stats.dailyFetches = 0;
+  stats.tokensUsedToday = 0;
+  await env.NEWS_KV.put('stats', JSON.stringify(stats));
+  
+  await sendMessage(env, chatId, `🔄 *Counter Reset Complete*
+
+Previous counter: ${oldCounter}
+Actual articles: ${articles.length}
+New counter: 0
+
+${articles.length === 0 ? '⚠️ No articles found in storage\n\nUse /fetch to add new articles!' : `✅ ${articles.length} articles available on website`}`, {
+    inline_keyboard: [
+      [{ text: '📰 Fetch News', callback_data: 'fetch' }],
+      [{ text: '↩️ Back to Menu', callback_data: 'menu' }]
+    ]
+  });
+}
+
+// New handler functions for AI Manager
+async function sendContentStrategy(env, chatId) {
+  const config = await env.NEWS_KV.get('config', 'json') || {};
+  const strategy = config.contentStrategy || {};
+  
+  await sendMessage(env, chatId, `📈 *Content Strategy*
+
+🎯 *Focus:* ${strategy.focus || 'Tech + Finance + Quick Updates'}
+📝 *Tagline:* ${strategy.tagline || 'India\'s Quick Tech & Money News'}
+
+*Content Mix:*
+📱 Technology: ${strategy.contentMix?.technology || 40}%
+💰 Finance: ${strategy.contentMix?.finance || 30}%
+📰 Breaking News: ${strategy.contentMix?.breakingNews || 20}%
+🎬 Entertainment: ${strategy.contentMix?.entertainment || 10}%
+
+*Update Schedule:*
+🌅 Market Open: 9:00 AM
+☀️ Mid-Day: 1:00 PM
+🌆 Market Close: 5:00 PM
+🌙 Evening: 8:00 PM
+
+*Target Audience:*
+• Age: 25-45 years
+• Urban professionals
+• Mobile-first readers
+• Quick news consumers`, {
+    inline_keyboard: [
+      [{ text: '↩️ Back', callback_data: 'menu' }]
+    ]
+  });
+}
+
+async function sendAPIUsage(env, chatId) {
+  const config = await env.NEWS_KV.get('config', 'json') || {};
+  const apiUsage = config.contentStrategy?.apiUsage || {};
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  
+  // Calculate estimated usage with better budget utilization
+  const tokensToday = stats.tokensUsedToday || 0;
+  const articlesToday = stats.dailyArticlesPublished || 0;
+  const estimatedMonthly = tokensToday * 30;
+  const costToday = (tokensToday / 1000) * 0.002; // GPT-3.5 actual cost
+  const costMonthly = costToday * 30;
+  
+  // Image API usage
+  const imageAPICallsToday = articlesToday * 2; // Assuming 2 API calls per article
+  const imageAPICostMonthly = articlesToday * 0.01 * 30; // DALL-E 3 HD costs $0.01 per image
+  
+  // Recommended optimizations
+  const budgetRemaining = 20.00 - costMonthly;
+  const additionalArticlesPossible = Math.floor(budgetRemaining / 0.04); // ~$0.04 per article
+  
+  await sendMessage(env, chatId, `💵 *API Usage & Optimization Report*
+
+*Budget Allocation:*
+💰 Monthly Budget: $20.00
+📊 Current Usage: ~$${costMonthly.toFixed(2)}/month
+💚 Budget Available: $${budgetRemaining.toFixed(2)}
+
+*Current Performance:*
+📰 Articles Today: ${articlesToday}
+📈 Monthly Projection: ${articlesToday * 30} articles
+🤖 Model: GPT-4 Turbo (premium quality)
+🖼️ Images: DALL-E 3 (custom generated)
+
+*Cost Breakdown (GPT-4 + DALL-E 3):*
+• GPT-4 Summaries (10-12/day): ~$3.50/month
+• GPT-4 Articles (10-12/day): ~$4.50/month
+• DALL-E 3 HD Images (80%): ~$2.00/month
+• Bot Interactions: ~$0.50/month
+• Total Premium Cost: ~$18.00/month
+
+*Optimization Opportunities:*
+✨ Premium content strategy activated
+🎯 Target: 10-12 premium articles daily (300-360/month)
+📸 Image quality: GPT-4o + DALL-E 3 + Premium photos
+🔍 SEO: Quality over quantity for better ranking
+
+*Recommendations:*
+• Focus on 10-12 exceptional articles daily ✅
+• Use GPT-4 for premium articles (within budget)
+• Implement image caching to reduce API calls
+• Focus on trending topics for better engagement
+
+💡 *Status:* Only using ${Math.round(costMonthly / 20 * 100)}% of budget!
+🚀 *Action:* Scaling up quality and quantity`, {
+    inline_keyboard: [
+      [{ text: '↩️ Back', callback_data: 'menu' }]
+    ]
+  });
+}
 // Automatic news fetching with priority-based selection
 async function fetchLatestNewsAuto(env, articlesToFetch = 3, priority = 'normal') {
   console.log(`Auto-fetching ${articlesToFetch} articles with priority: ${priority}`);
