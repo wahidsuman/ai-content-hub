@@ -10,15 +10,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Show wrangler config
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install Wrangler
+        run: npm i -g wrangler@3
+
+      - name: Print versions
+        run: |
+          node -v
+          wrangler --version
+
+      - name: Validate config
         run: |
           echo "Using wrangler.toml in worker/"
+          ls -la worker
           cat worker/wrangler.toml
 
-      - name: Deploy Worker
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: worker
+      - name: Deploy (CLI)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: wrangler deploy --config worker/wrangler.toml --log-level debug
 
