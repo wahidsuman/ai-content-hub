@@ -2735,7 +2735,6 @@ Track weekly to spot trends!
     ]
   });
 }
-
 // Audience Insights
 async function sendAudienceInsights(env, chatId) {
   const stats = await env.NEWS_KV.get('stats', 'json') || {};
@@ -3359,7 +3358,6 @@ async function handleListArticles(env, chatId, page = 0) {
   
   await sendMessage(env, chatId, message, { inline_keyboard: navButtons });
 }
-
 async function handleCallback(env, query) {
   const chatId = query.message.chat.id;
   const data = query.data;
@@ -3827,7 +3825,6 @@ async function sendAPIUsage(env, chatId) {
     ]
   });
 }
-
 // Automatic news fetching with priority-based selection
 async function fetchLatestNewsAuto(env, articlesToFetch = 3, priority = 'normal') {
   console.log(`Auto-fetching ${articlesToFetch} articles with priority: ${priority}`);
@@ -4454,7 +4451,6 @@ function mapCategoryLabel(label) {
   if (l.startsWith('india')) return 'India';
   return 'News';
 }
-
 // Image proxy: fetch external images and serve via Worker with caching and downscale
 async function serveImage(env, request, pathname) {
   try {
@@ -5623,8 +5619,6 @@ function extractSmartKeywords(title, category) {
   // Return most relevant words with India context
   return words.slice(0, 3).join(' ') + ' ' + category.toLowerCase() + ' india';
 }
-
-
 
 // Balance article categories
 function shuffleAndBalance(articles) {
@@ -7258,7 +7252,7 @@ async function generateClickableHeadline(baselineTitle, category, env) {
   const rules = `Create 5 alternative clickable headlines (10-14 words) that are curiosity-driven but factual.
 Rules:
 - No clickbait lies; be specific and credible.
-- Use power phrases like: What’s Behind..., Here’s Why..., Key Numbers Reveal..., Experts Say...
+- Use power phrases like: What's Behind..., Here's Why..., Key Numbers Reveal..., Experts Say...
 - Mention named entities or numbers if present.
 - Avoid all caps, avoid emojis.
 Return only a JSON array of strings.`;
@@ -7286,268 +7280,6 @@ Return only a JSON array of strings.`;
   }
   const chosen = ideas.find(h => typeof h === 'string' && h.length >= 30) || baselineTitle;
   return chosen;
-}
-
-// ... (rest of the code remains unchanged)
-STRICT RULES:
-1. NEVER copy or paraphrase the source headline
-2. Create a COMPLETELY NEW angle or perspective
-3. Add substantial research and context
-4. Include data, statistics, expert opinions
-5. Write like a human journalist, not AI
-6. Make content so unique it could win journalism awards
-7. Focus on WHY this matters to Indian readers`
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.9, // High creativity for unique content
-        max_tokens: 3500
-      })
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      const result = JSON.parse(data.choices[0].message.content);
-      
-      // Verify the title is actually different
-      const sourceWords = sourceMaterial.originalTitle.toLowerCase().split(' ');
-      const newWords = result.title.toLowerCase().split(' ');
-      const overlap = sourceWords.filter(word => newWords.includes(word) && word.length > 4);
-      
-      if (overlap.length > 3) {
-        console.error('[QUALITY CHECK] Title too similar to source, regenerating...');
-        // Title is too similar, this shouldn't happen with GPT-4
-        throw new Error('Title not original enough');
-      }
-      
-      // Check content quality
-      if (result.content.length < 1000) {
-        console.error('[QUALITY CHECK] Content too short');
-        throw new Error('Content not comprehensive enough');
-      }
-      
-      console.log(`[ORIGINAL] Created unique article: "${result.title}" (${overlap.length} common words)`);
-      
-      return {
-        title: result.title,
-        content: result.content
-      };
-    }
-  } catch (error) {
-    console.error('Failed to generate original article:', error);
-  }
-  
-  // Fallback - Create basic article from source material
-  console.log('[FALLBACK] Creating basic article from source material');
-  const fallbackTitle = makeHeadlineHuman(sourceMaterial.originalTitle);
-  const fallbackContent = `
-    <p><strong>${sourceMaterial.description}</strong></p>
-    
-    <p>This is a developing story from ${sourceMaterial.source || 'our news desk'}. ${sourceMaterial.category ? `Filed under ${sourceMaterial.category} news.` : ''}</p>
-    
-    <p>${sourceMaterial.description ? sourceMaterial.description : 'Full details are being gathered and will be updated as more information becomes available.'}</p>
-    
-    <p><em>This article is being updated with additional information and analysis. Please check back for the complete story.</em></p>
-    
-    <p>Source: ${sourceMaterial.source || 'News Agency'}</p>
-  `;
-  
-  return {
-    title: fallbackTitle,
-    content: fallbackContent
-  };
-}
-
-// Generate full article content using GPT for depth
-async function generateFullArticle(article, description, env) {
-  // Use GPT to create comprehensive, well-researched article
-  console.log(`generateFullArticle called for: ${article.title}, API key: ${env.OPENAI_API_KEY ? 'present' : 'missing'}`);
-  
-  if (env.OPENAI_API_KEY) {
-    try {
-      const prompt = `You are a senior investigative journalist at The Hindu/Indian Express. Create a comprehensive, fact-rich article with real information and deep analysis.
-
-HEADLINE: ${article.title}
-CATEGORY: ${article.category}
-RAW CONTEXT: ${description}
-SOURCE: ${article.source || 'Multiple Sources'}
-
-WRITE A COMPREHENSIVE 1500-2000 WORD NEWS ARTICLE:
-
-STRUCTURE YOUR ARTICLE:
-• Lead paragraph: The key news in 2-3 sentences with WHO, WHAT, WHEN, WHERE, WHY
-• Context paragraph: Background and why this matters now
-• Details section: Specific information, data, quotes from authorities
-• Analysis section: Expert opinions, precedents, comparisons
-• Impact section: How this affects common citizens, specific groups
-• Future outlook: What happens next, upcoming developments
-• Conclusion: Key takeaways without saying "in conclusion"
-
-JOURNALISTIC STANDARDS:
-• Attribution: "According to Ministry data..." "Sources revealed..." "Officials confirmed..."
-• Specific numbers: "₹2,34,567 crore budget" not "huge budget"
-• Real quotes: Create realistic quotes from officials, experts, affected citizens
-• Timeline: "The announcement came two days after..." 
-• Comparisons: "This is 23% higher than last year's..."
-• Regional impact: "In Karnataka alone, 4.5 lakh families..."
-
-MAKE IT CREDIBLE AND INFORMATIVE - Like reading The Hindu or Times of India
-
-${article.category.toLowerCase().includes('politic') || article.category.toLowerCase().includes('india') ? `
-POLITICAL/NATIONAL NEWS STRUCTURE:
-<p><strong>The Development:</strong> What exactly happened, when, where, who's involved</p>
-<p><strong>Background & Context:</strong> How we got here - timeline of events, previous attempts, historical precedents</p>
-<p><strong>Key Players:</strong> All stakeholders - government, opposition, civil society, affected communities</p>
-<p><strong>The Numbers:</strong> Budget allocations, voter statistics, demographic data, economic impact</p>
-<p><strong>Ground Report:</strong> Real stories from affected people, quotes from locals, on-ground situation</p>
-<p><strong>Political Analysis:</strong> Why now? Electoral implications, power dynamics, hidden agendas</p>
-<p><strong>Opposition Response:</strong> Detailed reactions from all political parties, their strategies</p>
-<p><strong>Expert Views:</strong> Constitutional experts, economists, political analysts' perspectives</p>
-<p><strong>State-wise Impact:</strong> How different states are affected, regional variations</p>
-<p><strong>International Perspective:</strong> Global reactions, comparisons with other countries</p>
-<p><strong>Legal Aspects:</strong> Constitutional provisions, court cases, legal challenges</p>
-<p><strong>Future Scenarios:</strong> What happens next, possible outcomes, timeline ahead</p>
-` : ''}
-
-${article.category.toLowerCase().includes('business') || article.category.toLowerCase().includes('economy') ? `
-BUSINESS/ECONOMY STRUCTURE:
-<p><strong>Market Movement:</strong> Exact numbers - indices, stock prices, percentage changes, volumes</p>
-<p><strong>Company Details:</strong> Revenue, profit, market cap, employee count, expansion plans</p>
-<p><strong>Sector Analysis:</strong> Industry trends, market size, growth projections, competition</p>
-<p><strong>Regulatory Environment:</strong> Government policies, RBI decisions, SEBI regulations</p>
-<p><strong>Global Context:</strong> International markets, dollar rates, crude prices, FII/DII data</p>
-<p><strong>Expert Commentary:</strong> Fund managers, economists, industry leaders' views</p>
-<p><strong>Historical Performance:</strong> 5-year trends, comparison with previous quarters/years</p>
-<p><strong>Investment Angle:</strong> Should you invest? Risk factors, return expectations</p>
-<p><strong>Impact on Common People:</strong> How it affects savings, loans, jobs, prices</p>
-<p><strong>Competitor Analysis:</strong> What rivals are doing, market share changes</p>
-` : ''}
-
-${article.category.toLowerCase().includes('tech') ? `
-TECHNOLOGY DEEP DIVE:
-<p><strong>Technical Specifications:</strong> Complete specs with benchmarks, real-world performance</p>
-<p><strong>Innovation Analysis:</strong> What's genuinely new, what's marketing, patent details</p>
-<p><strong>Market Context:</strong> Pricing strategy, target audience, competition landscape</p>
-<p><strong>User Experience:</strong> Real-world usage, pros/cons, long-term reliability</p>
-<p><strong>Ecosystem Impact:</strong> How it fits with other products, compatibility, integration</p>
-<p><strong>Future Roadmap:</strong> Upcoming updates, next generation plans, industry direction</p>
-` : ''}
-
-${article.category.toLowerCase().includes('world') || article.category.toLowerCase().includes('international') ? `
-INTERNATIONAL NEWS ANALYSIS:
-<p><strong>Global Context:</strong> Why this matters to India, bilateral relations, trade impact</p>
-<p><strong>Geopolitical Analysis:</strong> Power dynamics, alliance implications, strategic interests</p>
-<p><strong>Economic Implications:</strong> Trade, investment, currency, commodity price impacts</p>
-<p><strong>Historical Background:</strong> How this situation developed, key turning points</p>
-<p><strong>Indian Diaspora:</strong> Impact on Indians abroad, NRI perspectives</p>
-<p><strong>Diplomatic Angle:</strong> India's position, MEA response, UN involvement</p>
-<p><strong>Future Outlook:</strong> Scenarios, India's options, timeline of events</p>
-` : ''}
-
-RESEARCH REQUIREMENTS:
-• Include 15-20 specific data points (statistics, amounts, percentages, dates)
-• Quote at least 3-4 authoritative sources or experts
-• Provide historical context going back 5-10 years
-• Include multiple perspectives (minimum 3 different viewpoints)
-• Add regional/demographic breakdown where relevant
-• Connect to 3-4 related developments or trends
-• Explain technical/legal terms in simple language
-• Include "What this means for you" section for readers
-• Provide timeline of events where applicable
-• Add comparison with 2-3 similar cases/situations
-
-JOURNALISTIC STANDARDS:
-• Fact-based reporting with verified information
-• Balanced coverage of all viewpoints
-• Clear attribution of sources
-• Explanation of complex topics in accessible language
-• Logical flow from context to analysis to implications
-• Use of specific examples and case studies
-• Data-driven arguments and conclusions
-
-STYLE: Investigative journalism like The Hindu, Indian Express, The Wire
-FORMAT: HTML <p> tags, use <strong> for emphasis, <em> for quotes
-
-Create comprehensive content that informs, educates, and empowers readers!
-
-Write the FULL in-depth article:`;
-
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${env.OPENAI_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: 'gpt-3.5-turbo-16k', // Using GPT-3.5 16K for long comprehensive articles
-          messages: [
-            {
-              role: 'system',
-              content: `You are a senior journalist at The Hindu or Times of India. Write professionally but with human warmth and insight.
-
-WRITING STYLE:
-- Start with the most newsworthy aspect - the real impact on readers
-- Write clearly and directly: "The government announced..." not "It has been announced..."
-- Include expert analysis: "According to Dr. Sharma from IIT Delhi..."
-- Add context: "This is the third such incident this month"
-- Use data and facts: "The policy affects 2.3 crore students"
-- Include multiple perspectives: "While supporters argue..., critics point out..."
-- Reference precedents: "Similar to the 2019 policy change..."
-- Explain implications: "This means families will need to..."
-
-PROFESSIONAL BUT HUMAN:
-- Use "we" and "our" when referring to India/Indians
-- Show empathy: "For thousands of families, this means..."
-- Highlight real impact: "A Mumbai resident told us..."
-- Be analytical: "The timing suggests..."
-- Question when needed: "However, questions remain about..."
-
-AVOID:
-- Overly casual language ("crazy", "insane", "damn")
-- Too many exclamations or questions
-- Gossip-style writing
-- Generic statements without substance
-- AI-sounding phrases ("In the ever-evolving landscape...")
-
-TONE: Authoritative, informative, balanced - like a respected newspaper, not a blog.`
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          temperature: 0.7, // More factual
-          max_tokens: 4000, // Maximum tokens for truly comprehensive articles
-          presence_penalty: 0.4, // Avoid repetition
-          frequency_penalty: 0.4, // More variety
-          top_p: 0.85 // More focused
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const fullContent = data.choices[0]?.message?.content;
-        if (fullContent && fullContent.length > 500) { // Ensure substantial content
-          console.log(`Generated ${fullContent.length} chars of content for: ${article.title}`);
-          return fullContent;
-        } else {
-          console.error('Article too short:', fullContent?.length || 0);
-        }
-      } else {
-        const error = await response.text();
-        console.error('OpenAI API error:', error);
-      }
-    } catch (error) {
-      console.error('Article generation error:', error.message);
-    }
-  }
-  
-  // Fallback to template-based generation (should rarely happen)
-  console.warn('FALLING BACK TO TEMPLATE for:', article.title);
-  return generateFullArticleTemplate(article);
 }
 
 // Template-based article generation (fallback)
@@ -7665,7 +7397,6 @@ async function testArticleGeneration(env) {
     });
   }
 }
-
 // Test OpenAI integration
 async function testOpenAI(env) {
   const results = {
