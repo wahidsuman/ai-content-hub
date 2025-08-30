@@ -1480,13 +1480,14 @@ async function serveWebsite(env, request) {
     }
   });
 }
-// Telegram handler
+// ============================================
+// SIMPLIFIED TELEGRAM BOT WITH BUTTON MENUS
+// ============================================
+
 async function handleTelegram(request, env) {
   try {
-    // Check if token exists
     if (!env.TELEGRAM_BOT_TOKEN) {
-      console.error('TELEGRAM_BOT_TOKEN not found in environment variables');
-      return new Response('OK', { status: 200 }); // Return OK to prevent retries
+      return new Response('OK', { status: 200 });
     }
     
     const update = await request.json();
