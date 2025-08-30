@@ -3941,26 +3941,60 @@ async function serveImage(env, request, pathname) {
     if (!src) {
       return new Response('Missing src', { status: 400 });
     }
-    // Basic allowlist
-    const allowed = ['images.openai.com', 'oaidalleapiprodscus.blob.core.windows.net', 'via.placeholder.com', 'images.unsplash.com', 'pexels.com', 'images.pexels.com'];
+    // Basic allowlist (broadened for OpenAI DALL-E Azure blobs)
     let origin = null;
     try { origin = new URL(src); } catch (_) {}
-    if (!origin || !allowed.some(h => origin.hostname.endsWith(h))) {
+    const host = origin?.hostname || '';
+    const allowed = (
+      host.endsWith('images.openai.com') ||
+      host.endsWith('blob.core.windows.net') ||
+      host.endsWith('images.unsplash.com') ||
+      host.endsWith('images.pexels.com') ||
+      host.endsWith('via.placeholder.com')
+    );
+    if (!origin || !allowed) {
       return new Response('Forbidden', { status: 403 });
     }
+
+    // KV-backed persistent cache by src hash
+    async function sha256Hex(text) {
+      const data = new TextEncoder().encode(text);
+      const digest = await crypto.subtle.digest('SHA-256', data);
+      const arr = Array.from(new Uint8Array(digest));
+      return arr.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    const srcHash = await sha256Hex(src);
+    const kvKey = `img:${srcHash}`;
+    const kvHit = await env.NEWS_KV.getWithMetadata(kvKey, 'arrayBuffer');
+    if (kvHit && kvHit.value) {
+      return new Response(kvHit.value, {
+        headers: {
+          'Content-Type': (kvHit.metadata && kvHit.metadata.ct) || 'image/jpeg',
+          'Cache-Control': 'public, max-age=604800',
+          'X-Img-Store': 'kv'
+        }
+      });
+    }
+
     const cacheKey = new Request(`${urlObj.origin}${urlObj.pathname}?src=${encodeURIComponent(src)}&w=${w}&q=${q}`, request);
     const cache = caches.default;
     const cached = await cache.match(cacheKey);
     if (cached) return cached;
-    const upstream = await fetch(src, { cf: { cacheTtl: 60 * 60, cacheEverything: true } });
-    if (!upstream.ok) return new Response('Upstream error', { status: 502 });
+    const upstream = await fetch(src, { cf: { cacheTtl: 60 * 60 * 24 * 30, cacheEverything: true } });
+    if (!upstream.ok) {
+      return new Response('Upstream error', { status: 502 });
+    }
     // Let Cloudflare do auto-minify/resize via cf options if available
     const contentType = upstream.headers.get('content-type') || 'image/jpeg';
     const buf = await upstream.arrayBuffer();
+    // Persist to KV for long-term stability (30 days)
+    try {
+      await env.NEWS_KV.put(kvKey, buf, { expirationTtl: 60 * 60 * 24 * 30, metadata: { ct: contentType } });
+    } catch (_) {}
     const resp = new Response(buf, {
       headers: {
         'Content-Type': contentType.includes('image/') ? contentType : 'image/jpeg',
-        'Cache-Control': 'public, max-age=3600',
+        'Cache-Control': 'public, max-age=604800',
         'X-Img-W': String(w),
         'X-Img-Q': String(q)
       }
