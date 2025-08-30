@@ -306,6 +306,59 @@ export default {
       await env.NEWS_KV.put('articlesTimestamp', Date.now().toString());
       await env.NEWS_KV.put(`article_${id}`, JSON.stringify(article));
       return Response.redirect(new URL(article.url, url.origin).toString(), 302);
+    } else if (url.pathname === '/migrate-kv') {
+      // Copy app data from OLD_KV (assets) to NEWS_KV (state)
+      const key = url.searchParams.get('key');
+      const mode = (url.searchParams.get('mode') || 'dry').toLowerCase();
+      const expected = env.ADMIN_SECRET || env.CRON_SECRET || 'agami2024';
+      if (!key || key !== expected) {
+        return new Response('Unauthorized', { status: 401 });
+      }
+      if (!env.OLD_KV || !env.NEWS_KV) {
+        return new Response(JSON.stringify({
+          error: 'Bindings missing',
+          hint: 'Bind OLD_KV to __agaminews-workers_sites_assets and NEWS_KV to state'
+        }), { headers: { 'Content-Type': 'application/json' }, status: 400 });
+      }
+      const allowedKeys = [
+        'articles','stats','config','aiInstructions','analytics_overview',
+        'cron_logs','last_update_id','admin_chat','articlesTimestamp','lastFetch'
+      ];
+      const result = { copied: [], skipped: [], articlesCopied: 0, articleKeys: [] };
+      // Copy simple keys
+      for (const k of allowedKeys) {
+        const val = await env.OLD_KV.get(k, 'json');
+        if (val !== null && val !== undefined) {
+          if (mode === 'copy') {
+            await env.NEWS_KV.put(k, JSON.stringify(val));
+          }
+          result.copied.push(k);
+        } else {
+          const raw = await env.OLD_KV.get(k);
+          if (raw) {
+            if (mode === 'copy') await env.NEWS_KV.put(k, raw);
+            result.copied.push(k);
+          } else {
+            result.skipped.push(k);
+          }
+        }
+      }
+      // Copy per-article records if present
+      try {
+        const list1 = await env.OLD_KV.list({ prefix: 'article_' });
+        for (const entry of list1.keys) {
+          const keyName = entry.name;
+          const v = await env.OLD_KV.get(keyName);
+          if (v) {
+            if (mode === 'copy') await env.NEWS_KV.put(keyName, v);
+            result.articleKeys.push(keyName);
+            result.articlesCopied++;
+          }
+        }
+      } catch (_) {}
+      return new Response(JSON.stringify({ mode, ...result }, null, 2), {
+        headers: { 'Content-Type': 'application/json' }
+      });
     } else if (url.pathname === '/fetch-news') {
       // Disabled public endpoint - use Telegram bot instead
       return new Response('This endpoint is disabled. Use the Telegram bot to manage news.', { 
