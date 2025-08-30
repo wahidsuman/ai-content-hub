@@ -5405,8 +5405,8 @@ async function renderArticlePage(env, article, allArticles, request) {
   // Get article index for navigation
   const articleIndex = allArticles.findIndex(a => a.id === article.id);
   
-  // Use existing article rendering logic
-  const fullContent = article.fullContent || await generateFullArticle(article, article.sourceMaterial?.description || '', env);
+  // Use stored content only to avoid on-request generation
+  const fullContent = article.fullContent || '<p><em>Content is preparing. Please refresh shortly.</em></p>';
   
   // Generate the HTML using existing article rendering
   const isDark = config.theme === 'dark';
@@ -5825,9 +5825,7 @@ async function renderArticlePage(env, article, allArticles, request) {
   return new Response(html, {
     headers: { 
       'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
+      'Cache-Control': 'public, max-age=60, s-maxage=300',
     }
   });
 }
@@ -5985,8 +5983,8 @@ async function serveArticle(env, request, pathname) {
   const config = await env.NEWS_KV.get('config', 'json') || {};
   const isDark = config.theme === 'dark';
   
-  // Use the pre-generated full content if available, otherwise generate it
-  const fullContent = article.fullContent || await generateFullArticle(article, '', env);
+  // Use pre-generated content only (no on-request generation)
+  const fullContent = article.fullContent || '<p><em>Content is preparing. Please refresh shortly.</em></p>';
   
   const html = `<!DOCTYPE html>
 <html lang="en">
