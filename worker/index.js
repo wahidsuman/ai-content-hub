@@ -5873,7 +5873,16 @@ async function serveArticleBySlug(env, request, pathname) {
     }
     
     if (!article) {
-      throw new Error('Article not found');
+      // Try archived single-article KV by ID
+      if (idFromPath) {
+        const archived = await env.NEWS_KV.get(`article_${idFromPath}`, 'json');
+        if (archived && archived.id) {
+          article = archived;
+        }
+      }
+      if (!article) {
+        throw new Error('Article not found');
+      }
     }
     
     // Determine canonical URL (prefer stored url if present)
