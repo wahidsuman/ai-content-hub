@@ -4238,6 +4238,9 @@ async function serveImage(env, request, pathname) {
 // Serve files stored in R2 at /media/<key>
 async function serveR2Media(env, request, pathname) {
   try {
+    if (!env.MEDIA_R2 || !env.MEDIA_R2.get) {
+      return new Response('Not configured', { status: 404 });
+    }
     const key = decodeURIComponent(pathname.replace(/^\/media\//, ''));
     if (!key) return new Response('Bad Request', { status: 400 });
     const obj = await env.MEDIA_R2.get(key);
@@ -4261,17 +4264,25 @@ async function ingestImageToR2(env, srcUrl, extHint = 'jpg') {
     return arr.map(b => b.toString(16).padStart(2, '0')).join('');
   })();
   const key = `images/${keyBase}.${extHint}`;
-  // If exists, return URL
-  const exists = await env.MEDIA_R2.head(key);
-  if (exists) {
+  try {
+    if (!env.MEDIA_R2 || !env.MEDIA_R2.put) {
+      throw new Error('R2 not available');
+    }
+    // If exists, return URL
+    const exists = await env.MEDIA_R2.head(key);
+    if (exists) {
+      return `/media/${key}`;
+    }
+    const upstream = await fetch(srcUrl);
+    if (!upstream.ok) throw new Error('Failed to fetch upstream image');
+    const ct = upstream.headers.get('content-type') || 'image/jpeg';
+    const body = await upstream.arrayBuffer();
+    await env.MEDIA_R2.put(key, body, { httpMetadata: { contentType: ct } });
     return `/media/${key}`;
+  } catch (e) {
+    // Fallback to proxy URL if R2 not configured or failed
+    return `/img/?src=${encodeURIComponent(srcUrl)}&w=1200&q=70`;
   }
-  const upstream = await fetch(srcUrl);
-  if (!upstream.ok) throw new Error('Failed to fetch upstream image');
-  const ct = upstream.headers.get('content-type') || 'image/jpeg';
-  const body = await upstream.arrayBuffer();
-  await env.MEDIA_R2.put(key, body, { httpMetadata: { contentType: ct } });
-  return `/media/${key}`;
 }
 // Generate unique article ID (6-digit like NDTV)
 function generateArticleId() {
