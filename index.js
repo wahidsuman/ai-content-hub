@@ -142,16 +142,23 @@ export default {
         }
       });
     } else if (url.pathname.startsWith('/article/')) {
-      // Legacy URL format - try to redirect to new format
+      // Legacy URL format - try to redirect to slug URL
       const articleId = parseInt(url.pathname.split('/')[2]);
       const articles = await env.NEWS_KV.get('articles', 'json') || [];
-      if (articles[articleId] && articles[articleId].url) {
+      if (!isNaN(articleId) && articles[articleId] && articles[articleId].url) {
         return Response.redirect(new URL(articles[articleId].url, request.url).toString(), 301);
+      }
+      const pathPart = url.pathname.split('/')[2];
+      if (pathPart) {
+        const bySlug = articles.find(a => a.slug === decodeURIComponent(pathPart));
+        if (bySlug && bySlug.url) {
+          return Response.redirect(new URL(bySlug.url, request.url).toString(), 301);
+        }
       }
       // Fallback to old handler
       return await serveArticle(env, request, url.pathname);
-    } else if (url.pathname.includes('-news/') && url.pathname.match(/-\d{6}$/)) {
-      // New SEO-friendly URL format: /category-news/slug-123456
+    } else if (url.pathname.includes('-news/')) {
+      // SEO-friendly URL format: /category-news/slug
       return await serveArticleBySlug(env, request, url.pathname);
     } else if (url.pathname.startsWith('/api/')) {
       return handleAPI(request, env, url.pathname);
@@ -293,7 +300,7 @@ export default {
                 `📰 *Source:* ${article.source || 'RSS Feed'}\n` +
                 `📸 *Image:* ${article.image?.type === 'generated' ? '🎨 AI Generated' : article.image?.type === 'personality' ? '👤 Real Photo' : '📷 Stock Photo'}\n` +
                 `📊 *Quality:* ${article.fullContent && article.fullContent.length > 3000 ? '✅ High' : '⚠️ Medium'} (${article.fullContent ? article.fullContent.length : 0} chars)\n` +
-                `🔗 *Link:* https://agaminews.in${article.url || `/article/${i}`}\n\n` +
+                `🔗 *Link:* https://agaminews.in${article.url}\n\n` +
                 `_Auto-published at ${new Date().toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})}_`
               );
               
@@ -583,7 +590,6 @@ async function initializeSystem(env) {
     await env.NEWS_KV.put('initialized', 'true');
   }
 }
-
 // Serve website
 async function serveWebsite(env, request) {
   // Force fresh data fetch with timestamp check
@@ -1507,7 +1513,7 @@ Or just talk to me naturally! Try:
                 `📌 Title: ${article.title}\n` +
                 `🏷️ Category: ${article.category}\n` +
                 `📸 Image: ${article.image?.type === 'generated' ? '🎨 DALL-E 3' : '📷 Stock'}\n` +
-                `🔗 Link: https://agaminews.in${article.url || '/article/0'}`
+                `🔗 Link: https://agaminews.in${article.url}`
               );
             }
           } else {
@@ -1785,7 +1791,6 @@ Current articles: https://agaminews.in
   } catch (error) {
     console.error('Fetch error:', error);
     await sendMessage(env, chatId, `❌ *Error Fetching News*
-
 ${error.message}
 
 *Possible Issues:*
@@ -2253,7 +2258,7 @@ async function handleCreateArticle(env, chatId, text) {
       preview: articleContent.content.replace(/<[^>]*>/g, '').substring(0, 500) + '...',
       category: sourceMaterial.category,
       source: 'AgamiNews Research Team',
-      url: `/${sourceMaterial.category.toLowerCase()}-news/${generateSlug(articleContent.title)}-${articleId}`,
+      url: `/${sourceMaterial.category.toLowerCase()}-news/${generateSlug(articleContent.title)}`,
       date: 'Just now',
       timestamp: Date.now(),
       views: 0,
@@ -2430,7 +2435,6 @@ async function sendCostReport(env, chatId) {
 • GPT-4: $${(todayArticles * COST_PER_ARTICLE).toFixed(2)}
 • DALL-E: $${(todayArticles * COST_PER_IMAGE).toFixed(2)}
 • Total: $${todayCost.toFixed(2)}
-
 📊 *Month-to-Date:*
 • Articles: ${monthArticles}
 • Total Cost: $${monthCost.toFixed(2)}
@@ -3071,7 +3075,6 @@ async function sendSEOReport(env, chatId) {
     ]
   });
 }
-
 // Automatic news fetching with priority-based selection
 async function fetchLatestNewsAuto(env, articlesToFetch = 3, priority = 'normal') {
   console.log(`Auto-fetching ${articlesToFetch} articles with priority: ${priority}`);
@@ -3227,7 +3230,7 @@ async function fetchLatestNewsAuto(env, articlesToFetch = 3, priority = 'normal'
               article.fullContent = fullArticle;
               article.title = originalTitle; // Use AI-generated original title
               article.slug = generateSlug(originalTitle); // Generate SEO-friendly slug
-              article.url = `/${article.category.toLowerCase()}-news/${article.slug}-${article.id}`; // Full URL path
+              article.url = `/${article.category.toLowerCase()}-news/${article.slug}`; // Full URL path
               
               // Now get image based on the ORIGINAL title (with 95% DALL-E usage)
               article.image = await getArticleImage(originalTitle, category, env);
@@ -3484,7 +3487,7 @@ async function fetchLatestNews(env) {
               article.fullContent = fullArticle;
               article.title = originalTitle; // Use AI-generated original title
               article.slug = generateSlug(originalTitle); // Generate SEO-friendly slug
-              article.url = `/${article.category.toLowerCase()}-news/${article.slug}-${article.id}`; // Full URL path
+              article.url = `/${article.category.toLowerCase()}-news/${article.slug}`; // Full URL path
               
               // Now get image based on the ORIGINAL title
               article.image = await getArticleImage(originalTitle, feed.category, env);
@@ -3542,7 +3545,7 @@ async function fetchLatestNews(env) {
             fullContent: fallbackResult.content
           };
           
-          fallbackArticle.url = `/${fallbackArticle.category.toLowerCase()}-news/${fallbackArticle.slug}-${fallbackArticle.id}`;
+          fallbackArticle.url = `/${fallbackArticle.category.toLowerCase()}-news/${fallbackArticle.slug}`;
           allArticles.push(fallbackArticle);
           console.log('[FALLBACK] Generated fallback article successfully');
         }
@@ -3641,7 +3644,7 @@ async function fetchLatestNews(env) {
             `📸 *Image:* 🎨 DALL-E 3 Optimized (Fast Loading)\n` +
             `📊 *Quality:* ${article.fullContent && article.fullContent.length > 3000 ? '⭐⭐⭐⭐⭐ Premium' : article.fullContent && article.fullContent.length > 1500 ? '⭐⭐⭐⭐ High' : '⭐⭐⭐ Standard'} (${article.fullContent ? article.fullContent.length : 0} chars)\n` +
             `🤖 *AI Model:* GPT-4 Turbo\n` +
-            `🔗 *Link:* https://agaminews.in${article.url || `/article/${articleIndex}`}\n\n` +
+            `🔗 *Link:* https://agaminews.in${article.url}\n\n` +
             `_Quality journalism powered by AI_`
           );
           
@@ -3703,7 +3706,6 @@ function generateSlug(title) {
 function generateArticleId() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
-
 // Clean RSS content from HTML and CDATA
 function cleanRSSContent(text) {
   if (!text) return '';
@@ -4548,7 +4550,6 @@ function extractProducts(title) {
   });
   return found;
 }
-
 // Extract smart keywords for highly relevant image matching
 function extractSmartKeywords(title, category) {
   const titleLower = title.toLowerCase();
@@ -5042,24 +5043,28 @@ async function renderArticlePage(env, article, allArticles, request) {
 // Serve article by SEO-friendly slug URL
 async function serveArticleBySlug(env, request, pathname) {
   try {
-    // Extract article ID from URL (last 6 digits)
-    const matches = pathname.match(/-(\d{6})$/);
-    if (!matches) {
-      throw new Error('Invalid article URL format');
-    }
-    
-    const articleId = matches[1];
+    // Support slug-only and legacy slug-123 forms
+    const lastSegment = pathname.split('/').pop() || '';
+    const idMatch = lastSegment.match(/-(\d+)$/);
+    const articleId = idMatch ? idMatch[1] : null;
+    const slugFromPath = idMatch ? lastSegment.slice(0, -(articleId.length + 1)) : lastSegment;
     const articles = await env.NEWS_KV.get('articles', 'json') || [];
     
-    // Find article by ID
-    const article = articles.find(a => a.id === articleId);
+    // Prefer slug match; fall back to ID
+    let article = null;
+    if (slugFromPath) {
+      article = articles.find(a => a.slug === slugFromPath) || articles.find(a => a.url && a.url.endsWith(`/${slugFromPath}`));
+    }
+    if (!article && articleId) {
+      article = articles.find(a => String(a.id) === String(articleId)) || articles.find(a => a.url && a.url.endsWith(`-${articleId}`));
+    }
     
     if (!article) {
       throw new Error('Article not found');
     }
     
-    // Verify URL matches (for security/SEO)
-    const expectedUrl = `/${article.category.toLowerCase()}-news/${article.slug}-${article.id}`;
+    // Verify URL matches (for security/SEO) - canonical is slug-only
+    const expectedUrl = `/${article.category.toLowerCase()}-news/${article.slug}`;
     if (pathname !== expectedUrl) {
       // Redirect to canonical URL
       return Response.redirect(new URL(expectedUrl, request.url).toString(), 301);
@@ -5173,7 +5178,7 @@ async function serveArticle(env, request, pathname) {
     ${getUniversalSEOTags(
       article.title + ' - AgamiNews',
       article.preview || article.description || 'Read full article on AgamiNews',
-      'https://agaminews.in' + (article.url || `/article/${articleId}`)
+      'https://agaminews.in' + article.url
     )}
     
     <!-- Article-Specific SEO Tags -->
@@ -5184,7 +5189,7 @@ async function serveArticle(env, request, pathname) {
     <meta property="og:title" content="${article.title}">
     <meta property="og:description" content="${article.preview || 'Read full article on AgamiNews'}">
     <meta property="og:image" content="${article.image?.url || article.image || 'https://agaminews.in/og-image.jpg'}">
-    <meta property="og:url" content="https://agaminews.in${article.url || `/article/${articleId}`}">
+    <meta property="og:url" content="https://agaminews.in${article.url}">
     <meta property="og:site_name" content="AgamiNews">
     <meta property="article:published_time" content="${new Date(article.timestamp || Date.now()).toISOString()}">
     <meta property="article:author" content="AgamiNews">
@@ -5221,7 +5226,7 @@ async function serveArticle(env, request, pathname) {
       },
       "mainEntityOfPage": {
         "@type": "WebPage",
-        "@id": "https://agaminews.in${article.url || `/article/${articleId}`}"
+        "@id": "https://agaminews.in${article.url}"
       },
       "articleSection": "${article.category}",
       "keywords": "${article.title.split(' ').slice(0, 10).join(', ')}"
@@ -5231,7 +5236,7 @@ async function serveArticle(env, request, pathname) {
     <!-- GUARANTEED Google Analytics - NEVER MISS -->
     ${getGoogleAnalyticsCode(
       article.title.replace(/'/g, "\\'") + ' - Article',
-      article.url || `/article/${articleId}`
+      article.url
     )}
     
     <!-- ADDITIONAL GA Tracking for Articles -->
@@ -5241,7 +5246,7 @@ async function serveArticle(env, request, pathname) {
         if (typeof gtag !== 'undefined') {
           // Double-check GA is loaded
           gtag('config', 'G-ZW77WM2VPG', {
-            page_path: '${article.url || `/article/${articleId}`}',
+            page_path: '${article.url}',
             page_title: '${article.title.replace(/'/g, "\\'")}',
         page_location: window.location.href,
         custom_dimensions: {
@@ -5267,52 +5272,24 @@ async function serveArticle(env, request, pathname) {
       
       setInterval(function() {
         const timeSpent = Math.round((new Date().getTime() - readStartTime) / 1000);
-        
         if (timeSpent >= 30 && !hasTracked30s) {
-          hasTracked30s = true;
           gtag('event', 'read_30_seconds', {
             'event_category': 'Engagement',
-            'event_label': '${article.title.replace(/'/g, "\\'")}'
+            'event_label': '${article.title.replace(/'/g, "\\'")}',
+            'value': 30
           });
+          hasTracked30s = true;
         }
-        
         if (timeSpent >= 60 && !hasTracked60s) {
-          hasTracked60s = true;
           gtag('event', 'read_60_seconds', {
             'event_category': 'Engagement',
-            'event_label': '${article.title.replace(/'/g, "\\'")}'
+            'event_label': '${article.title.replace(/'/g, "\\'")}',
+            'value': 60
           });
+          hasTracked60s = true;
         }
-      }, 1000);
-      
-      // Track scroll depth for articles
-      let maxScroll = 0;
-      window.addEventListener('scroll', function() {
-        const scrollPercent = Math.round((window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100);
-        if (scrollPercent > maxScroll) {
-          maxScroll = scrollPercent;
-          if (scrollPercent === 100) {
-            gtag('event', 'article_complete', {
-              'event_category': 'Engagement',
-              'event_label': '${article.title.replace(/'/g, "\\'")}'
-            });
-          }
+      }, 5000);
         }
-      });
-      
-      // Track share button clicks
-      document.addEventListener('DOMContentLoaded', function() {
-        const shareButtons = document.querySelectorAll('.share-btn');
-        shareButtons.forEach(function(button) {
-          button.addEventListener('click', function() {
-            const platform = this.textContent.toLowerCase();
-            gtag('event', 'share', {
-              'event_category': 'Social',
-              'event_label': platform,
-              'article_title': '${article.title.replace(/'/g, "\\'")}'
-            });
-          });
-        });
       });
     </script>
     
@@ -5630,7 +5607,7 @@ async function serveArticle(env, request, pathname) {
                       .slice(0, 3)
                       .map((related, idx) => `
                         <li style="margin: 10px 0;">
-                            <a href="${related.url || `/article/${articles.indexOf(related)}`}" 
+                            <a href="${related.url}" 
                                style="color: #0066cc; text-decoration: none; font-weight: 500; display: block; padding: 5px 0;">
                                → ${related.title}
                             </a>
@@ -5645,13 +5622,13 @@ async function serveArticle(env, request, pathname) {
         
         <div class="share-buttons">
             <div class="share-title">Share this article</div>
-            <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${encodeURIComponent('https://agaminews.in/article/' + articleId)}" 
+            <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${encodeURIComponent('https://agaminews.in' + article.url)}" 
                target="_blank" class="share-btn">Twitter</a>
-            <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent('https://agaminews.in/article/' + articleId)}" 
+            <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent('https://agaminews.in' + article.url)}" 
                target="_blank" class="share-btn">Facebook</a>
-            <a href="https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent('https://agaminews.in/article/' + articleId)}" 
+            <a href="https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent('https://agaminews.in' + article.url)}" 
                target="_blank" class="share-btn">LinkedIn</a>
-            <a href="https://wa.me/?text=${encodeURIComponent(article.title + ' https://agaminews.in/article/' + articleId)}" 
+            <a href="https://wa.me/?text=${encodeURIComponent(article.title + ' https://agaminews.in' + article.url)}" 
                target="_blank" class="share-btn">WhatsApp</a>
         </div>
         
@@ -5669,12 +5646,11 @@ async function serveArticle(env, request, pathname) {
                   })
                   .slice(0, 6)
                   .map(item => {
-                    const relatedIndex = item.index; // Use the preserved index
                     const related = item.article;
                     const imageUrl = related.image?.url || related.image || 
                                    `https://via.placeholder.com/160x160/333/999?text=${encodeURIComponent(related.category)}`;
                     return `
-                    <a href="${related.url || `/article/${relatedIndex}`}" class="related-card">
+                    <a href="${related.url}" class="related-card">
                         <div class="related-card-image">
                             <img src="${imageUrl}" alt="${related.title}" loading="lazy">
                         </div>
@@ -5797,7 +5773,6 @@ YOUR TASK - CREATE COMPLETELY ORIGINAL CONTENT:
    - Include data and statistics
    - Add historical context
    - Explain implications
-
 3. WRITE ORIGINAL 1500-2000 WORD ARTICLE:
    - Start with your own lead paragraph
    - Don't copy any sentences from the source
@@ -5955,7 +5930,7 @@ POLITICAL/NATIONAL NEWS STRUCTURE:
 <p><strong>State-wise Impact:</strong> How different states are affected, regional variations</p>
 <p><strong>International Perspective:</strong> Global reactions, comparisons with other countries</p>
 <p><strong>Legal Aspects:</strong> Constitutional provisions, court cases, legal challenges</p>
-<p><strong>Future Scenarios:</strong> What happens next, possible outcomes, timeline ahead</p>
+<p><strong>Future Scenarios:</strong> What happens next, possible outcomes, timeline of events</p>
 ` : ''}
 
 ${article.category.toLowerCase().includes('business') || article.category.toLowerCase().includes('economy') ? `
@@ -6337,12 +6312,15 @@ async function generateSitemap(env) {
   const articles = await env.NEWS_KV.get('articles', 'json') || [];
   const today = new Date().toISOString().split('T')[0];
   
-  // Generate URLs for all articles
+  // Generate URLs for all articles using slug URLs
   let articleUrls = '';
-  articles.forEach((article, index) => {
+  articles.forEach((article) => {
+    const cat = String(article.category || 'news').toLowerCase();
+    const slug = article.slug || generateSlug(article.title || 'article');
+    const loc = article.url || `/${cat}-news/${slug}`;
     articleUrls += `
   <url>
-    <loc>https://agaminews.in/article/${index}</loc>
+    <loc>https://agaminews.in${loc}</loc>
     <lastmod>${today}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -6439,7 +6417,6 @@ function getActiveReaders(stats) {
   
   return Math.max(0, activeReaders + variance);
 }
-
 // Get peak hour from analytics
 function getPeakHour(stats) {
   const analytics = stats.analytics || {};

@@ -247,7 +247,7 @@ export default {
           views: 0,
           trending: false,
           fullContent: content,
-          url: `/${category.toLowerCase()}-news/${generateSlug(title)}-${id}`
+          url: `/${category.toLowerCase()}-news/${generateSlug(title)}`
         };
         // Save to KV (prepend)
         const list = await env.NEWS_KV.get('articles', 'json') || [];
@@ -298,7 +298,7 @@ export default {
         views: 0,
         trending: false,
         fullContent: `<p><strong>${baselineTitle}</strong></p><p>This article is being prepared. Please check back shortly.</p>`,
-        url: `/${category.toLowerCase()}-news/${generateSlug(baselineTitle)}-${id}`
+        url: `/${category.toLowerCase()}-news/${generateSlug(baselineTitle)}`
       };
       const list = await env.NEWS_KV.get('articles', 'json') || [];
       const updated = [article, ...list].slice(0, 100);
@@ -406,7 +406,7 @@ export default {
           views: 0,
           trending: false,
           fullContent: content,
-          url: `/${category.toLowerCase()}-news/${generateSlug(title)}-${newId}`
+          url: `/${category.toLowerCase()}-news/${generateSlug(title)}`
         };
       } catch (e) {
         // Fallback stub
@@ -427,7 +427,7 @@ export default {
           views: 0,
           trending: false,
           fullContent: content,
-          url: `/${category.toLowerCase()}-news/${generateSlug(title)}-${newId}`
+          url: `/${category.toLowerCase()}-news/${generateSlug(title)}`
         };
       }
 
@@ -466,16 +466,24 @@ export default {
         }
       });
     } else if (url.pathname.startsWith('/article/')) {
-      // Legacy URL format - try to redirect to new format
+      // Legacy URL format - try to redirect to slug URL
       const articleId = parseInt(url.pathname.split('/')[2]);
       const articles = await env.NEWS_KV.get('articles', 'json') || [];
-      if (articles[articleId] && articles[articleId].url) {
+      if (!isNaN(articleId) && articles[articleId] && articles[articleId].url) {
         return Response.redirect(new URL(articles[articleId].url, request.url).toString(), 301);
+      }
+      // If 'article/<slug>' form, try slug match
+      const pathPart = url.pathname.split('/')[2];
+      if (pathPart) {
+        const bySlug = articles.find(a => a.slug === decodeURIComponent(pathPart));
+        if (bySlug && bySlug.url) {
+          return Response.redirect(new URL(bySlug.url, request.url).toString(), 301);
+        }
       }
       // Fallback to old handler
       return await serveArticle(env, request, url.pathname);
-    } else if (url.pathname.includes('-news/') && url.pathname.match(/-\d{6}$/)) {
-      // New SEO-friendly URL format: /category-news/slug-123456
+    } else if (url.pathname.includes('-news/')) {
+      // SEO-friendly URL format: /category-news/slug
       return await serveArticleBySlug(env, request, url.pathname);
     } else if (url.pathname.startsWith('/img/')) {
       // On-demand image proxy/cache
@@ -2250,7 +2258,7 @@ async function handleFetchNews(env, chatId) {
       ...article,
       id: newArticleId,
       slug: newArticleSlug,
-      url: `/${article.category.toLowerCase()}-news/${newArticleSlug}-${newArticleId}`,
+      url: `/${article.category.toLowerCase()}-news/${newArticleSlug}`,
       views: 0,
       published: new Date().toISOString()
     };
@@ -2942,7 +2950,7 @@ async function handleCreateArticle(env, chatId, text) {
       preview: articleContent.content.replace(/<[^>]*>/g, '').substring(0, 500) + '...',
       category: sourceMaterial.category,
       source: 'AgamiNews Research Team',
-      url: `/${sourceMaterial.category.toLowerCase()}-news/${generateSlug(articleContent.title)}-${articleId}`,
+      url: `/${sourceMaterial.category.toLowerCase()}-news/${generateSlug(articleContent.title)}`,
       date: 'Just now',
       timestamp: Date.now(),
       views: 0,
@@ -3988,7 +3996,7 @@ async function fetchLatestNewsAuto(env, articlesToFetch = 3, priority = 'normal'
         article.fullContent = fullArticle;
         article.title = originalTitle;
         article.slug = generateSlug(originalTitle);
-        article.url = `/${article.category.toLowerCase()}-news/${article.slug}-${article.id}`;
+        article.url = `/${article.category.toLowerCase()}-news/${article.slug}`;
         article.image = await getArticleImage(originalTitle, article.category, env);
         const plainText = fullArticle.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
         article.preview = plainText.substring(0, 500) + '...';
@@ -4226,7 +4234,7 @@ async function fetchLatestNews(env) {
               article.fullContent = fullArticle;
               article.title = originalTitle; // Use AI-generated original title
               article.slug = generateSlug(originalTitle); // Generate SEO-friendly slug
-              article.url = `/${article.category.toLowerCase()}-news/${article.slug}-${article.id}`; // Full URL path
+              article.url = `/${article.category.toLowerCase()}-news/${article.slug}`; // Full URL path
               
               // Now get image based on the ORIGINAL title
               article.image = await getArticleImage(originalTitle, feed.category, env);
@@ -4284,7 +4292,7 @@ async function fetchLatestNews(env) {
             fullContent: fallbackResult.content
           };
           
-          fallbackArticle.url = `/${fallbackArticle.category.toLowerCase()}-news/${fallbackArticle.slug}-${fallbackArticle.id}`;
+          fallbackArticle.url = `/${fallbackArticle.category.toLowerCase()}-news/${fallbackArticle.slug}`;
           allArticles.push(fallbackArticle);
           console.log('[FALLBACK] Generated fallback article successfully');
         }
@@ -6164,10 +6172,10 @@ async function renderArticlePage(env, article, allArticles, request) {
 // Serve article by SEO-friendly slug URL
 async function serveArticleBySlug(env, request, pathname) {
   try {
-    // Extract trailing numeric ID if present (support 6+ digits)
-    const idMatch = pathname.match(/-(\d+)$/);
-    const idFromPath = idMatch ? idMatch[1] : null;
+    // Support both slug-only and legacy slug-123 forms; prefer slug-only
     const lastSegment = pathname.split('/').pop() || '';
+    const idMatch = lastSegment.match(/-(\d+)$/);
+    const idFromPath = idMatch ? idMatch[1] : null;
     const slugFromPath = idFromPath ? lastSegment.slice(0, -(idFromPath.length + 1)) : lastSegment;
     
     const articles = await env.NEWS_KV.get('articles', 'json') || [];
@@ -6219,7 +6227,7 @@ async function serveArticleBySlug(env, request, pathname) {
     // Determine canonical URL (prefer stored url if present)
     const safeCategory = (article.category || 'news').toString();
     const safeSlug = article.slug || generateSlug(article.title || 'article');
-    const canonicalUrl = article.url || `/${safeCategory.toLowerCase()}-news/${safeSlug}-${article.id}`;
+    const canonicalUrl = article.url || `/${safeCategory.toLowerCase()}-news/${safeSlug}`;
     if (pathname !== canonicalUrl) {
       return Response.redirect(new URL(canonicalUrl, request.url).toString(), 301);
     }
@@ -7521,12 +7529,15 @@ async function generateSitemap(env) {
   const articles = await env.NEWS_KV.get('articles', 'json') || [];
   const today = new Date().toISOString().split('T')[0];
   
-  // Generate URLs for all articles
+  // Generate URLs for all articles using slug URLs
   let articleUrls = '';
-  articles.forEach((article, index) => {
+  articles.forEach((article) => {
+    const cat = String(article.category || 'news').toLowerCase();
+    const slug = article.slug || generateSlug(article.title || 'article');
+    const loc = article.url || `/${cat}-news/${slug}`;
     articleUrls += `
   <url>
-    <loc>https://agaminews.in/article/${index}</loc>
+    <loc>https://agaminews.in${loc}</loc>
     <lastmod>${today}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -7653,7 +7664,7 @@ async function handleAPI(request, env, pathname) {
       views: 0,
       trending: false,
       fullContent: `<p><strong>${baselineTitle}</strong></p><p>This article is being prepared. Please check back shortly.</p>`,
-      url: `/${category.toLowerCase()}-news/${generateSlug(baselineTitle)}-${id}`
+      url: `/${category.toLowerCase()}-news/${generateSlug(baselineTitle)}`
     };
     const list = await env.NEWS_KV.get('articles', 'json') || [];
     const idx = list.findIndex(a => String(a.id) === String(id));
@@ -7701,7 +7712,7 @@ async function handleAPI(request, env, pathname) {
         views: 0,
         trending: false,
         fullContent: content,
-        url: `/${category.toLowerCase()}-news/${generateSlug(title)}-${newId}`
+        url: `/${category.toLowerCase()}-news/${generateSlug(title)}`
       };
     } catch (e) {
       const title = baselineTitle;
@@ -7721,7 +7732,7 @@ async function handleAPI(request, env, pathname) {
         views: 0,
         trending: false,
         fullContent: content,
-        url: `/${category.toLowerCase()}-news/${generateSlug(title)}-${newId}`
+        url: `/${category.toLowerCase()}-news/${generateSlug(title)}`
       };
     }
     const updated = [newArticle, ...list].slice(0, 100);
