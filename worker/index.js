@@ -3176,13 +3176,8 @@ async function handleListArticles(env, chatId, page = 0) {
     message += `   📂 ${article.category} | 👁 ${article.views || 0} views\n`;
     message += `   🔗 [View Article](https://agaminews.in${article.url || `/article/${globalIdx}`})\n`;
     message += `   🖼 Image: ${article.image?.url ? 'set' : 'missing'}\n\n`;
-    // Add row of action buttons per article
-    const openBtn = article.url ? { text: `🔗 Open (${article.id})`, url: `https://agaminews.in${article.url}` } : null;
-    const row1 = [ { text: `🎨 AI ↻ (${article.id})`, callback_data: `img_ai_${article.id}` }, { text: `🖼 URL (${article.id})`, callback_data: `img_url_${article.id}` } ];
-    const row2 = [ { text: `🗑 Delete (${article.id})`, callback_data: `delete_id_${article.id}` } ];
-    if (openBtn) navButtons.push([openBtn]);
-    navButtons.push(row1);
-    navButtons.push(row2);
+    // Compact per-article action: one Manage button opens submenu
+    navButtons.push([{ text: `⚙️ Manage (${article.id})`, callback_data: `manage_id_${article.id}` }]);
   });
   
   // Create navigation buttons
@@ -3243,6 +3238,30 @@ async function handleCallback(env, query) {
   if (data.startsWith('img_url_')) {
     const id = data.replace('img_url_', '');
     await sendMessage(env, chatId, `🔗 Send the image URL for ID ${id} as:\n/setimage ${id} <url>\nOr upload a photo with caption:\n/setimage ${id}`);
+    return;
+  }
+  if (data.startsWith('manage_id_')) {
+    const id = data.replace('manage_id_', '');
+    const row1 = [
+      { text: '🔗 Open', callback_data: `open_id_${id}` },
+      { text: '🎨 AI ↻', callback_data: `img_ai_${id}` }
+    ];
+    const row2 = [
+      { text: '🖼 Set URL', callback_data: `img_url_${id}` },
+      { text: '🗑 Delete', callback_data: `delete_id_${id}` }
+    ];
+    await sendMessage(env, chatId, `Manage article ${id}:`, { inline_keyboard: [row1, row2, [{ text: '↩️ Back', callback_data: 'list_page_0' }]] });
+    return;
+  }
+  if (data.startsWith('open_id_')) {
+    const id = data.replace('open_id_', '');
+    const articles = await env.NEWS_KV.get('articles', 'json') || [];
+    const a = articles.find(x => String(x.id) === String(id));
+    if (a && a.url) {
+      await sendMessage(env, chatId, `🔗 https://agaminews.in${a.url}`);
+    } else {
+      await sendMessage(env, chatId, '❌ Article not found');
+    }
     return;
   }
 
