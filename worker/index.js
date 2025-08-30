@@ -153,6 +153,46 @@ export default {
       return new Response(JSON.stringify({ updated, processed, total: articles.length, nextStart: start + processed }), {
         headers: { 'Content-Type': 'application/json' }
       });
+    } else if (url.pathname === '/fix-image') {
+      // Fix a single article image by id or full/canonical URL
+      const key = url.searchParams.get('key');
+      const expected = env.ADMIN_SECRET || env.CRON_SECRET || 'agami2024';
+      if (!key || key !== expected) {
+        return new Response('Unauthorized', { status: 401 });
+      }
+      const idParam = url.searchParams.get('id') || '';
+      const pathParam = url.searchParams.get('url') || '';
+      let articleId = idParam.trim();
+      if (!articleId && pathParam) {
+        const m = pathParam.match(/-(\d{6,})$/);
+        if (m) articleId = m[1];
+      }
+      if (!articleId) {
+        return new Response('Missing id or url', { status: 400 });
+      }
+      const articles = (await env.NEWS_KV.get('articles', 'json')) || [];
+      const idx = articles.findIndex(a => String(a.id) === String(articleId));
+      if (idx === -1) {
+        return new Response('Article not found', { status: 404 });
+      }
+      const a = articles[idx];
+      try {
+        const fresh = await getArticleImage(a.title || a.sourceMaterial?.originalTitle || 'News', a.category || 'India', env);
+        if (fresh && fresh.url) {
+          a.image = fresh;
+          articles[idx] = a;
+          await env.NEWS_KV.put('articles', JSON.stringify(articles));
+          await env.NEWS_KV.put('articlesTimestamp', Date.now().toString());
+          const html = `<html><body style="font-family: system-ui; padding:20px;">
+          <h3>✅ Image fixed</h3>
+          <p><a href="${a.url}" style="color:#06c;">Open article</a></p>
+          </body></html>`;
+          return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+        }
+        return new Response('Failed to generate image', { status: 500 });
+      } catch (e) {
+        return new Response('Error regenerating image', { status: 500 });
+      }
     } else if (url.pathname === '/fetch-news') {
       // Disabled public endpoint - use Telegram bot instead
       return new Response('This endpoint is disabled. Use the Telegram bot to manage news.', { 
