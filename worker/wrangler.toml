@@ -2,14 +2,11 @@ name = "agaminews"
 main = "index.js"
 compatibility_date = "2024-01-01"
 
-# Optional: define routes here to avoid dashboard drift
-[[routes]]
-pattern = "agaminews.in/*"
-script = "agaminews"
-
-[[routes]]
-pattern = "www.agaminews.in/*"
-script = "agaminews"
+# Routes for this Worker (Wrangler v4 format)
+routes = [
+  "agaminews.in/*",
+  "www.agaminews.in/*"
+]
 
 # Route is configured in Cloudflare Dashboard
 # Worker: agaminews
