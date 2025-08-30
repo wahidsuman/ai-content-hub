@@ -4553,28 +4553,60 @@ async function serveImage(env, request, pathname) {
   }
 }
 
-// Serve files stored in R2 at /media/<key>
+// Serve files stored in R2 or KV at /media/<key>
 async function serveR2Media(env, request, pathname) {
   try {
-    if (!env.MEDIA_R2 || !env.MEDIA_R2.get) {
-      return new Response('Not configured', { status: 404 });
+    const fullKey = decodeURIComponent(pathname.replace(/^\/media\//, ''));
+    if (!fullKey) return new Response('Bad Request', { status: 400 });
+    
+    // Check if this is a KV stored image
+    if (fullKey.startsWith('kv/')) {
+      const kvKey = fullKey.replace(/^kv\//, '').replace(/\.[^.]+$/, ''); // Remove kv/ prefix and extension
+      try {
+        const base64Data = await env.NEWS_KV.get(kvKey);
+        if (!base64Data) {
+          return new Response('Image not found in KV', { status: 404 });
+        }
+        
+        // Convert base64 back to binary
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        const headers = new Headers();
+        headers.set('Cache-Control', 'public, max-age=2592000'); // 30 days
+        headers.set('Content-Type', 'image/jpeg');
+        
+        return new Response(bytes.buffer, { headers });
+      } catch (e) {
+        console.error('[KV] Failed to serve image:', e.message);
+        return new Response('Failed to retrieve KV image', { status: 500 });
+      }
     }
-    const key = decodeURIComponent(pathname.replace(/^\/media\//, ''));
-    if (!key) return new Response('Bad Request', { status: 400 });
-    const obj = await env.MEDIA_R2.get(key);
+    
+    // Regular R2 storage
+    if (!env.MEDIA_R2 || !env.MEDIA_R2.get) {
+      return new Response('R2 not configured', { status: 404 });
+    }
+    
+    const obj = await env.MEDIA_R2.get(fullKey);
     if (!obj) return new Response('Not Found', { status: 404 });
+    
     const headers = new Headers();
     headers.set('Cache-Control', 'public, max-age=31536000, immutable');
     headers.set('ETag', obj.httpEtag);
     headers.set('Content-Type', obj.httpMetadata?.contentType || 'application/octet-stream');
     return new Response(obj.body, { headers });
   } catch (e) {
+    console.error('[Media] Error serving media:', e.message);
     return new Response('Server Error', { status: 500 });
   }
 }
 
 // Upload a remote image to R2 and return our permanent URL
-async function ingestImageToR2(env, srcUrl, extHint = 'jpg') {
+async function ingestImageToR2(env, srcUrl, extHint = 'jpg', retries = 3) {
   const keyBase = await (async () => {
     const data = new TextEncoder().encode(srcUrl);
     const hashBuf = await crypto.subtle.digest('SHA-256', data);
@@ -4582,23 +4614,73 @@ async function ingestImageToR2(env, srcUrl, extHint = 'jpg') {
     return arr.map(b => b.toString(16).padStart(2, '0')).join('');
   })();
   const key = `images/${keyBase}.${extHint}`;
-  try {
-    if (!env.MEDIA_R2 || !env.MEDIA_R2.put) {
-      throw new Error('R2 not available');
-    }
-    // If exists, return URL
-    const exists = await env.MEDIA_R2.head(key);
-    if (exists) {
+  
+  // Try multiple times to ensure storage
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      if (!env.MEDIA_R2 || !env.MEDIA_R2.put) {
+        console.error('[R2] Storage not configured - using KV fallback');
+        // Fallback to KV storage if R2 not available
+        return await storeImageInKV(env, srcUrl, keyBase, extHint);
+      }
+      
+      // Check if already exists
+      const exists = await env.MEDIA_R2.head(key);
+      if (exists) {
+        console.log(`[R2] Image already stored: ${key}`);
+        return `/media/${key}`;
+      }
+      
+      // Fetch the image
+      const upstream = await fetch(srcUrl);
+      if (!upstream.ok) throw new Error(`Failed to fetch image: ${upstream.status}`);
+      
+      const ct = upstream.headers.get('content-type') || 'image/jpeg';
+      const body = await upstream.arrayBuffer();
+      
+      // Store in R2
+      await env.MEDIA_R2.put(key, body, { httpMetadata: { contentType: ct } });
+      console.log(`[R2] Successfully stored image: ${key}`);
       return `/media/${key}`;
+      
+    } catch (e) {
+      console.error(`[R2] Attempt ${attempt}/${retries} failed:`, e.message);
+      if (attempt === retries) {
+        // Last attempt failed, try KV storage as ultimate fallback
+        console.log('[R2] All R2 attempts failed, using KV storage');
+        return await storeImageInKV(env, srcUrl, keyBase, extHint);
+      }
+      // Wait before retry
+      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
     }
-    const upstream = await fetch(srcUrl);
-    if (!upstream.ok) throw new Error('Failed to fetch upstream image');
-    const ct = upstream.headers.get('content-type') || 'image/jpeg';
-    const body = await upstream.arrayBuffer();
-    await env.MEDIA_R2.put(key, body, { httpMetadata: { contentType: ct } });
-    return `/media/${key}`;
+  }
+  
+  // Should never reach here, but just in case
+  return `/img/?src=${encodeURIComponent(srcUrl)}&w=1200&q=70`;
+}
+
+// Fallback storage in KV if R2 fails
+async function storeImageInKV(env, srcUrl, keyBase, extHint) {
+  try {
+    const response = await fetch(srcUrl);
+    if (!response.ok) throw new Error('Failed to fetch image for KV storage');
+    
+    // Convert to base64 for KV storage
+    const arrayBuffer = await response.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    
+    // Store in KV with expiration (30 days)
+    const kvKey = `img_${keyBase}`;
+    await env.NEWS_KV.put(kvKey, base64, {
+      expirationTtl: 30 * 24 * 60 * 60 // 30 days
+    });
+    
+    console.log(`[KV] Image stored as fallback: ${kvKey}`);
+    // Return a special URL that indicates KV storage
+    return `/media/kv/${kvKey}.${extHint}`;
   } catch (e) {
-    // Fallback to proxy URL if R2 not configured or failed
+    console.error('[KV] Failed to store in KV:', e.message);
+    // Ultimate fallback - proxy URL
     return `/img/?src=${encodeURIComponent(srcUrl)}&w=1200&q=70`;
   }
 }
@@ -5275,7 +5357,8 @@ async function getArticleImage(title, category, env) {
           const data = await response.json();
           if (data.data && data.data[0]) {
             console.log(`DALL-E SUCCESS for: ${title}`);
-            const mediaUrl = await ingestImageToR2(env, data.data[0].url, 'jpg').catch(() => `/img/?src=${encodeURIComponent(data.data[0].url)}&w=1200&q=70`);
+            // Always store DALL-E images permanently
+            const mediaUrl = await ingestImageToR2(env, data.data[0].url, 'jpg');
             return {
               url: mediaUrl,
               credit: 'AI (stored)',
@@ -5325,9 +5408,11 @@ async function getArticleImage(title, category, env) {
       if (emergencyResponse.ok) {
         const emergencyData = await emergencyResponse.json();
         console.log('[IMAGE] Emergency DALL-E generation successful');
+        // Store emergency generated image permanently
+        const emergencyMediaUrl = await ingestImageToR2(env, emergencyData.data[0].url, 'jpg');
         return {
-          url: emergencyData.data[0].url,
-          credit: '🎨 DALL-E 3 Optimized',
+          url: emergencyMediaUrl,
+          credit: 'AI Generated',
           type: 'dalle-emergency',
           isRelevant: true
         };
