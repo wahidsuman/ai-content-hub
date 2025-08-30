@@ -359,6 +359,85 @@ export default {
       return new Response(JSON.stringify({ mode, ...result }, null, 2), {
         headers: { 'Content-Type': 'application/json' }
       });
+    } else if (url.pathname === '/replace-article') {
+      // Delete an old article by id and publish a fresh one
+      const key = url.searchParams.get('key');
+      const expected = env.ADMIN_SECRET || env.CRON_SECRET || 'agami2024';
+      if (!key || key !== expected) return new Response('Unauthorized', { status: 401 });
+      const oldId = url.searchParams.get('id') || '';
+      const categoryParam = url.searchParams.get('category') || 'technology';
+      const slugParam = url.searchParams.get('slug') || '';
+      const titleParam = url.searchParams.get('title') || '';
+      const category = mapCategoryLabel(categoryParam);
+      if (!oldId) return new Response('Missing id', { status: 400 });
+
+      // Remove old article if present
+      const list = await env.NEWS_KV.get('articles', 'json') || [];
+      const idx = list.findIndex(a => String(a.id) === String(oldId));
+      if (idx !== -1) list.splice(idx, 1);
+
+      // Build baseline title from provided params
+      const baselineTitle = titleParam ? decodeURIComponent(titleParam) : slugParam ? decodeURIComponent(slugParam).replace(/[-_]+/g, ' ').trim() : 'Breaking update';
+      const sourceMaterial = {
+        originalTitle: baselineTitle,
+        description: `Replacement article for ${baselineTitle}`,
+        source: 'AgamiNews Replacement',
+        link: '',
+        category
+      };
+
+      let newArticle = null;
+      try {
+        const research = await generateOriginalArticle(sourceMaterial, env);
+        const title = research.title || baselineTitle;
+        const content = research.content || `<p>${baselineTitle}</p>`;
+        const newId = generateArticleId();
+        newArticle = {
+          id: newId,
+          slug: generateSlug(title),
+          title,
+          preview: content.replace(/<[^>]*>/g, '').substring(0, 500) + '...',
+          category,
+          source: 'AgamiNews Research Team',
+          originalSourceLink: '',
+          image: await getArticleImage(title, category, env),
+          date: 'Just now',
+          timestamp: Date.now(),
+          views: 0,
+          trending: false,
+          fullContent: content,
+          url: `/${category.toLowerCase()}-news/${generateSlug(title)}-${newId}`
+        };
+      } catch (e) {
+        // Fallback stub
+        const title = baselineTitle;
+        const content = `<p><strong>${baselineTitle}</strong></p><p>This article is being prepared. Please check back shortly.</p>`;
+        const newId = generateArticleId();
+        newArticle = {
+          id: newId,
+          slug: generateSlug(title),
+          title,
+          preview: content.replace(/<[^>]*>/g, '').substring(0, 500) + '...',
+          category,
+          source: 'AgamiNews',
+          originalSourceLink: '',
+          image: { url: `/img/?src=${encodeURIComponent('https://via.placeholder.com/1280x720/0066CC/FFFFFF?text=AgamiNews')}&w=1200&q=70`, credit: 'Placeholder', type: 'placeholder' },
+          date: 'Just now',
+          timestamp: Date.now(),
+          views: 0,
+          trending: false,
+          fullContent: content,
+          url: `/${category.toLowerCase()}-news/${generateSlug(title)}-${newId}`
+        };
+      }
+
+      // Save
+      const updated = [newArticle, ...list].slice(0, 100);
+      await env.NEWS_KV.put('articles', JSON.stringify(updated));
+      await env.NEWS_KV.put('articlesTimestamp', Date.now().toString());
+      await env.NEWS_KV.put(`article_${newArticle.id}`, JSON.stringify(newArticle));
+      // Respond with redirect to fresh article
+      return Response.redirect(new URL(newArticle.url, url.origin).toString(), 302);
     } else if (url.pathname === '/fetch-news') {
       // Disabled public endpoint - use Telegram bot instead
       return new Response('This endpoint is disabled. Use the Telegram bot to manage news.', { 
