@@ -5265,8 +5265,8 @@ async function getArticleImage(title, category, env) {
             model: 'dall-e-3',
             prompt: imagePrompt,
             n: 1,
-            size: '1792x1024', // HD widescreen format for better article headers
-            quality: 'hd', // Higher quality for professional look
+            size: '1024x1024', // Standard size for faster loading
+            quality: 'standard', // Standard quality for better performance
             style: 'natural' // Photorealistic news photography
           })
         });
@@ -5316,8 +5316,8 @@ async function getArticleImage(title, category, env) {
           model: 'dall-e-3',
           prompt: `${emergencyPrompt} Photorealistic, professional DSLR photography, natural lighting, news agency quality. No cartoonish elements, completely realistic.`,
           n: 1,
-          size: '1792x1024',
-          quality: 'hd',
+          size: '1024x1024',
+          quality: 'standard',
           style: 'natural'
         })
       });

@@ -10,8 +10,8 @@ The image generation system has been completely overhauled to produce photoreali
 - **After**: Professional photojournalism similar to Reuters, AP, Getty Images, PTI, ANI
 
 ### 2. Image Quality Settings
-- **Size**: Upgraded from 1024x1024 to **1792x1024** (HD widescreen)
-- **Quality**: Upgraded from "standard" to **"hd"** for better detail
+- **Size**: **1024x1024** (Standard size for optimal loading speed)
+- **Quality**: **"standard"** (Balanced quality and performance)
 - **Style**: Set to **"natural"** for photorealistic output
 
 ### 3. Professional Photography Requirements
@@ -100,8 +100,9 @@ If primary generation fails, category-specific professional images:
 
 ## Cost Implications
 
-- DALL-E 3 HD: ~$0.080 per image (vs $0.040 for standard)
-- Higher quality justifies the cost for professional news site
+- DALL-E 3 Standard: ~$0.040 per image
+- Optimized for both quality and performance
+- Faster loading times improve user experience
 - Better engagement expected from realistic imagery
 
 ## Usage
