@@ -7448,45 +7448,74 @@ Return ONLY the HTML content.`;
   }
 }
 
-// Generate a clickable, curiosity-driven headline while remaining credible
+// Generate a highly clickable headline using psychological triggers
 async function generateClickableHeadline(baselineTitle, category, env) {
-  const persona = (category || 'News').toLowerCase().includes('politic') ? 
-    'You are a senior political editor at a major Indian publication. You craft headlines that capture political drama while maintaining credibility.'
-    : (category || 'News').toLowerCase().includes('tech') ? 
-    'You are a tech editor who understands both innovation and user impact. Your headlines make complex tech accessible and exciting.'
-    : (category || 'News').toLowerCase().includes('business') ? 
-    'You are a business desk editor who knows how to make financial news compelling. You balance market terminology with broad appeal.'
-    : (category || 'News').toLowerCase().includes('entertainment') ? 
-    'You are an entertainment editor with a gift for witty, engaging headlines. You capture celebrity appeal without sacrificing substance.'
-    : (category || 'News').toLowerCase().includes('sports') ?
-    'You are a sports editor who brings the excitement of the game to your headlines. You capture both action and emotion.'
-    : 'You are a senior news editor skilled at crafting headlines that inform and intrigue.';
+  const categoryLower = (category || 'News').toLowerCase();
+  
+  // Enhanced personas with clickability focus
+  const persona = categoryLower.includes('politic') ? 
+    `You are the chief political editor at India's most-read news platform. Your headlines have made stories go viral. You understand power dynamics, conflicts, and what makes readers click on political news. You know how to hint at drama without sensationalizing.`
+    : categoryLower.includes('tech') ? 
+    `You are a tech editor whose headlines consistently get the highest click rates. You make readers feel they'll miss out on the future if they don't click. You turn complex tech into "must-know" information.`
+    : categoryLower.includes('business') ? 
+    `You are a business editor who makes financial news irresistible. Your headlines make readers feel they're getting insider information. You know how to make money matters urgent and personal.`
+    : categoryLower.includes('entertainment') ? 
+    `You are an entertainment editor whose headlines are social media gold. You create FOMO, spark discussions, and make every story feel like breaking gossip worth sharing.`
+    : categoryLower.includes('sports') ?
+    `You are a sports editor who captures the thrill of victory and agony of defeat in headlines. You make even non-fans want to know what happened. Your headlines create emotional investment.`
+    : `You are a viral news editor who understands human psychology. Your headlines tap into curiosity, fear of missing out, and the need to be informed. You make every story feel essential.`;
     
-  const rules = `Create 5 original, compelling headlines (10-14 words) that spark curiosity while remaining truthful.
+  // Advanced clickability rules with psychological triggers
+  const rules = `Create 5 HIGHLY CLICKABLE headlines that use psychological triggers while remaining truthful.
 
-HEADLINE PRINCIPLES:
-- ORIGINAL: Never copy existing headlines - create fresh angles
-- SPECIFIC: Include concrete details, not vague promises
-- ACTIVE: Use strong verbs and active voice
-- TIMELY: Convey urgency or relevance
-- CLEAR: Instantly understandable, no confusion
+🎯 CLICKABILITY FORMULAS (Use at least 2 per headline):
 
-TECHNIQUES TO USE:
-- Questions that readers want answered
-- Surprising contrasts or paradoxes  
-- Specific numbers or data points
-- Emotional hooks without manipulation
-- Future implications of current events
+1. CURIOSITY GAP: "The Unexpected Reason Why [X Happened]"
+2. BENEFIT PROMISE: "How [X] Could Change [Specific Outcome]"
+3. FEAR OF MISSING OUT: "What Everyone's Missing About [Topic]"
+4. CONTROVERSY HINT: "[X]'s Controversial Move That Has [Y] Worried"
+5. EXCLUSIVE ANGLE: "Inside Story: How [X] Really [Action]"
+6. NUMBERS THAT SHOCK: "[Specific Number] [Units] Later: The [Outcome]"
+7. QUESTION HOOK: "Is [Surprising Thing] the Real Reason Behind [Event]?"
+8. BREAKING PATTERN: "[Expected Thing] Didn't Happen. Here's What Did Instead"
+9. AUTHORITY CONFLICT: "Why [Expert A] and [Expert B] Disagree on [Topic]"
+10. FUTURE FEAR/HOPE: "The [Time Period] That Could Make or Break [Entity]"
 
-AVOID:
-- Clickbait lies or exaggeration
-- Vague words like "shocking" or "amazing"
-- ALL CAPS or excessive punctuation
-- Copying existing headlines
-- Use power phrases like: What's Behind..., Here's Why..., Key Numbers Reveal..., Experts Say...
-- Mention named entities or numbers if present.
-- Avoid all caps, avoid emojis.
-Return only a JSON array of strings.`;
+🔥 POWER WORDS TO INCLUDE:
+- Reveals, Exposes, Uncovers, Discovers
+- Secret, Hidden, Overlooked, Ignored
+- Breakthrough, Game-changer, First-ever
+- Warning, Alert, Critical, Urgent
+- Exclusive, Inside, Behind-the-scenes
+- Surprising, Unexpected, Stunning
+- Finally, Now, Just, Breaking
+
+📊 MUST INCLUDE:
+- Specific names, numbers, or locations when available
+- Time pressure (Now, Today, This Week, Just)
+- Stake/consequence (what happens if they don't read)
+- Emotional trigger (surprise, concern, excitement)
+
+❌ NEVER USE:
+- "You Won't Believe..." (overused)
+- "Shocking" or "Amazing" (vague)
+- Clickbait lies or false promises
+- ALL CAPS (except single words for emphasis)
+
+💡 CATEGORY-SPECIFIC TRIGGERS:
+${categoryLower.includes('politic') ? '- Power shifts, backstage drama, policy impacts on common people' : ''}
+${categoryLower.includes('tech') ? '- Future predictions, disruption warnings, "what it means for you"' : ''}
+${categoryLower.includes('business') ? '- Money impacts, market moves, winner/loser angles' : ''}
+${categoryLower.includes('entertainment') ? '- Behind-scenes drama, relationship angles, career moves' : ''}
+${categoryLower.includes('sports') ? '- Records, rivalries, comeback stories, turning points' : ''}
+
+STRUCTURE:
+- 10-15 words optimal (can go up to 18 for complex stories)
+- Front-load the hook
+- End with impact/consequence
+- Create urgency without lying
+
+Return a JSON array of 5 headlines, ordered from most to least clickable.`;
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
