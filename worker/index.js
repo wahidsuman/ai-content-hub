@@ -1230,6 +1230,38 @@ async function handleTelegram(request, env) {
     if (update.message) {
       const chatId = update.message.chat.id;
       const text = update.message.text;
+
+      // Admin-only: handle photo uploads with caption "/setimage <id>"
+      if (update.message.photo && (update.message.caption || '').toLowerCase().startsWith('/setimage')) {
+        const adminChat = await env.NEWS_KV.get('admin_chat');
+        if (!adminChat || String(chatId) !== String(adminChat)) {
+          await sendMessage(env, chatId, '❌ Unauthorized. Only admin can update images.');
+          return new Response('OK', { status: 200 });
+        }
+        const caption = (update.message.caption || '').trim();
+        const parts = caption.split(/\s+/);
+        const articleId = parts[1];
+        if (!articleId) {
+          await sendMessage(env, chatId, '❌ Usage: Send photo with caption: `/setimage 123456`');
+          return new Response('OK', { status: 200 });
+        }
+        try {
+          // Choose largest photo size
+          const sizes = update.message.photo;
+          const best = sizes[sizes.length - 1];
+          const fileId = best.file_id;
+          const mediaUrl = await downloadTelegramPhotoToR2(env, fileId);
+          const ok = await setArticleImageByUrl(env, articleId, mediaUrl, 'Admin upload');
+          if (ok) {
+            await sendMessage(env, chatId, `✅ Image updated for ID ${articleId}\n🔗 ${mediaUrl}`);
+          } else {
+            await sendMessage(env, chatId, '❌ Article not found or update failed.');
+          }
+        } catch (e) {
+          await sendMessage(env, chatId, '❌ Failed to process photo.');
+        }
+        return new Response('OK', { status: 200 });
+      }
       
       // Save admin chat ID
       if (!await env.NEWS_KV.get('admin_chat')) {
@@ -1307,6 +1339,47 @@ async function handleTelegram(request, env) {
         } else {
           await sendMessage(env, chatId, `❌ *Invalid Secret*\n\nThe secret you provided is incorrect.`);
         }
+      } else if (text && text.startsWith('/setimageai ')) {
+        // Regenerate AI image for an article ID
+        const adminChat = await env.NEWS_KV.get('admin_chat');
+        if (!adminChat || String(chatId) !== String(adminChat)) {
+          await sendMessage(env, chatId, '❌ Unauthorized. Only admin can update images.');
+          return new Response('OK', { status: 200 });
+        }
+        const id = text.split(/\s+/)[1];
+        if (!id) {
+          await sendMessage(env, chatId, '❌ Usage: `/setimageai 123456`');
+          return new Response('OK', { status: 200 });
+        }
+        const done = await regenerateArticleImageAI(env, id);
+        await sendMessage(env, chatId, done ? `✅ AI image regenerated for ${id}` : '❌ Article not found or generation failed.');
+      } else if (text && text.startsWith('/setimage ')) {
+        // Set image from a URL: /setimage <id> <url>
+        const adminChat = await env.NEWS_KV.get('admin_chat');
+        if (!adminChat || String(chatId) !== String(adminChat)) {
+          await sendMessage(env, chatId, '❌ Unauthorized. Only admin can update images.');
+          return new Response('OK', { status: 200 });
+        }
+        const parts = text.split(/\s+/);
+        const id = parts[1];
+        const urlArg = parts[2];
+        if (!id) {
+          await sendMessage(env, chatId, '❌ Usage: `/setimage <id> <url>`\nOr send a photo with caption: `/setimage <id>`');
+          return new Response('OK', { status: 200 });
+        }
+        if (!urlArg) {
+          await sendMessage(env, chatId, '📸 Now send the photo with caption: `/setimage ' + id + '`');
+          return new Response('OK', { status: 200 });
+        }
+        try {
+          const mediaUrl = await ingestImageToR2(env, urlArg, 'jpg');
+          const ok = await setArticleImageByUrl(env, id, mediaUrl, 'Admin URL');
+          await sendMessage(env, chatId, ok ? `✅ Image updated for ${id}\n🔗 ${mediaUrl}` : '❌ Update failed.');
+        } catch (e) {
+          await sendMessage(env, chatId, '❌ Failed to fetch or store image URL.');
+        }
+      } else if (text === '/imagehelp' || text === '/images') {
+        await sendMessage(env, chatId, '🖼️ *Image Admin Commands*\n\n1) Regenerate AI image:\n`/setimageai <id>`\n\n2) Set from a URL:\n`/setimage <id> <https://...>`\n\n3) Upload a photo:\nSend a photo with caption:\n`/setimage <id>`', { inline_keyboard: [[{ text: 'List Articles', callback_data: 'list' }]] });
       } else if (text === '/cron-logs' || text === '/logs') {
         // Show cron execution logs
         const cronLogs = await env.NEWS_KV.get('cron_logs', 'json') || [];
@@ -1424,6 +1497,43 @@ async function sendMessage(env, chatId, text, keyboard = null) {
     console.error(`Failed to send Telegram message: ${error.message}`);
     return false;
   }
+}
+
+// Download a Telegram photo by file_id, store in R2, and return /media URL
+async function downloadTelegramPhotoToR2(env, fileId) {
+  const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getFile?file_id=${encodeURIComponent(fileId)}`);
+  if (!res.ok) throw new Error('getFile failed');
+  const j = await res.json();
+  const filePath = j?.result?.file_path;
+  if (!filePath) throw new Error('file_path missing');
+  const dlUrl = `https://api.telegram.org/file/bot${env.TELEGRAM_BOT_TOKEN}/${filePath}`;
+  const ext = (filePath.split('.').pop() || 'jpg').toLowerCase();
+  return await ingestImageToR2(env, dlUrl, ext);
+}
+
+// Update article image to a stored URL
+async function setArticleImageByUrl(env, id, mediaUrl, credit = 'Admin') {
+  const articles = (await env.NEWS_KV.get('articles', 'json')) || [];
+  const idx = articles.findIndex(a => String(a.id) === String(id));
+  if (idx === -1) return false;
+  articles[idx].image = { url: mediaUrl, credit, type: 'admin' };
+  await env.NEWS_KV.put('articles', JSON.stringify(articles));
+  await env.NEWS_KV.put('articlesTimestamp', Date.now().toString());
+  return true;
+}
+
+// Regenerate AI image for an article by ID
+async function regenerateArticleImageAI(env, id) {
+  const articles = (await env.NEWS_KV.get('articles', 'json')) || [];
+  const idx = articles.findIndex(a => String(a.id) === String(id));
+  if (idx === -1) return false;
+  const a = articles[idx];
+  const fresh = await getArticleImage(a.title || a.sourceMaterial?.originalTitle || 'News', a.category || 'India', env);
+  if (!fresh || !fresh.url) return false;
+  articles[idx].image = fresh;
+  await env.NEWS_KV.put('articles', JSON.stringify(articles));
+  await env.NEWS_KV.put('articlesTimestamp', Date.now().toString());
+  return true;
 }
 
 async function sendMenu(env, chatId) {
