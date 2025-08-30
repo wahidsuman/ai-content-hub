@@ -458,7 +458,6 @@ function getUniversalSEOTags(title = 'AgamiNews', description = 'Latest News fro
     </script>
   `;
 }
-
 // Initialize system
 async function initializeSystem(env) {
   const initialized = await env.NEWS_KV.get('initialized');
@@ -770,7 +769,6 @@ async function serveWebsite(env, request) {
       }
     }
     </script>
-    
     <style>
         * {
             margin: 0;
@@ -1130,7 +1128,6 @@ async function serveWebsite(env, request) {
     }
   });
 }
-
 // Telegram handler
 async function handleTelegram(request, env) {
   try {
@@ -1608,7 +1605,6 @@ async function handleNaturalLanguage(env, chatId, text) {
     await sendMenu(env, chatId);
   }
 }
-
 // Verify AI Commands are working
 async function verifyAICommands(env, chatId) {
   await sendMessage(env, chatId, `🔍 *Verifying AI Configuration...*`);
@@ -2107,7 +2103,6 @@ async function sendDetailedAnalytics(env, chatId) {
   
   await sendMessage(env, chatId, `
 📊 *Detailed Analytics Report*
-
 📈 *Traffic Overview*
 • Total Views: ${stats.totalViews || 0}
 • Today: ${todayViews} ${trend}
@@ -2599,7 +2594,6 @@ function getPerformanceRecommendations(articles, categoryViews) {
   
   return recs.join('\n') || '• Keep current strategy - good overall performance';
 }
-
 // Handle delete specific article
 async function handleDeleteArticle(env, chatId, text) {
   // Get admin chat ID
@@ -3084,7 +3078,6 @@ All sources update every 3 hours automatically!
     case 'frequency':
       await sendMessage(env, chatId, `
 ⏰ *Update Frequency*
-
 Current: Every 3 hours
 
 This is optimized for:
@@ -3517,7 +3510,6 @@ async function fetchLatestNewsAuto(env, articlesToFetch = 3, priority = 'normal'
     };
   }
 }
-
 // Enhanced news fetching for premium quality articles
 async function fetchLatestNews(env) {
   console.log('Starting news fetch...');
@@ -4019,7 +4011,6 @@ async function serveImage(env, request, pathname) {
 function generateArticleId() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
-
 // Clean RSS content from HTML and CDATA
 function cleanRSSContent(text) {
   if (!text) return '';
@@ -4318,7 +4309,6 @@ function extractVisualKeywords(title) {
   
   return keywords;
 }
-
 async function getArticleImage(title, category, env) {
     const titleLower = title.toLowerCase();
     const visualKeywords = extractVisualKeywords(title);
@@ -4812,7 +4802,6 @@ function extractProducts(title) {
   });
   return found;
 }
-
 // Extract smart keywords for highly relevant image matching
 function extractSmartKeywords(title, category) {
   const titleLower = title.toLowerCase();
@@ -5631,7 +5620,6 @@ async function serveArticleBySlug(env, request, pathname) {
     return serve404Page(env, error.message);
   }
 }
-
 // Serve individual article page (legacy)
 async function serveArticle(env, request, pathname) {
   try {
@@ -6525,67 +6513,77 @@ async function serveArticle(env, request, pathname) {
 
 // Generate COMPLETELY ORIGINAL article with research and new headline
 async function generateOriginalArticle(sourceMaterial, env) {
-  // Use GPT to research and create original content
   console.log(`Creating original article from source: ${sourceMaterial.originalTitle}`);
-  
   if (!env.OPENAI_API_KEY) {
-    console.log('No OpenAI API key, using fallback');
-    return {
-      title: sourceMaterial.originalTitle,
-      content: `<p>${sourceMaterial.description}</p>`
-    };
+    throw new Error('OpenAI API key missing - cannot generate article');
   }
-  
-  const prompt = `You are an investigative journalist for AgamiNews. 
-  
-SOURCE MATERIAL:
-Original Headline: ${sourceMaterial.originalTitle}
-Brief: ${sourceMaterial.description}
-Category: ${sourceMaterial.category}
-Source: ${sourceMaterial.source}
+  // Normalize into the unified article object expected by generateFullArticle
+  const article = {
+    title: sourceMaterial.originalTitle,
+    category: sourceMaterial.category || 'News',
+    source: sourceMaterial.source || 'Multiple Sources'
+  };
+  const description = sourceMaterial.description || '';
+  const content = await generateFullArticle(article, description, env);
+  // Also return a refined title if available (keep original here; full generator may embed title inside content if needed)
+  return {
+    title: article.title,
+    content
+  };
+}
 
-YOUR TASK - CREATE COMPLETELY ORIGINAL CONTENT:
-
-1. CREATE A NEW HEADLINE:
-   - Completely different from the source
-   - More engaging and specific
-   - Include key facts/numbers if available
-   - Make it unique to AgamiNews
-   - Don't copy the original headline
-
-2. RESEARCH & EXPAND:
-   - Take the basic facts from the source
-   - Add context from your knowledge
-   - Include background information
-   - Add expert perspectives (you can create realistic quotes)
-   - Include data and statistics
-   - Add historical context
-   - Explain implications
-
-3. WRITE ORIGINAL 1500-2000 WORD ARTICLE:
-   - Start with your own lead paragraph
-   - Don't copy any sentences from the source
-   - Add multiple perspectives
-   - Include analysis and insights
-   - Create realistic quotes from experts
-   - Add data tables or comparisons
-   - Explain what this means for readers
-
-  FORMAT YOUR RESPONSE AS JSON:
-  {
-    "title": "Your completely original headline here",
-    "content": "<p>Your full article in HTML paragraphs...</p>"
+async function generateFullArticle(article, description, env) {
+  console.log(`generateFullArticle called for: ${article.title}, API key: ${env.OPENAI_API_KEY ? 'present' : 'missing'}`);
+  if (!env.OPENAI_API_KEY) {
+    throw new Error('OpenAI API key missing - cannot generate article');
   }
-
-  CRITICAL REQUIREMENTS:
-  - The headline MUST be COMPLETELY DIFFERENT from: "${sourceMaterial.originalTitle}"
-  - If your headline is similar to the source, you FAIL
-  - Create a NEW ANGLE that competitors haven't covered
-  - Add exclusive insights and analysis
-  - Make it so unique that it becomes the primary source for others
-  - Quality so high that readers share it immediately`;
-
   try {
+    const category = (article.category || 'News').toLowerCase();
+    // Persona by category
+    const persona = category.includes('politic') || category.includes('india') ? 'You are a seasoned political analyst for Indian audiences.'
+      : category.includes('tech') ? 'You are a hands-on technology reviewer and engineer.'
+      : category.includes('business') || category.includes('economy') ? 'You are a markets and macroeconomics analyst.'
+      : category.includes('entertainment') || category.includes('bollywood') ? 'You are a witty entertainment journalist with sharp cultural references.'
+      : category.includes('sports') ? 'You are a dynamic sports analyst and commentator.'
+      : 'You are an investigative journalist for Indian readers.';
+
+    // Curiosity-driven question framework
+    const curiosityRules = `CRITICAL ENGAGEMENT RULES:
+1) Begin with a HOOK QUESTION in the introduction (one sentence).
+2) Use question-form subheadings (H2/H3) to break sections at least 3 times.
+3) Add short rhetorical questions between paragraphs to build curiosity.
+4) End with an OPEN QUESTION that invites the reader to think or comment.
+5) Keep the tone conversational and engaging while remaining factual.`;
+
+    // Strict structure and quality gates
+    const structure = `REQUIRED STRUCTURE:
+- Intro with hook question
+- 5–8 sections with H2/H3 subheadings that are phrased as questions
+- Clear paragraphs (HTML <p>) with occasional rhetorical questions
+- A concluding section that ends with an open question
+
+MINIMUM QUALITY REQUIREMENTS:
+- Length: at least 1,500 words (≈ 9,000+ characters)
+- Include specific data points, dates, or figures where applicable
+- Provide at least 3 credible perspectives or expert-style quotes
+- Explain implications for Indian readers`;
+
+    const systemPrompt = `${persona}\n${curiosityRules}\nOnly produce high-quality journalism suitable for publication.`;
+
+    const userPrompt = `ARTICLE BRIEF
+Title: ${article.title}
+Category: ${article.category}
+Raw context (optional): ${description || '(none)'}
+
+Write a complete HTML article using only <p>, <h2>, <h3>, <strong>, <em>, <ul>, <li>.
+- Do NOT add a <title> tag or frontmatter.
+- Subheadings (H2/H3) MUST be framed as curiosity-driven questions.
+- Add rhetorical questions between paragraphs.
+- End with an open question in the final paragraph.
+- Keep tone conversational and engaging; maintain factual integrity.
+
+Return ONLY the HTML content (no JSON, no code fences).`;
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -6593,12 +6591,45 @@ YOUR TASK - CREATE COMPLETELY ORIGINAL CONTENT:
         'Authorization': `Bearer ${env.OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'gpt-4-turbo-preview', // Using GPT-4 for maximum quality
+        model: 'gpt-4o-mini',
         messages: [
-          {
-            role: 'system',
-            content: `You are an award-winning investigative journalist at AgamiNews. Your job is to create 100% ORIGINAL content.
+          { role: 'system', content: systemPrompt + '\n\n' + structure },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.75,
+        max_tokens: 5000,
+        presence_penalty: 0.3,
+        frequency_penalty: 0.3
+      })
+    });
 
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`OpenAI error: ${err}`);
+    }
+
+    const data = await response.json();
+    const fullContent = data.choices?.[0]?.message?.content || '';
+
+    // Quality checks
+    const charLen = fullContent.replace(/<[^>]*>/g, '').length;
+    const hasHookQuestion = /<p>\s*[^<\?]*\?\s*<\/p>/i.test(fullContent.substring(0, 600));
+    const subheadingQuestions = (fullContent.match(/<h2>.*\?<\/h2>|<h3>.*\?<\/h3>/gi) || []).length;
+    const endsWithQuestion = /\?\s*<\/p>\s*$/i.test(fullContent.trim());
+
+    if (charLen < 9000 || !hasHookQuestion || subheadingQuestions < 3 || !endsWithQuestion) {
+      throw new Error(`Quality gate failed (len=${charLen}, hook=${hasHookQuestion}, subQ=${subheadingQuestions}, endQ=${endsWithQuestion})`);
+    }
+
+    return fullContent;
+  } catch (error) {
+    console.error('Article generation error:', error.message);
+    // No placeholder path: fail hard so publisher can retry later
+    throw error;
+  }
+}
+
+// ... (rest of the code remains unchanged)
 STRICT RULES:
 1. NEVER copy or paraphrase the source headline
 2. Create a COMPLETELY NEW angle or perspective
@@ -7095,7 +7126,6 @@ async function setupWebhook(env, origin) {
     headers: { 'Content-Type': 'application/json' }
   });
 }
-
 // Generate sitemap
 async function generateSitemap(env) {
   const articles = await env.NEWS_KV.get('articles', 'json') || [];
