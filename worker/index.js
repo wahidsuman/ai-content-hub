@@ -160,6 +160,8 @@ export default {
     } else if (url.pathname.startsWith('/img/')) {
       // On-demand image proxy/cache
       return await serveImage(env, request, url.pathname);
+    } else if (url.pathname.startsWith('/media/')) {
+      return await serveR2Media(env, request, url.pathname);
     } else if (url.pathname.startsWith('/api/')) {
       return handleAPI(request, env, url.pathname);
     }
@@ -4007,6 +4009,44 @@ async function serveImage(env, request, pathname) {
   }
 }
 
+// Serve files stored in R2 at /media/<key>
+async function serveR2Media(env, request, pathname) {
+  try {
+    const key = decodeURIComponent(pathname.replace(/^\/media\//, ''));
+    if (!key) return new Response('Bad Request', { status: 400 });
+    const obj = await env.MEDIA_R2.get(key);
+    if (!obj) return new Response('Not Found', { status: 404 });
+    const headers = new Headers();
+    headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+    headers.set('ETag', obj.httpEtag);
+    headers.set('Content-Type', obj.httpMetadata?.contentType || 'application/octet-stream');
+    return new Response(obj.body, { headers });
+  } catch (e) {
+    return new Response('Server Error', { status: 500 });
+  }
+}
+
+// Upload a remote image to R2 and return our permanent URL
+async function ingestImageToR2(env, srcUrl, extHint = 'jpg') {
+  const keyBase = await (async () => {
+    const data = new TextEncoder().encode(srcUrl);
+    const hashBuf = await crypto.subtle.digest('SHA-256', data);
+    const arr = Array.from(new Uint8Array(hashBuf));
+    return arr.map(b => b.toString(16).padStart(2, '0')).join('');
+  })();
+  const key = `images/${keyBase}.${extHint}`;
+  // If exists, return URL
+  const exists = await env.MEDIA_R2.head(key);
+  if (exists) {
+    return `/media/${key}`;
+  }
+  const upstream = await fetch(srcUrl);
+  if (!upstream.ok) throw new Error('Failed to fetch upstream image');
+  const ct = upstream.headers.get('content-type') || 'image/jpeg';
+  const body = await upstream.arrayBuffer();
+  await env.MEDIA_R2.put(key, body, { httpMetadata: { contentType: ct } });
+  return `/media/${key}`;
+}
 // Generate unique article ID (6-digit like NDTV)
 function generateArticleId() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -4457,9 +4497,10 @@ async function getArticleImage(title, category, env) {
         `https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?w=1600&q=70`
       ];
       const chosen = fallbacks[Math.floor(Math.random() * fallbacks.length)];
+      const mediaUrl = await ingestImageToR2(env, chosen, 'jpg').catch(() => `/img/?src=${encodeURIComponent(chosen)}&w=1200&q=70`);
       return {
-        url: `/img/?src=${encodeURIComponent(chosen)}&w=1200&q=70`,
-        credit: 'Stock (proxied)',
+        url: mediaUrl,
+        credit: 'Stock (stored)',
         type: 'stock',
         isRelevant: true
       };
@@ -4679,9 +4720,10 @@ async function getArticleImage(title, category, env) {
           const data = await response.json();
           if (data.data && data.data[0]) {
             console.log(`DALL-E SUCCESS for: ${title}`);
+            const mediaUrl = await ingestImageToR2(env, data.data[0].url, 'jpg').catch(() => `/img/?src=${encodeURIComponent(data.data[0].url)}&w=1200&q=70`);
             return {
-              url: `/img/?src=${encodeURIComponent(data.data[0].url)}&w=1200&q=70`,
-              credit: 'AI (proxied)',
+              url: mediaUrl,
+              credit: 'AI (stored)',
               type: 'generated',
               isRelevant: true
             };
