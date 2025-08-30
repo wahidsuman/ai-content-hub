@@ -669,6 +669,36 @@ async function initializeSystem(env) {
   }
 }
 
+// Compute an importance score for a news candidate
+function computeNewsPriorityScore(title, description, category, source, pubDate, hour) {
+  const t = (title || '').toLowerCase();
+  const d = (description || '').toLowerCase();
+  let score = 0;
+  // Breaking keywords
+  const breaking = ['breaking', 'urgent', 'just in', 'update', 'announcement'];
+  breaking.forEach(k => { if (t.includes(k) || d.includes(k)) score += 10; });
+  // Numbers and percentages
+  const nums = (title.match(/\d+/g) || []).length + (description.match(/\d+/g) || []).length;
+  score += Math.min(nums * 1.5, 12);
+  if (/%/.test(title) || /%/.test(description)) score += 4;
+  // Personalities/entities
+  const entities = ['modi','rahul','kejriwal','ambani','adani','musk','gates','messi','ronaldo','supreme court','sensex','nifty','ipl','iphone'];
+  entities.forEach(e => { if (t.includes(e) || d.includes(e)) score += 6; });
+  // Category weighting by time of day (IST)
+  if (category === 'Business' && hour >= 9 && hour <= 16) score += 8; // market hours
+  if (category === 'Entertainment' && hour >= 18) score += 4;
+  if (category === 'Technology' && (hour >= 7 && hour <= 11)) score += 3;
+  // Source trust weighting
+  const s = (source || '').toLowerCase();
+  if (s.includes('thehindu') || s.includes('indianexpress') || s.includes('economictimes')) score += 3;
+  if (s.includes('timesofindia') || s.includes('ndtv')) score += 2;
+  // Freshness
+  try { const ageMin = Math.max(0, (Date.now() - Date.parse(pubDate)) / 60000); score += Math.max(0, 10 - ageMin / 30); } catch (_) {}
+  // Title length and specificity
+  if (title.split(' ').length >= 8) score += 2;
+  if (/(₹|rs\.|crore|lakh)/i.test(title)) score += 2;
+  return score;
+}
 // Serve website
 async function serveWebsite(env, request) {
   // Force fresh data fetch with timestamp check
@@ -3551,7 +3581,8 @@ async function fetchLatestNewsAuto(env, articlesToFetch = 3, priority = 'normal'
         break;
     }
     
-    // Fetch from RSS feeds with topic diversity
+    // Collect candidates first; then rank by importance
+    const candidates = [];
     const allArticles = [];
     const processedTitles = new Set(); // Track processed topics to avoid duplicates
     const articlesPerFeed = Math.ceil(articlesToFetch / rssSources.length);
@@ -3571,7 +3602,7 @@ async function fetchLatestNewsAuto(env, articlesToFetch = 3, priority = 'normal'
         const shuffledItems = [...items].sort(() => Math.random() - 0.5);
         
         for (let i = 0; i < Math.min(articlesPerFeed * 2, shuffledItems.length); i++) {
-          if (allArticles.length >= articlesToFetch) break;
+          // Collect more than needed; we'll rank later
           
           const item = shuffledItems[i];
           const title = (item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) || 
@@ -3591,95 +3622,84 @@ async function fetchLatestNewsAuto(env, articlesToFetch = 3, priority = 'normal'
           }
           
           if (title && description) {
-            // Clean HTML from description
             const cleanDesc = description.replace(/<[^>]*>/g, '').substring(0, 500);
-            
             // Determine category based on content
             let category = 'India';
-            if (priority === 'business' || title.toLowerCase().includes('market') || title.toLowerCase().includes('sensex')) {
-              category = 'Business';
-            } else if (priority === 'entertainment' || title.toLowerCase().includes('bollywood') || title.toLowerCase().includes('cricket')) {
-              category = 'Entertainment';
-            } else if (title.toLowerCase().includes('tech') || title.toLowerCase().includes('ai')) {
-              category = 'Technology';
-            }
-            
-            // Create source material for original article generation
-            const sourceMaterial = {
-              originalTitle: title,
+            const tl = title.toLowerCase();
+            if (priority === 'business' || tl.includes('market') || tl.includes('sensex') || tl.includes('nifty')) category = 'Business';
+            else if (priority === 'entertainment' || tl.includes('bollywood') || tl.includes('cricket')) category = 'Entertainment';
+            else if (tl.includes('tech') || tl.includes('ai') || tl.includes('iphone') || tl.includes('launch')) category = 'Technology';
+            candidates.push({
+              title,
               description: cleanDesc,
-              source: feedUrl.includes('timesofindia') ? 'Times of India' :
-                     feedUrl.includes('thehindu') ? 'The Hindu' :
-                     feedUrl.includes('ndtv') ? 'NDTV' :
-                     feedUrl.includes('economictimes') ? 'Economic Times' :
-                     feedUrl.includes('moneycontrol') ? 'Moneycontrol' : 'News Agency',
-              link: link,
-              category: category
-            };
-            
-            // Create article structure with proper ID
-            const article = {
-              sourceMaterial: sourceMaterial,
-              id: generateArticleId(), // 6-digit ID like NDTV
-              slug: '', // Will be generated from final title
-              title: '', // Will be created by AI
-              preview: '', // Will be filled with article beginning
-              category: category,
-              source: 'AgamiNews Research Team',
-              originalSourceLink: link,
-              image: null,
-              timestamp: Date.now(),
-              views: 0,
-              date: getTimeAgo(allArticles.length),
-              trending: Math.random() > 0.6,
-              fullContent: null,
-              autoPublished: true
-            };
-            
-            // Generate COMPLETELY ORIGINAL article with research
-            console.log(`[AUTO] Researching and creating original article about: ${title}`);
-            let fullArticle = '';
-            let originalTitle = '';
-            
-            try {
-              // Create original article with new headline
-              const researchResult = await Promise.race([
-                generateOriginalArticle(sourceMaterial, env),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Article generation timeout')), 30000))
-              ]);
-              
-              fullArticle = researchResult.content;
-              originalTitle = researchResult.title;
-              
-              console.log(`[AUTO] Created original article: "${originalTitle}" (${fullArticle.length} chars)`);
-              article.fullContent = fullArticle;
-              article.title = originalTitle; // Use AI-generated original title
-              article.slug = generateSlug(originalTitle); // Generate SEO-friendly slug
-              article.url = `/${article.category.toLowerCase()}-news/${article.slug}-${article.id}`; // Full URL path
-              
-              // Now get image based on the ORIGINAL title (with 95% DALL-E usage)
-              article.image = await getArticleImage(originalTitle, category, env);
-              
-              // Check if we got generic content
-              if (fullArticle.includes('This development is particularly significant')) {
-                console.log('[AUTO] Warning: Generic content detected, skipping');
-                continue;
-              }
-              
-            } catch (genError) {
-              console.error(`[AUTO] Failed to generate article for ${title}:`, genError.message);
-              continue; // Skip failed articles
-            }
-            
-            // Extract first 500 chars of article as preview for homepage
-            const plainText = fullArticle.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-            article.preview = plainText.substring(0, 500) + '...';
-            
-            allArticles.push(article);
+              link,
+              category,
+              source: feedUrl,
+              pubDate: (item.match(/<pubDate>([\s\S]*?)<\/pubDate>/) || [])[1] || ''
+            });
           }
         }
       } catch (feedError) {
         console.error(`Error fetching from ${feedUrl}:`, feedError);
+      }
+    }
+    
+    // Rank candidates by importance
+    const hourIST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })).getHours();
+    candidates.forEach(c => {
+      c.score = computeNewsPriorityScore(c.title, c.description, c.category, c.source, c.pubDate, hourIST);
+    });
+    const ranked = candidates.sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, articlesToFetch * 2);
+    
+    // Generate articles from top-ranked
+    for (const cand of ranked) {
+      if (allArticles.length >= articlesToFetch) break;
+      const sourceName = cand.source.includes('timesofindia') ? 'Times of India' :
+                         cand.source.includes('thehindu') ? 'The Hindu' :
+                         cand.source.includes('ndtv') ? 'NDTV' :
+                         cand.source.includes('economictimes') ? 'Economic Times' :
+                         cand.source.includes('moneycontrol') ? 'Moneycontrol' : 'News Agency';
+      const sourceMaterial = {
+        originalTitle: cand.title,
+        description: cand.description,
+        source: sourceName,
+        link: cand.link,
+        category: cand.category
+      };
+      const article = {
+        sourceMaterial,
+        id: generateArticleId(),
+        slug: '',
+        title: '',
+        preview: '',
+        category: cand.category,
+        source: 'AgamiNews Research Team',
+        originalSourceLink: cand.link,
+        image: null,
+        timestamp: Date.now(),
+        views: 0,
+        date: getTimeAgo(allArticles.length),
+        trending: Math.random() > 0.6,
+        fullContent: null,
+        autoPublished: true
+      };
+      try {
+        const researchResult = await Promise.race([
+          generateOriginalArticle(sourceMaterial, env),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Article generation timeout')), 30000))
+        ]);
+        const fullArticle = researchResult.content;
+        const originalTitle = researchResult.title;
+        article.fullContent = fullArticle;
+        article.title = originalTitle;
+        article.slug = generateSlug(originalTitle);
+        article.url = `/${article.category.toLowerCase()}-news/${article.slug}-${article.id}`;
+        article.image = await getArticleImage(originalTitle, article.category, env);
+        const plainText = fullArticle.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+        article.preview = plainText.substring(0, 500) + '...';
+        allArticles.push(article);
+      } catch (e) {
+        console.error('[RANK] Failed generation for candidate:', e.message);
       }
     }
     
