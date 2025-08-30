@@ -7864,6 +7864,142 @@ async function handleAPI(request, env, pathname) {
     });
   }
   
+  // Admin ops via API
+  if (pathname === '/api/migrate-kv') {
+    const url = new URL(request.url);
+    const key = url.searchParams.get('key');
+    const mode = (url.searchParams.get('mode') || 'dry').toLowerCase();
+    const expected = env.ADMIN_SECRET || env.CRON_SECRET || 'agami2024';
+    if (!key || key !== expected) return new Response('Unauthorized', { status: 401 });
+    if (!env.OLD_KV || !env.NEWS_KV) {
+      return new Response(JSON.stringify({ error: 'Bindings missing', hint: 'Bind OLD_KV to assets KV and NEWS_KV to target KV' }), { headers: { 'Content-Type': 'application/json' }, status: 400 });
+    }
+    const allowedKeys = ['articles','stats','config','aiInstructions','analytics_overview','cron_logs','last_update_id','admin_chat','articlesTimestamp','lastFetch'];
+    const result = { mode, copied: [], skipped: [], articlesCopied: 0, articleKeys: [] };
+    for (const k of allowedKeys) {
+      const val = await env.OLD_KV.get(k, 'json');
+      if (val !== null && val !== undefined) {
+        if (mode === 'copy') await env.NEWS_KV.put(k, JSON.stringify(val));
+        result.copied.push(k);
+      } else {
+        const raw = await env.OLD_KV.get(k);
+        if (raw) { if (mode === 'copy') await env.NEWS_KV.put(k, raw); result.copied.push(k); } else { result.skipped.push(k); }
+      }
+    }
+    try {
+      const list1 = await env.OLD_KV.list({ prefix: 'article_' });
+      for (const entry of list1.keys) {
+        const keyName = entry.name;
+        const v = await env.OLD_KV.get(keyName);
+        if (v) { if (mode === 'copy') await env.NEWS_KV.put(keyName, v); result.articleKeys.push(keyName); result.articlesCopied++; }
+      }
+    } catch (_) {}
+    return new Response(JSON.stringify(result, null, 2), { headers: { 'Content-Type': 'application/json' } });
+  }
+  
+  if (pathname === '/api/repair-lite') {
+    const url = new URL(request.url);
+    const key = url.searchParams.get('key');
+    const expected = env.ADMIN_SECRET || env.CRON_SECRET || 'agami2024';
+    if (!key || key !== expected) return new Response('Unauthorized', { status: 401 });
+    let id = url.searchParams.get('id') || '';
+    let categoryLabel = url.searchParams.get('category') || '';
+    let slug = url.searchParams.get('slug') || '';
+    if (!id) return new Response('Missing id', { status: 400 });
+    const category = mapCategoryLabel(categoryLabel || 'news');
+    const baselineTitle = slug ? slug.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim() : `News ${id}`;
+    const article = {
+      id,
+      slug: generateSlug(baselineTitle),
+      title: baselineTitle,
+      preview: `Quick update: ${baselineTitle}`,
+      category,
+      source: 'AgamiNews',
+      originalSourceLink: '',
+      image: { url: `/img/?src=${encodeURIComponent('https://via.placeholder.com/1280x720/0066CC/FFFFFF?text=AgamiNews')}&w=1200&q=70`, credit: 'Placeholder', type: 'placeholder' },
+      date: 'Just now',
+      timestamp: Date.now(),
+      views: 0,
+      trending: false,
+      fullContent: `<p><strong>${baselineTitle}</strong></p><p>This article is being prepared. Please check back shortly.</p>`,
+      url: `/${category.toLowerCase()}-news/${generateSlug(baselineTitle)}-${id}`
+    };
+    const list = await env.NEWS_KV.get('articles', 'json') || [];
+    const idx = list.findIndex(a => String(a.id) === String(id));
+    if (idx !== -1) list.splice(idx, 1);
+    const updated = [article, ...list].slice(0, 100);
+    await env.NEWS_KV.put('articles', JSON.stringify(updated));
+    await env.NEWS_KV.put('articlesTimestamp', Date.now().toString());
+    await env.NEWS_KV.put(`article_${id}`, JSON.stringify(article));
+    return new Response(JSON.stringify({ ok: true, article }), { headers: { 'Content-Type': 'application/json' } });
+  }
+  
+  if (pathname === '/api/replace-article') {
+    const url = new URL(request.url);
+    const key = url.searchParams.get('key');
+    const expected = env.ADMIN_SECRET || env.CRON_SECRET || 'agami2024';
+    if (!key || key !== expected) return new Response('Unauthorized', { status: 401 });
+    const oldId = url.searchParams.get('id') || '';
+    const categoryParam = url.searchParams.get('category') || 'technology';
+    const slugParam = url.searchParams.get('slug') || '';
+    const titleParam = url.searchParams.get('title') || '';
+    if (!oldId) return new Response('Missing id', { status: 400 });
+    const category = mapCategoryLabel(categoryParam);
+    const baselineTitle = titleParam ? decodeURIComponent(titleParam) : slugParam ? decodeURIComponent(slugParam).replace(/[-_]+/g, ' ').trim() : 'Breaking update';
+    const list = await env.NEWS_KV.get('articles', 'json') || [];
+    const idx = list.findIndex(a => String(a.id) === String(oldId));
+    if (idx !== -1) list.splice(idx, 1);
+    const sourceMaterial = { originalTitle: baselineTitle, description: `Replacement article for ${baselineTitle}`, source: 'AgamiNews Replacement', link: '', category };
+    let newArticle;
+    try {
+      const research = await generateOriginalArticle(sourceMaterial, env);
+      const title = research.title || baselineTitle;
+      const content = research.content || `<p>${baselineTitle}</p>`;
+      const newId = generateArticleId();
+      newArticle = {
+        id: newId,
+        slug: generateSlug(title),
+        title,
+        preview: content.replace(/<[^>]*>/g, '').substring(0, 500) + '...',
+        category,
+        source: 'AgamiNews Research Team',
+        originalSourceLink: '',
+        image: await getArticleImage(title, category, env),
+        date: 'Just now',
+        timestamp: Date.now(),
+        views: 0,
+        trending: false,
+        fullContent: content,
+        url: `/${category.toLowerCase()}-news/${generateSlug(title)}-${newId}`
+      };
+    } catch (e) {
+      const title = baselineTitle;
+      const content = `<p><strong>${baselineTitle}</strong></p><p>This article is being prepared. Please check back shortly.</p>`;
+      const newId = generateArticleId();
+      newArticle = {
+        id: newId,
+        slug: generateSlug(title),
+        title,
+        preview: content.replace(/<[^>]*>/g, '').substring(0, 500) + '...',
+        category,
+        source: 'AgamiNews',
+        originalSourceLink: '',
+        image: { url: `/img/?src=${encodeURIComponent('https://via.placeholder.com/1280x720/0066CC/FFFFFF?text=AgamiNews')}&w=1200&q=70`, credit: 'Placeholder', type: 'placeholder' },
+        date: 'Just now',
+        timestamp: Date.now(),
+        views: 0,
+        trending: false,
+        fullContent: content,
+        url: `/${category.toLowerCase()}-news/${generateSlug(title)}-${newId}`
+      };
+    }
+    const updated = [newArticle, ...list].slice(0, 100);
+    await env.NEWS_KV.put('articles', JSON.stringify(updated));
+    await env.NEWS_KV.put('articlesTimestamp', Date.now().toString());
+    await env.NEWS_KV.put(`article_${newArticle.id}`, JSON.stringify(newArticle));
+    return new Response(JSON.stringify({ ok: true, article: newArticle }), { headers: { 'Content-Type': 'application/json' } });
+  }
+  
   if (pathname.startsWith('/api/article/')) {
     const id = pathname.split('/').pop();
     const articles = await env.NEWS_KV.get('articles', 'json') || [];
