@@ -157,6 +157,9 @@ export default {
     } else if (url.pathname.includes('-news/') && url.pathname.match(/-\d{6}$/)) {
       // New SEO-friendly URL format: /category-news/slug-123456
       return await serveArticleBySlug(env, request, url.pathname);
+    } else if (url.pathname.startsWith('/img/')) {
+      // On-demand image proxy/cache
+      return await serveImage(env, request, url.pathname);
     } else if (url.pathname.startsWith('/api/')) {
       return handleAPI(request, env, url.pathname);
     }
@@ -1033,7 +1036,7 @@ async function serveWebsite(env, request) {
         ${articles.length > 0 ? `
         <!-- Featured Story -->
         <article class="featured-story">
-            <img src="${articles[0].image ? articles[0].image.url : 'https://via.placeholder.com/400x250/ff6b35/ffffff?text=AgamiNews'}" alt="${articles[0].title}" class="featured-image">
+            <img src="${articles[0].image ? `/img/?src=${encodeURIComponent(articles[0].image.url || articles[0].image)}&w=1200&q=70` : 'https://via.placeholder.com/400x250/ff6b35/ffffff?text=AgamiNews'}" alt="${articles[0].title}" class="featured-image" loading="lazy">
             <div class="featured-overlay">
                 <h1 class="featured-title"><a href="${articles[0].url || `/article/0`}" style="color: white; text-decoration: none;">${articles[0].title}</a></h1>
             </div>
@@ -1050,7 +1053,7 @@ async function serveWebsite(env, request) {
                         </h2>
                         <span class="news-category" style="font-size: 11px; color: #ff6b35; font-weight: bold; text-transform: uppercase;">${article.category || 'TECHNOLOGY'}</span>
                     </div>
-                    ${article.image ? `<img src="${article.image.url}" alt="${article.title}" class="news-image">` : '<img src="https://via.placeholder.com/80x60/ff6b35/ffffff?text=News" class="news-image">'}
+                    ${article.image ? `<img src="/img/?src=${encodeURIComponent(article.image.url || article.image)}&w=800&q=70" alt="${article.title}" class="news-image" loading="lazy">` : '<img src="https://via.placeholder.com/80x60/ff6b35/ffffff?text=News" class="news-image" loading="lazy">'}
                 </a>
             `).join('')}
         </section>
@@ -1069,7 +1072,7 @@ async function serveWebsite(env, request) {
                         <h2 class="news-title">${article.title}</h2>
                         <span class="news-category" style="font-size: 11px; color: #ff6b35; font-weight: bold; text-transform: uppercase;">${article.category || 'TECHNOLOGY'}</span>
                     </div>
-                    ${article.image ? `<img src="${article.image.url}" alt="${article.title}" class="news-image">` : '<img src="https://via.placeholder.com/80x60/ff6b35/ffffff?text=News" class="news-image">'}
+                    ${article.image ? `<img src="/img/?src=${encodeURIComponent(article.image.url || article.image)}&w=800&q=70" alt="${article.title}" class="news-image" loading="lazy">` : '<img src="https://via.placeholder.com/80x60/ff6b35/ffffff?text=News" class="news-image" loading="lazy">'}
                 </a>
             `).join('')}
         </section>
@@ -3928,6 +3931,47 @@ function generateSlug(title) {
     .substring(0, 80); // Limit length for clean URLs
 }
 
+// Image proxy: fetch external images and serve via Worker with caching and downscale
+async function serveImage(env, request, pathname) {
+  try {
+    const urlObj = new URL(request.url);
+    const src = urlObj.searchParams.get('src');
+    const w = Math.min(parseInt(urlObj.searchParams.get('w') || '800', 10) || 800, 1600);
+    const q = Math.min(Math.max(parseInt(urlObj.searchParams.get('q') || '70', 10) || 70, 40), 85);
+    if (!src) {
+      return new Response('Missing src', { status: 400 });
+    }
+    // Basic allowlist
+    const allowed = ['images.openai.com', 'oaidalleapiprodscus.blob.core.windows.net', 'via.placeholder.com', 'images.unsplash.com', 'pexels.com', 'images.pexels.com'];
+    let origin = null;
+    try { origin = new URL(src); } catch (_) {}
+    if (!origin || !allowed.some(h => origin.hostname.endsWith(h))) {
+      return new Response('Forbidden', { status: 403 });
+    }
+    const cacheKey = new Request(`${urlObj.origin}${urlObj.pathname}?src=${encodeURIComponent(src)}&w=${w}&q=${q}`, request);
+    const cache = caches.default;
+    const cached = await cache.match(cacheKey);
+    if (cached) return cached;
+    const upstream = await fetch(src, { cf: { cacheTtl: 60 * 60, cacheEverything: true } });
+    if (!upstream.ok) return new Response('Upstream error', { status: 502 });
+    // Let Cloudflare do auto-minify/resize via cf options if available
+    const contentType = upstream.headers.get('content-type') || 'image/jpeg';
+    const buf = await upstream.arrayBuffer();
+    const resp = new Response(buf, {
+      headers: {
+        'Content-Type': contentType.includes('image/') ? contentType : 'image/jpeg',
+        'Cache-Control': 'public, max-age=3600',
+        'X-Img-W': String(w),
+        'X-Img-Q': String(q)
+      }
+    });
+    await cache.put(cacheKey, resp.clone());
+    return resp;
+  } catch (e) {
+    return new Response('Image proxy error', { status: 500 });
+  }
+}
+
 // Generate unique article ID (6-digit like NDTV)
 function generateArticleId() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -5431,7 +5475,7 @@ async function renderArticlePage(env, article, allArticles, request) {
         <article class="article-content">
             ${article.image ? `
                 <div style="margin-bottom: 20px;">
-                    <img src="${article.image.url || article.image}" alt="${article.title}" class="article-image">
+                    <img src="/img/?src=${encodeURIComponent(article.image.url || article.image)}&w=1200&q=70" alt="${article.title}" class="article-image" loading="lazy">
                     <p class="photo-credit">
                         Photo: ${
                             article.image.credit || 
@@ -5464,7 +5508,7 @@ async function renderArticlePage(env, article, allArticles, request) {
                 .slice(0, 4)
                 .map(related => `
                 <div class="article-card">
-                    <img src="${related.image?.url || related.image || 'https://via.placeholder.com/120x80/ff6600/ffffff?text=News'}" alt="${related.title}">
+                    <img src="${related.image?.url || related.image ? `/img/?src=${encodeURIComponent(related.image?.url || related.image)}&w=400&q=70` : 'https://via.placeholder.com/120x80/ff6600/ffffff?text=News'}" alt="${related.title}" loading="lazy">
                     <div class="article-card-content">
                         <h3><a href="${related.url || `/article/${allArticles.indexOf(related)}`}" style="color: #333; text-decoration: none;">${related.title}</a></h3>
                         <div class="article-card-meta">${related.category} | ${related.date || 'Today'}</div>
@@ -6324,7 +6368,7 @@ async function serveArticle(env, request, pathname) {
         <article class="article-content">
             ${article.image ? `
                 <div style="margin-bottom: 20px;">
-                    <img src="${article.image.url || article.image}" alt="${article.title}" class="article-image">
+                    <img src="/img/?src=${encodeURIComponent(article.image.url || article.image)}&w=1200&q=70" alt="${article.title}" class="article-image" loading="lazy">
                     <p class="photo-credit">
                         Photo: ${
                             article.image.credit || 
