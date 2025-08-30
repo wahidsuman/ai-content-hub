@@ -1654,130 +1654,15 @@ async function answerCallback(env, callbackId, text = '') {
 // [Removed 140+ lines of broken old Telegram handler code]
 
 // The sendMessage function and other helpers are defined below
-          await env.NEWS_KV.put('admin_chat', String(chatId));
-          await sendMessage(env, chatId, `✅ *Admin Access Granted!*\n\nYou are now the admin.\nChat ID: \`${chatId}\`\n\nYou can now:\n• Delete articles with \`/delete\`\n• Clear all articles with \`/clear\`\n• Access all admin commands`);
-          console.log(`[ADMIN] Set ${chatId} as admin via /setadmin`);
-        } else if (!secret) {
-          await sendMessage(env, chatId, `❌ *Secret Required*\n\nUse: \`/setadmin <secret>\`\n\nDefault: \`/setadmin agami2024\``);
-        } else {
-          await sendMessage(env, chatId, `❌ *Invalid Secret*\n\nThe secret you provided is incorrect.`);
-        }
-      } else if (text && text.startsWith('/setimageai ')) {
-        // Regenerate AI image for an article ID
-        const adminChat = await env.NEWS_KV.get('admin_chat');
-        if (!adminChat || String(chatId) !== String(adminChat)) {
-          await sendMessage(env, chatId, '❌ Unauthorized. Only admin can update images.');
-          return new Response('OK', { status: 200 });
-        }
-        const id = text.split(/\s+/)[1];
-        if (!id) {
-          await sendMessage(env, chatId, '❌ Usage: `/setimageai 123456`');
-          return new Response('OK', { status: 200 });
-        }
-        const done = await regenerateArticleImageAI(env, id);
-        await sendMessage(env, chatId, done ? `✅ AI image regenerated for ${id}` : '❌ Article not found or generation failed.');
-      } else if (text && text.startsWith('/setimage ')) {
-        // Set image from a URL: /setimage <id> <url>
-        const adminChat = await env.NEWS_KV.get('admin_chat');
-        if (!adminChat || String(chatId) !== String(adminChat)) {
-          await sendMessage(env, chatId, '❌ Unauthorized. Only admin can update images.');
-          return new Response('OK', { status: 200 });
-        }
-        const parts = text.split(/\s+/);
-        const id = parts[1];
-        const urlArg = parts[2];
-        if (!id) {
-          await sendMessage(env, chatId, '❌ Usage: `/setimage <id> <url>`\nOr send a photo with caption: `/setimage <id>`');
-          return new Response('OK', { status: 200 });
-        }
-        if (!urlArg) {
-          await sendMessage(env, chatId, '📸 Now send the photo with caption: `/setimage ' + id + '`');
-          return new Response('OK', { status: 200 });
-        }
-        try {
-          const mediaUrl = await ingestImageToR2(env, urlArg, 'jpg');
-          const ok = await setArticleImageByUrl(env, id, mediaUrl, 'Admin URL');
-          await sendMessage(env, chatId, ok ? `✅ Image updated for ${id}\n🔗 ${mediaUrl}` : '❌ Update failed.');
-        } catch (e) {
-          await sendMessage(env, chatId, '❌ Failed to fetch or store image URL.');
-        }
-      } else if (text === '/imagehelp' || text === '/images') {
-        await sendMessage(env, chatId, '🖼️ *Image Admin Commands*\n\n1) Regenerate AI image:\n`/setimageai <id>`\n\n2) Set from a URL:\n`/setimage <id> <https://...>`\n\n3) Upload a photo:\nSend a photo with caption:\n`/setimage <id>`', { inline_keyboard: [[{ text: 'List Articles', callback_data: 'list' }]] });
-      } else if (text === '/cron-logs' || text === '/logs') {
-        // Show cron execution logs
-        const cronLogs = await env.NEWS_KV.get('cron_logs', 'json') || [];
-        if (cronLogs.length === 0) {
-          await sendMessage(env, chatId, '📊 *No cron logs found*\n\nThe cron job has not run yet or logs were cleared.');
-        } else {
-          const logText = cronLogs.slice(0, 10).map(log => {
-            const time = new Date(log.time).toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'});
-            return `• ${time}: ${log.event}`;
-          }).join('\n');
-          
-          await sendMessage(env, chatId, `📊 *Recent Cron Executions:*\n\n${logText}\n\n_Showing last 10 runs_`);
-        }
-      } else if (text === '/cron' || text === '/trigger-cron') {
-        // Manually trigger the scheduled job
-        await sendMessage(env, chatId, '🔧 *Manually triggering auto-publish...*');
-        
-        try {
-          // Get current IST time and priority
-          const istTime = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
-          const hour = istTime.getHours();
-          let priority = 'normal';
-          
-          if (hour >= 6 && hour < 9) priority = 'high';
-          else if (hour >= 9 && hour < 12) priority = 'business';
-          else if (hour >= 12 && hour < 15) priority = 'entertainment';
-          else if (hour >= 15 && hour < 18) priority = 'business';
-          else if (hour >= 18 && hour < 21) priority = 'high';
-          else if (hour >= 21 && hour < 24) priority = 'low';
-          else priority = 'minimal';
-          
-          await sendMessage(env, chatId, `⏰ Time: ${hour}:00 IST\n🎯 Priority: ${priority}\n📰 Fetching 1 article...`);
-          
-          // Call fetchLatestNewsAuto directly
-          const fetchResult = await fetchLatestNewsAuto(env, 1, priority);
-          
-          if (fetchResult && fetchResult.articlesPublished > 0) {
-            await sendMessage(env, chatId, 
-              `✅ *Article Published!*\n\n` +
-              `📌 Title: ${fetchResult.topArticle || 'N/A'}\n` +
-              `📰 Articles: ${fetchResult.articlesPublished}\n` +
-              `🔗 View: https://agaminews.in`
-            );
-            
-            // Send article details if available
-            if (fetchResult.articles && fetchResult.articles[0]) {
-              const article = fetchResult.articles[0];
-              await sendMessage(env, chatId,
-                `📄 *Article Details*\n\n` +
-                `📌 Title: ${article.title}\n` +
-                `🏷️ Category: ${article.category}\n` +
-                `📸 Image: ${article.image?.type === 'generated' ? '🎨 DALL-E 3' : '📷 Stock'}\n` +
-                `🔗 Link: https://agaminews.in${article.url}`
-              );
-            }
-          } else {
-            await sendMessage(env, chatId, `❌ *Failed to fetch article*\n\nError: ${fetchResult?.error || 'Unknown error'}`);
-          }
-        } catch (error) {
-          console.error('[CRON-MANUAL] Error:', error);
-          await sendMessage(env, chatId, `❌ *Error:* ${error.message}`);
-        }
-      } else {
-        await handleNaturalLanguage(env, chatId, text);
-      }
-    } else if (update.callback_query) {
-      await handleCallback(env, update.callback_query);
-    }
-    
-    return new Response('OK', { status: 200 });
-  } catch (error) {
-    console.error('Telegram error:', error);
-    return new Response('OK', { status: 200 }); // Always return OK to prevent retries
-  }
-}
+
+// [All old Telegram command handlers have been removed - 140+ lines of code deleted]
+// [The new AgamiNews Control Centre v1.0 interface is now active]
+
+// ============================================
+// HELPER FUNCTIONS (Preserved from original)
+// ============================================
+
+// All broken code has been removed
 
 async function sendMessage(env, chatId, text, keyboard = null) {
   const token = env.TELEGRAM_BOT_TOKEN;
