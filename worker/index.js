@@ -4792,7 +4792,7 @@ async function getArticleImage(title, category, env) {
             n: 1,
             size: '1024x1024', // Optimized size for faster loading
             quality: 'standard',
-            style: 'vivid' // More eye-catching style
+            style: 'natural' // Photorealistic news photography
           })
         });
         
@@ -5126,7 +5126,7 @@ async function getArticleImage(title, category, env) {
             n: 1,
             size: '1024x1024', // Optimized for web performance
             quality: 'standard', // Faster generation and loading
-            style: 'vivid' // More vibrant and eye-catching
+            style: 'natural' // Photorealistic news photography
           })
         });
         
@@ -5177,7 +5177,7 @@ async function getArticleImage(title, category, env) {
           n: 1,
           size: '1024x1024',
           quality: 'standard',
-          style: 'vivid'
+          style: 'natural'
         })
       });
       
