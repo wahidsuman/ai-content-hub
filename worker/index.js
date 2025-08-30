@@ -1484,6 +1484,14 @@ async function serveWebsite(env, request) {
 // SIMPLIFIED TELEGRAM BOT WITH BUTTON MENUS
 // ============================================
 
+// ============================================
+// AGAMINEWS CONTROL CENTRE v1.0
+// AI-Powered News Management System
+// ============================================
+
+const SYSTEM_VERSION = "1.0";
+const SYSTEM_NAME = "AgamiNews Control Centre";
+
 async function handleTelegram(request, env) {
   try {
     if (!env.TELEGRAM_BOT_TOKEN) {
@@ -1492,51 +1500,16 @@ async function handleTelegram(request, env) {
     
     const update = await request.json();
     
-    // Add update_id to prevent duplicate processing
-    const updateId = update.update_id;
-    if (updateId) {
-      const lastUpdateId = await env.NEWS_KV.get('last_update_id');
-      if (lastUpdateId && parseInt(lastUpdateId) >= updateId) {
-        console.log(`Skipping duplicate update ${updateId}`);
-        return new Response('OK', { status: 200 });
-      }
-      await env.NEWS_KV.put('last_update_id', updateId.toString());
-    }
-    
+    // Handle messages
     if (update.message) {
       const chatId = update.message.chat.id;
-      const text = update.message.text;
+      const text = update.message.text || '';
 
-      // Admin-only: handle photo uploads with caption "/setimage <id>"
-      if (update.message.photo && (update.message.caption || '').toLowerCase().startsWith('/setimage')) {
-        const adminChat = await env.NEWS_KV.get('admin_chat');
-        if (!adminChat || String(chatId) !== String(adminChat)) {
-          await sendMessage(env, chatId, '❌ Unauthorized. Only admin can update images.');
-          return new Response('OK', { status: 200 });
-        }
-        const caption = (update.message.caption || '').trim();
-        const parts = caption.split(/\s+/);
-        const articleId = parts[1];
-        if (!articleId) {
-          await sendMessage(env, chatId, '❌ Usage: Send photo with caption: `/setimage 123456`');
-          return new Response('OK', { status: 200 });
-        }
-        try {
-          // Choose largest photo size
-          const sizes = update.message.photo;
-          const best = sizes[sizes.length - 1];
-          const fileId = best.file_id;
-          const mediaUrl = await downloadTelegramPhotoToR2(env, fileId);
-          const ok = await setArticleImageByUrl(env, articleId, mediaUrl, 'Admin upload');
-          if (ok) {
-            await sendMessage(env, chatId, `✅ Image updated for ID ${articleId}\n🔗 ${mediaUrl}`);
-          } else {
-            await sendMessage(env, chatId, '❌ Article not found or update failed.');
-          }
-        } catch (e) {
-          await sendMessage(env, chatId, '❌ Failed to process photo.');
-        }
-        return new Response('OK', { status: 200 });
+      // Store first user as admin
+      const adminChat = await env.NEWS_KV.get('admin_chat');
+      if (!adminChat) {
+        await env.NEWS_KV.put('admin_chat', String(chatId));
+        console.log(`[CONTROL v${SYSTEM_VERSION}] Set ${chatId} as admin (first user)`);
       }
       
       // Save admin chat ID
