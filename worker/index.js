@@ -5498,18 +5498,33 @@ async function serveArticleBySlug(env, request, pathname) {
     const articles = await env.NEWS_KV.get('articles', 'json') || [];
     
     let article = null;
+    const decodedPathname = decodeURIComponent(pathname);
     if (idFromPath) {
       // Prefer exact ID match (normalize to string)
       article = articles.find(a => String(a.id) === String(idFromPath));
       
-      // Fallback: if not found, try slug match
+      // Fallback 1: exact stored URL match
+      if (!article) {
+        article = articles.find(a => a.url && a.url === decodedPathname);
+      }
+      
+      // Fallback 2: slug match
       if (!article && slugFromPath) {
         article = articles.find(a => a.slug === slugFromPath);
+      }
+      
+      // Fallback 3: URL ends with -ID
+      if (!article) {
+        article = articles.find(a => a.url && a.url.endsWith(`-${idFromPath}`));
       }
     } else {
       // No ID in path: try slug-only match (legacy links)
       if (slugFromPath) {
-        article = articles.find(a => a.slug === slugFromPath);
+        article = articles.find(a => a.slug === slugFromPath) || articles.find(a => a.url && a.url.includes(`/${slugFromPath}-`));
+      }
+      // As a last resort, try full URL equality
+      if (!article) {
+        article = articles.find(a => a.url && a.url === decodedPathname);
       }
     }
     
