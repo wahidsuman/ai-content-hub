@@ -11,11 +11,9 @@ export default {
     
     // Route handling
     if (url.pathname === '/telegram' || url.pathname === '/telegram-v2') {
-      return handleTelegram(request, env);
-    } else if (url.pathname === '/setup') {
-      return setupWebhook(env, url.origin);
-    } else if (url.pathname === '/reset-webhook') {
-      return resetWebhook(env, url.origin);
+      return new Response('Telegram interface has been removed', { status: 410 });
+    } else if (url.pathname === '/setup' || url.pathname === '/reset-webhook' || url.pathname === '/webhook-info' || url.pathname === '/send-test') {
+      return new Response('Telegram endpoints removed', { status: 410 });
     } else if (url.pathname === '/sitemap.xml') {
       return generateSitemap(env);
     } else if (url.pathname === '/robots.txt') {
@@ -26,23 +24,11 @@ export default {
       return adminRouter(request, env);
     } else if (url.pathname === '/debug') {
       return debugInfo(env);
-    } else if (url.pathname === '/webhook-info') {
-      // Return Telegram getWebhookInfo (mask token)
-      if (!env.TELEGRAM_BOT_TOKEN) return new Response('No token', { status: 400 });
-      const resp = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getWebhookInfo`, { method: 'POST' });
-      const info = await resp.json();
-      return new Response(JSON.stringify(info, null, 2), { headers: { 'Content-Type': 'application/json' } });
     } else if (url.pathname === '/kv-get') {
       // Debug: read KV by key
       const key = url.searchParams.get('key');
       const val = key ? await env.NEWS_KV.get(key) : null;
       return new Response(JSON.stringify({ key, value: val }, null, 2), { headers: { 'Content-Type': 'application/json' } });
-    } else if (url.pathname === '/send-test') {
-      // Send a test message to admin chat
-      const adminChat = await env.NEWS_KV.get('admin_chat');
-      if (!adminChat) return new Response('admin_chat not set', { status: 400 });
-      const ok = await sendMessage(env, adminChat, '🔔 Test: AgamiNews Control Panel v2.7 is LIVE');
-      return new Response(JSON.stringify({ sent: ok, adminChat }, null, 2), { headers: { 'Content-Type': 'application/json' } });
     } else if (url.pathname === '/test-openai') {
       // Test OpenAI integration
       return testOpenAI(env);
@@ -604,7 +590,6 @@ async function initializeSystem(env) {
     await env.NEWS_KV.put('initialized', 'true');
   }
 }
-
 // Serve website
 async function serveWebsite(env, request) {
   // Force fresh data fetch with timestamp check
@@ -1555,46 +1540,8 @@ Or just talk to me naturally! Try:
 }
 
 async function sendMessage(env, chatId, text, keyboard = null) {
-  const token = env.TELEGRAM_BOT_TOKEN;
-  if (!token) {
-    console.error('TELEGRAM_BOT_TOKEN not set, cannot send message');
-    return false;
-  }
-  
-  if (!chatId) {
-    console.error('No chatId provided, cannot send message');
-    return false;
-  }
-  
-  console.log(`[TELEGRAM] Sending message to chat ${chatId}, text length: ${text.length}`);
-  
-  const url = `https://api.telegram.org/bot${token}/sendMessage`;
-  const body = {
-    chat_id: chatId,
-    text: text,
-    parse_mode: 'Markdown',
-    reply_markup: keyboard ? { inline_keyboard: keyboard.inline_keyboard } : undefined
-  };
-  
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    
-    if (!response.ok) {
-      const error = await response.text();
-      console.error(`[TELEGRAM] API error: ${response.status} - ${error}`);
-      throw new Error(`Telegram API error: ${response.status}`);
-    }
-    
-    console.log(`Message sent successfully to ${chatId}`);
-    return true;
-  } catch (error) {
-    console.error(`Failed to send Telegram message: ${error.message}`);
-    return false;
-  }
+  // Telegram removed: no-op
+  return false;
 }
 
 async function sendMenu(env, chatId) {
@@ -1808,9 +1755,7 @@ Current articles: https://agaminews.in
   } catch (error) {
     console.error('Fetch error:', error);
     await sendMessage(env, chatId, `❌ *Error Fetching News*
-
 ${error.message}
-
 *Possible Issues:*
 • RSS feeds temporarily down
 • OpenAI API key issue (if set)
@@ -2453,12 +2398,10 @@ async function sendCostReport(env, chatId) {
 • GPT-4: $${(todayArticles * COST_PER_ARTICLE).toFixed(2)}
 • DALL-E: $${(todayArticles * COST_PER_IMAGE).toFixed(2)}
 • Total: $${todayCost.toFixed(2)}
-
 📊 *Month-to-Date:*
 • Articles: ${monthArticles}
 • Total Cost: $${monthCost.toFixed(2)}
 • Daily Average: ${avgDaily.toFixed(1)} articles
-
 📈 *Projected Monthly:*
 • Articles: ~${Math.round(projectedMonthly)}
 • Estimated Cost: $${projectedCost.toFixed(2)}
@@ -2476,11 +2419,6 @@ async function sendCostReport(env, chatId) {
 
 ${projectedCost > 20 ? '⚠️ *Warning:* Reduce daily articles to stay within budget' : '✅ *Status:* On track with budget'}
   `);
-  
-  // Update monthly tracking
-  stats.monthlyCosts[monthKey].articles = monthArticles + todayArticles;
-  stats.monthlyCosts[monthKey].totalCost = (monthArticles + todayArticles) * COST_PER_UNIT;
-  await env.NEWS_KV.put('stats', JSON.stringify(stats));
 }
 
 // Handle delete specific article
@@ -3094,7 +3032,6 @@ async function sendSEOReport(env, chatId) {
     ]
   });
 }
-
 // Automatic news fetching with priority-based selection
 async function fetchLatestNewsAuto(env, articlesToFetch = 3, priority = 'normal') {
   console.log(`Auto-fetching ${articlesToFetch} articles with priority: ${priority}`);
@@ -3726,7 +3663,6 @@ function generateSlug(title) {
 function generateArticleId() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
-
 // Clean RSS content from HTML and CDATA
 function cleanRSSContent(text) {
   if (!text) return '';
@@ -4571,7 +4507,6 @@ function extractProducts(title) {
   });
   return found;
 }
-
 // Extract smart keywords for highly relevant image matching
 function extractSmartKeywords(title, category) {
   const titleLower = title.toLowerCase();
@@ -5820,7 +5755,6 @@ YOUR TASK - CREATE COMPLETELY ORIGINAL CONTENT:
    - Include data and statistics
    - Add historical context
    - Explain implications
-
 3. WRITE ORIGINAL 1500-2000 WORD ARTICLE:
    - Start with your own lead paragraph
    - Don't copy any sentences from the source
@@ -5978,7 +5912,7 @@ POLITICAL/NATIONAL NEWS STRUCTURE:
 <p><strong>State-wise Impact:</strong> How different states are affected, regional variations</p>
 <p><strong>International Perspective:</strong> Global reactions, comparisons with other countries</p>
 <p><strong>Legal Aspects:</strong> Constitutional provisions, court cases, legal challenges</p>
-<p><strong>Future Scenarios:</strong> What happens next, possible outcomes, timeline ahead</p>
+<p><strong>Future Scenarios:</strong> What happens next, possible outcomes, timeline of events</p>
 ` : ''}
 
 ${article.category.toLowerCase().includes('business') || article.category.toLowerCase().includes('economy') ? `
@@ -6363,19 +6297,14 @@ async function adminRouter(request, env) {
     await handleFetchNow(env);
     return new Response(JSON.stringify({ queued: true }, null, 2), { headers: { 'Content-Type': 'application/json' } });
   }
-  if (url.pathname === '/admin/api/send-menu') {
-    const adminChat = await env.NEWS_KV.get('admin_chat');
-    if (!adminChat) return new Response(JSON.stringify({ error: 'admin_chat not set' }, null, 2), { status: 400, headers: { 'Content-Type': 'application/json' } });
-    await sendMenu(env, adminChat);
-    return new Response(JSON.stringify({ sent: true, to: adminChat }, null, 2), { headers: { 'Content-Type': 'application/json' } });
-  }
+  // Telegram actions removed
   return new Response('Not found', { status: 404 });
 }
 
 async function adminPage(env) {
   const articles = await env.NEWS_KV.get('articles', 'json') || [];
   const stats = await env.NEWS_KV.get('stats', 'json') || {};
-  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AgamiNews Admin</title><style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;max-width:860px;margin:40px auto;padding:0 16px}h1{margin-bottom:8px}small{color:#666}section{margin:20px 0;padding:16px;border:1px solid #eee;border-radius:8px}button, a.btn{background:#111;color:#fff;border:none;border-radius:6px;padding:10px 14px;cursor:pointer;text-decoration:none;display:inline-block} .row{display:flex;gap:12px;flex-wrap:wrap}</style></head><body><h1>AgamiNews Admin</h1><small>Lightweight control panel</small><section><h3>Status</h3><div>Articles: <b>${articles.length}</b> • Today: <b>${stats.dailyArticlesPublished||0}</b></div><div class="row" style="margin-top:12px"><a class="btn" href="/admin/api/health?key=KEY">Health</a><a class="btn" href="/admin/api/articles?key=KEY">Articles JSON</a></div></section><section><h3>Actions</h3><div class="row"><a class="btn" href="/admin/api/fetch?key=KEY">Fetch Now</a><a class="btn" href="/admin/api/clear?key=KEY">Clear Articles</a><a class="btn" href="/admin/api/send-menu?key=KEY">Send Menu to Telegram</a></div></section><section><h3>Webhook</h3><div class="row"><a class="btn" href="/setup?key=KEY">Set Webhook</a><a class="btn" href="/reset-webhook?key=KEY">Reset Webhook</a></div></section><script>const u=new URL(location);const k=u.searchParams.get('key')||prompt('Admin Key');document.querySelectorAll('a.btn').forEach(a=>{a.href=a.href.replace('KEY',encodeURIComponent(k))});history.replaceState({},'',`/admin?key=${encodeURIComponent(k)}`);</script></body></html>`;
+  const html = `<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>AgamiNews Admin</title><style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;max-width:860px;margin:40px auto;padding:0 16px}h1{margin-bottom:8px}small{color:#666}section{margin:20px 0;padding:16px;border:1px solid #eee;border-radius:8px}button, a.btn{background:#111;color:#fff;border:none;border-radius:6px;padding:10px 14px;cursor:pointer;text-decoration:none;display:inline-block} .row{display:flex;gap:12px;flex-wrap:wrap}</style></head><body><h1>AgamiNews Admin</h1><small>Lightweight control panel</small><section><h3>Status</h3><div>Articles: <b>${articles.length}</b> • Today: <b>${stats.dailyArticlesPublished||0}</b></div><div class=\"row\" style=\"margin-top:12px\"><a class=\"btn\" href=\"/admin/api/health?key=KEY\">Health</a><a class=\"btn\" href=\"/admin/api/articles?key=KEY\">Articles JSON</a></div></section><section><h3>Actions</h3><div class=\"row\"><a class=\"btn\" href=\"/admin/api/fetch?key=KEY\">Fetch Now</a><a class=\"btn\" href=\"/admin/api/clear?key=KEY\">Clear Articles</a></div></section><script>const u=new URL(location);const k=u.searchParams.get('key')||prompt('Admin Key');document.querySelectorAll('a.btn').forEach(a=>{a.href=a.href.replace('KEY',encodeURIComponent(k))});history.replaceState({},'',`/admin?key=${encodeURIComponent(k)}`);</script></body></html>`;
   return new Response(html, { headers: { 'Content-Type': 'text/html; charset=UTF-8', 'Cache-Control': 'no-store' } });
 }
 
