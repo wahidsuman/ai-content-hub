@@ -66,15 +66,7 @@ jobs:
             -H "Content-Type: application/json" | jq '.success' || echo "Token verification failed"
           
           echo "Deploying worker..."
-          cd worker
-          
-          # Deploy from root directory with correct config
-          cd ..
-          npx wrangler deploy --config wrangler.toml
-          
-          # List all workers to see what's deployed
-          echo "Checking deployed workers..."
-          npx wrangler deployments list
+          npx wrangler deploy --config wrangler.toml --name agaminews
           
           echo "Testing deployment..."
           sleep 5
