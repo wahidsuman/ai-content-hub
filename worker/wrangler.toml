@@ -1,3 +1,18 @@
 name = "agaminews"
 main = "index.js"
 compatibility_date = "2024-01-01"
+
+# Bind to the domain
+[[routes]]
+pattern = "agaminews.in/*"
+
+[[routes]]
+pattern = "www.agaminews.in/*"
+
+# KV namespace for storage
+[[kv_namespaces]]
+binding = "NEWS_KV"
+id = "NEWS_KV"
+
+[vars]
+ENVIRONMENT = "production"
