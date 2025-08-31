@@ -1501,8 +1501,8 @@ async function serveWebsite(env, request) {
 // AI-Powered News Management System
 // ============================================
 
-const SYSTEM_VERSION = "1.0.4"; // Fresh deploy after removing Workers Sites
-const SYSTEM_NAME = "AgamiNews Control Centre";
+const SYSTEM_VERSION = "2.7"; // Telegram control panel version
+const SYSTEM_NAME = "AgamiNews Control Panel";
 
 async function handleTelegram(request, env) {
   try {
@@ -1566,7 +1566,7 @@ async function showControlCentre(env, chatId) {
   const hasOpenAI = !!env.OPENAI_API_KEY;
   const aiStatus = hasOpenAI ? '🟢 Online' : '🔴 Offline';
   
-  const message = `🎛️ *${SYSTEM_NAME} v${SYSTEM_VERSION}*
+  const message = `🎯 *${SYSTEM_NAME} v${SYSTEM_VERSION}*
 ━━━━━━━━━━━━━━━━━━━━
 
 📊 *System Status*
@@ -1615,7 +1615,7 @@ Select control module:`;
 
 // Temporary placeholder for missing functions
 async function showVersion(env, chatId) {
-  await sendMessage(env, chatId, `🎛️ *${SYSTEM_NAME} v${SYSTEM_VERSION}*\n\nUse /start to open the control centre.`);
+  await sendMessage(env, chatId, `🎯 *${SYSTEM_NAME} v${SYSTEM_VERSION}*\n\nUse /start to open the control centre.`);
 }
 
 async function generateCustomArticle(env, chatId, topic) {
