@@ -22,6 +22,8 @@ export default {
       return new Response(`User-agent: *\nAllow: /\nSitemap: https://agaminews.in/sitemap.xml`, {
         headers: { 'Content-Type': 'text/plain' }
       });
+    } else if (url.pathname.startsWith('/admin')) {
+      return adminRouter(request, env);
     } else if (url.pathname === '/debug') {
       return debugInfo(env);
     } else if (url.pathname === '/webhook-info') {
@@ -6329,6 +6331,58 @@ async function debugInfo(env) {
   }, null, 2), {
     headers: { 'Content-Type': 'application/json' }
   });
+}
+
+// ========== Admin Panel ==========
+function isAuthorized(request, env) {
+  const url = new URL(request.url);
+  const key = url.searchParams.get('key') || request.headers.get('x-admin-key') || '';
+  return key && key === (env.ADMIN_PANEL_KEY || env.ADMIN_SECRET || 'agami2024');
+}
+
+async function adminRouter(request, env) {
+  if (!isAuthorized(request, env)) {
+    return new Response('Unauthorized', { status: 401, headers: { 'WWW-Authenticate': 'Admin key required' } });
+  }
+  const url = new URL(request.url);
+  if (url.pathname === '/admin' || url.pathname === '/admin/') {
+    return adminPage(env);
+  }
+  if (url.pathname === '/admin/api/health') {
+    return debugInfo(env);
+  }
+  if (url.pathname === '/admin/api/articles') {
+    const articles = await env.NEWS_KV.get('articles', 'json') || [];
+    return new Response(JSON.stringify({ count: articles.length, articles }, null, 2), { headers: { 'Content-Type': 'application/json' } });
+  }
+  if (url.pathname === '/admin/api/clear') {
+    await env.NEWS_KV.put('articles', JSON.stringify([]));
+    return new Response(JSON.stringify({ cleared: true }, null, 2), { headers: { 'Content-Type': 'application/json' } });
+  }
+  if (url.pathname === '/admin/api/fetch') {
+    await handleFetchNow(env);
+    return new Response(JSON.stringify({ queued: true }, null, 2), { headers: { 'Content-Type': 'application/json' } });
+  }
+  if (url.pathname === '/admin/api/send-menu') {
+    const adminChat = await env.NEWS_KV.get('admin_chat');
+    if (!adminChat) return new Response(JSON.stringify({ error: 'admin_chat not set' }, null, 2), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    await sendMenu(env, adminChat);
+    return new Response(JSON.stringify({ sent: true, to: adminChat }, null, 2), { headers: { 'Content-Type': 'application/json' } });
+  }
+  return new Response('Not found', { status: 404 });
+}
+
+async function adminPage(env) {
+  const articles = await env.NEWS_KV.get('articles', 'json') || [];
+  const stats = await env.NEWS_KV.get('stats', 'json') || {};
+  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AgamiNews Admin</title><style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;max-width:860px;margin:40px auto;padding:0 16px}h1{margin-bottom:8px}small{color:#666}section{margin:20px 0;padding:16px;border:1px solid #eee;border-radius:8px}button, a.btn{background:#111;color:#fff;border:none;border-radius:6px;padding:10px 14px;cursor:pointer;text-decoration:none;display:inline-block} .row{display:flex;gap:12px;flex-wrap:wrap}</style></head><body><h1>AgamiNews Admin</h1><small>Lightweight control panel</small><section><h3>Status</h3><div>Articles: <b>${articles.length}</b> • Today: <b>${stats.dailyArticlesPublished||0}</b></div><div class="row" style="margin-top:12px"><a class="btn" href="/admin/api/health?key=KEY">Health</a><a class="btn" href="/admin/api/articles?key=KEY">Articles JSON</a></div></section><section><h3>Actions</h3><div class="row"><a class="btn" href="/admin/api/fetch?key=KEY">Fetch Now</a><a class="btn" href="/admin/api/clear?key=KEY">Clear Articles</a><a class="btn" href="/admin/api/send-menu?key=KEY">Send Menu to Telegram</a></div></section><section><h3>Webhook</h3><div class="row"><a class="btn" href="/setup?key=KEY">Set Webhook</a><a class="btn" href="/reset-webhook?key=KEY">Reset Webhook</a></div></section><script>const u=new URL(location);const k=u.searchParams.get('key')||prompt('Admin Key');document.querySelectorAll('a.btn').forEach(a=>{a.href=a.href.replace('KEY',encodeURIComponent(k))});history.replaceState({},'',`/admin?key=${encodeURIComponent(k)}`);</script></body></html>`;
+  return new Response(html, { headers: { 'Content-Type': 'text/html; charset=UTF-8', 'Cache-Control': 'no-store' } });
+}
+
+async function handleFetchNow(env) {
+  // Reuse existing fetch logic by triggering cron job
+  const fakeEvent = { scheduledTime: Date.now(), cron: 'manual-admin' };
+  await exportDefault.scheduled(fakeEvent, env);
 }
 
 // Setup webhook
