@@ -2,17 +2,18 @@ name = "agaminews"
 main = "index.js"
 compatibility_date = "2024-01-01"
 
-# Bind to the domain
+# Routes - make sure these match your domain setup
 [[routes]]
 pattern = "agaminews.in/*"
+zone_name = "agaminews.in"
 
-[[routes]]
+[[routes]]  
 pattern = "www.agaminews.in/*"
+zone_name = "agaminews.in"
 
-# KV namespace for storage
-[[kv_namespaces]]
-binding = "NEWS_KV"
-id = "NEWS_KV"
-
+# Environment variables
 [vars]
 ENVIRONMENT = "production"
+
+# KV will be created dynamically if needed
+# Remove the KV namespace binding to avoid errors
