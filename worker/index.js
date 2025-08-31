@@ -13,6 +13,18 @@ export default {
     // Initialize on first run
     await initializeSystem(env);
     
+    // Health check for deployment verification
+    if (url.pathname === '/health') {
+      return new Response(JSON.stringify({
+        status: 'ok',
+        version: SYSTEM_VERSION,
+        system: SYSTEM_NAME,
+        timestamp: new Date().toISOString()
+      }), {
+        headers: { 'content-type': 'application/json' }
+      });
+    }
+    
     // Route handling
     if (url.pathname === '/telegram') {
       return handleTelegram(request, env);

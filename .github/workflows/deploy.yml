@@ -67,10 +67,18 @@ jobs:
           
           echo "Deploying worker..."
           cd worker
-          npx wrangler deploy --compatibility-date 2024-01-01 || {
-            echo "Deployment failed. Trying without routes..."
-            npx wrangler deploy --compatibility-date 2024-01-01 --no-route
-          }
+          
+          # First deploy the worker
+          npx wrangler deploy --name agaminews --compatibility-date 2024-01-01
+          
+          # Then explicitly set the routes
+          echo "Setting up routes..."
+          npx wrangler route add "agaminews.in/*" agaminews || true
+          npx wrangler route add "www.agaminews.in/*" agaminews || true
+          
+          echo "Testing deployment..."
+          sleep 5
+          curl -s https://agaminews.in/health || echo "Health check endpoint not found"
 
       - name: Run KV migration (copy)
         run: |
