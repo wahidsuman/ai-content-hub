@@ -14,6 +14,8 @@ export default {
       return handleTelegram(request, env);
     } else if (url.pathname === '/setup') {
       return setupWebhook(env, url.origin);
+    } else if (url.pathname === '/reset-webhook') {
+      return resetWebhook(env, url.origin);
     } else if (url.pathname === '/sitemap.xml') {
       return generateSitemap(env);
     } else if (url.pathname === '/robots.txt') {
@@ -6349,6 +6351,19 @@ async function setupWebhook(env, origin) {
   }), {
     headers: { 'Content-Type': 'application/json' }
   });
+}
+
+// Force reset webhook: delete + set
+async function resetWebhook(env, origin) {
+  const token = env.TELEGRAM_BOT_TOKEN;
+  if (!token) {
+    return new Response('Set TELEGRAM_BOT_TOKEN first', { status: 400 });
+  }
+  const deleteResp = await fetch(`https://api.telegram.org/bot${token}/deleteWebhook`, { method: 'POST' });
+  const del = await deleteResp.json();
+  const setResp = await fetch(`https://api.telegram.org/bot${token}/setWebhook?url=${origin}/telegram`, { method: 'POST' });
+  const set = await setResp.json();
+  return new Response(JSON.stringify({ deleted: del, set }, null, 2), { headers: { 'Content-Type': 'application/json' } });
 }
 
 // Generate sitemap
