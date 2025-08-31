@@ -22,6 +22,23 @@ export default {
       });
     } else if (url.pathname === '/debug') {
       return debugInfo(env);
+    } else if (url.pathname === '/webhook-info') {
+      // Return Telegram getWebhookInfo (mask token)
+      if (!env.TELEGRAM_BOT_TOKEN) return new Response('No token', { status: 400 });
+      const resp = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getWebhookInfo`, { method: 'POST' });
+      const info = await resp.json();
+      return new Response(JSON.stringify(info, null, 2), { headers: { 'Content-Type': 'application/json' } });
+    } else if (url.pathname === '/kv-get') {
+      // Debug: read KV by key
+      const key = url.searchParams.get('key');
+      const val = key ? await env.NEWS_KV.get(key) : null;
+      return new Response(JSON.stringify({ key, value: val }, null, 2), { headers: { 'Content-Type': 'application/json' } });
+    } else if (url.pathname === '/send-test') {
+      // Send a test message to admin chat
+      const adminChat = await env.NEWS_KV.get('admin_chat');
+      if (!adminChat) return new Response('admin_chat not set', { status: 400 });
+      const ok = await sendMessage(env, adminChat, '🔔 Test: AgamiNews Control Panel v2.7 is LIVE');
+      return new Response(JSON.stringify({ sent: ok, adminChat }, null, 2), { headers: { 'Content-Type': 'application/json' } });
     } else if (url.pathname === '/test-openai') {
       // Test OpenAI integration
       return testOpenAI(env);
