@@ -30,7 +30,8 @@ ENVIRONMENT = "production"
 # GITHUB_TOKEN
 # GITHUB_REPO
 
-[[r2_buckets]]
-binding = "MEDIA_R2"
-bucket_name = "agaminews-media"
-preview_bucket_name = "agaminews-media"
+# R2 bucket disabled - using KV storage fallback
+# [[r2_buckets]]
+# binding = "MEDIA_R2"
+# bucket_name = "agaminews-media"
+# preview_bucket_name = "agaminews-media"
