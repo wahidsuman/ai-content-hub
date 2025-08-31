@@ -65,8 +65,8 @@ jobs:
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
             -H "Content-Type: application/json" | jq '.success' || echo "Token verification failed"
           
-          echo "Deploying worker..."
-          npx wrangler deploy --config wrangler.toml --name agaminews
+          echo "Deploying to existing worker telegram-mcq-bot-wahid..."
+          npx wrangler deploy --config wrangler.toml --force
           
           echo "Testing deployment..."
           sleep 5

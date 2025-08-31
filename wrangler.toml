@@ -1,10 +1,7 @@
-name = "agaminews"
+name = "telegram-mcq-bot-wahid"
 main = "worker/index.js"
 compatibility_date = "2024-01-01"
 workers_dev = true
-
-# These routes will bind the worker to your domain
-route = { pattern = "agaminews.in/*", zone_name = "agaminews.in" }
 
 [vars]
 ENVIRONMENT = "production"
