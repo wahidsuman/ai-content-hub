@@ -2,36 +2,17 @@ name = "agaminews"
 main = "index.js"
 compatibility_date = "2024-01-01"
 
-# Routes for this Worker (Wrangler v4 format)
-routes = [
-  "agaminews.in/*",
-  "www.agaminews.in/*"
-]
-
-# Route is configured in Cloudflare Dashboard
-# Worker: agaminews
-
 # KV Namespace binding
 [[kv_namespaces]]
 binding = "NEWS_KV"
-id = "72c0dad910574e7cb4bd8bb5918af847"
-
-# Cron trigger for automatic updates
-[triggers]
-crons = ["0 */3 * * *"]  # Every 3 hours = 8 runs/day × 2 articles = 16 (capped at 15)
+id = "NEWS_KV"
 
 [vars]
 ENVIRONMENT = "production"
 
-# These will be set via wrangler secret
+# Secrets are set via wrangler or dashboard:
 # TELEGRAM_BOT_TOKEN
 # TELEGRAM_CHAT_ID
 # OPENAI_API_KEY
 # GITHUB_TOKEN
 # GITHUB_REPO
-
-# R2 bucket disabled - using KV storage fallback
-# [[r2_buckets]]
-# binding = "MEDIA_R2"
-# bucket_name = "agaminews-media"
-# preview_bucket_name = "agaminews-media"
