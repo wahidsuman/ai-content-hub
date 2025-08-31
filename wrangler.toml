@@ -1,14 +1,12 @@
 name = "agaminews"
-main = "index.js"
+main = "worker/index.js"
 compatibility_date = "2024-01-01"
+workers_dev = false
+
+routes = [
+  { pattern = "agaminews.in/*", zone_name = "agaminews.in" },
+  { pattern = "www.agaminews.in/*", zone_name = "agaminews.in" }
+]
 
 [vars]
-WORKER_URL = "https://agaminews.workers.dev"
-
-[[kv_namespaces]]
-binding = "NEWS_KV"
-id = "72c0dad910574e7cb4bd8bb5918af847"
-preview_id = "72c0dad910574e7cb4bd8bb5918af847"
-
-[triggers]
-crons = ["0 */3 * * *"] # Every 3 hours at minute 0
+ENVIRONMENT = "production"

@@ -68,13 +68,13 @@ jobs:
           echo "Deploying worker..."
           cd worker
           
-          # First deploy the worker
-          npx wrangler deploy --name agaminews --compatibility-date 2024-01-01
+          # Deploy from root directory with correct config
+          cd ..
+          npx wrangler deploy --config wrangler.toml
           
-          # Then explicitly set the routes
-          echo "Setting up routes..."
-          npx wrangler route add "agaminews.in/*" agaminews || true
-          npx wrangler route add "www.agaminews.in/*" agaminews || true
+          # List all workers to see what's deployed
+          echo "Checking deployed workers..."
+          npx wrangler deployments list
           
           echo "Testing deployment..."
           sleep 5
