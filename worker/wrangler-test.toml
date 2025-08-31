@@ -1,0 +1,9 @@
+name = "agaminews"
+main = "test-deploy.js"
+compatibility_date = "2024-01-01"
+
+# Minimal config for testing
+routes = [
+  "agaminews.in/*",
+  "www.agaminews.in/*"
+]
