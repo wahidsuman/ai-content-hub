@@ -14,6 +14,18 @@ export default {
       return new Response('Telegram interface has been removed', { status: 410 });
     } else if (url.pathname === '/setup' || url.pathname === '/reset-webhook' || url.pathname === '/webhook-info' || url.pathname === '/send-test') {
       return new Response('Telegram endpoints removed', { status: 410 });
+    } else if (url.pathname === '/kill-telegram') {
+      if (!isAuthorized(request, env)) return new Response('Unauthorized', { status: 401 });
+      const token = env.TELEGRAM_BOT_TOKEN;
+      if (!token) return new Response('No token set', { status: 400 });
+      const del = await fetch(`https://api.telegram.org/bot${token}/deleteWebhook`, { method: 'POST' }).then(r=>r.json());
+      return new Response(JSON.stringify({ deleted: del }, null, 2), { headers: { 'Content-Type': 'application/json' } });
+    } else if (url.pathname === '/webhook-info') {
+      if (!isAuthorized(request, env)) return new Response('Unauthorized', { status: 401 });
+      const token = env.TELEGRAM_BOT_TOKEN;
+      if (!token) return new Response('No token set', { status: 400 });
+      const info = await fetch(`https://api.telegram.org/bot${token}/getWebhookInfo`, { method: 'POST' }).then(r=>r.json());
+      return new Response(JSON.stringify(info, null, 2), { headers: { 'Content-Type': 'application/json' } });
     } else if (url.pathname === '/sitemap.xml') {
       return generateSitemap(env);
     } else if (url.pathname === '/robots.txt') {
