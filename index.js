@@ -1350,6 +1350,8 @@ async function handleTelegram(request, env) {
       // Handle commands
       if (text === '/start') {
         await sendMessage(env, chatId, `
+🎯 *AgamiNews Control Panel v2.7*
+
 🎉 *Welcome to AgamiNews AI Manager!*
 
 I'm your intelligent news manager powered by AI. I handle everything automatically!
