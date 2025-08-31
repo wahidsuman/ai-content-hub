@@ -1489,7 +1489,7 @@ async function serveWebsite(env, request) {
 // AI-Powered News Management System
 // ============================================
 
-const SYSTEM_VERSION = "1.0.2"; // Testing new API key
+const SYSTEM_VERSION = "1.0.3"; // Deploy with updated permissions
 const SYSTEM_NAME = "AgamiNews Control Centre";
 
 async function handleTelegram(request, env) {
