@@ -26,6 +26,13 @@ jobs:
           node -v
           npx wrangler --version
 
+      - name: Use root index.js for agaminews worker
+        run: |
+          echo "Replacing worker/index.js with root index.js for deployment"
+          cp index.js worker/index.js
+          echo "First 3 lines of worker/index.js after replace:"
+          sed -n '1,3p' worker/index.js
+
       - name: Ensure NEWS_KV points to state
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
