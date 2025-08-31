@@ -10,7 +10,7 @@ export default {
     await initializeSystem(env);
     
     // Route handling
-    if (url.pathname === '/telegram') {
+    if (url.pathname === '/telegram' || url.pathname === '/telegram-v2') {
       return handleTelegram(request, env);
     } else if (url.pathname === '/setup') {
       return setupWebhook(env, url.origin);
@@ -6338,7 +6338,7 @@ async function setupWebhook(env, origin) {
     return new Response('Set TELEGRAM_BOT_TOKEN first', { status: 400 });
   }
   
-  const webhookUrl = `${origin}/telegram`;
+  const webhookUrl = `${origin}/telegram-v2`;
   const url = `https://api.telegram.org/bot${token}/setWebhook?url=${webhookUrl}`;
   
   const response = await fetch(url);
