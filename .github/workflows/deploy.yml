@@ -67,6 +67,14 @@ jobs:
           
           echo "Deploying agaminews via worker/wrangler.toml..."
           npx wrangler deploy --config worker/wrangler.toml --force
+
+      - name: Deploy Telegram worker (root wrangler.toml)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          echo "Deploying telegram-mcq-bot-wahid via root wrangler.toml..."
+          npx wrangler deploy --config wrangler.toml --force
           
           echo "Testing deployment..."
           sleep 5
