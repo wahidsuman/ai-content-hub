@@ -1591,7 +1591,7 @@ async function sendMenu(env, chatId) {
   const nextHour = Math.ceil(now.getHours() / 3) * 3;
   const nextCronHour = nextHour === 24 ? 0 : nextHour;
   
-  await sendMessage(env, chatId, `🎯 *AgamiNews Premium Dashboard*
+  await sendMessage(env, chatId, `🎯 *AgamiNews Control Panel v2.7*
   
 📊 *Live Statistics:*
 • Articles Today: ${todayArticles}/15 
